@@ -87,15 +87,22 @@ export const gameAssets = {
     "terrain_wood_tree.png",
     "512x512 transparent prop"
   ),
-  unitWorker: asset("unitWorker", "units", "unit_worker.png", "512x512 transparent unit"),
-  unitFighter: asset("unitFighter", "units", "unit_fighter.png", "512x512 transparent unit"),
-  unitScout: asset("unitScout", "units", "unit_scout.png", "512x512 transparent unit"),
-  unitEnemyFighter: asset(
-    "unitEnemyFighter",
-    "units",
-    "unit_enemy_fighter.png",
-    "512x512 transparent unit"
-  ),
+  unitWorker: {
+    ...asset("unitWorker", "units", "unit_worker.png", "512x512 transparent unit"),
+    source: require("../../../assets/game/units/unit_worker.png") as ImageSourcePropType
+  },
+  unitFighter: {
+    ...asset("unitFighter", "units", "unit_fighter.png", "512x512 transparent unit"),
+    source: require("../../../assets/game/units/unit_fighter.png") as ImageSourcePropType
+  },
+  unitScout: {
+    ...asset("unitScout", "units", "unit_scout.png", "512x512 transparent unit"),
+    source: require("../../../assets/game/units/unit_scout.png") as ImageSourcePropType
+  },
+  unitEnemyFighter: {
+    ...asset("unitEnemyFighter", "units", "unit_enemy_fighter.png", "512x512 transparent unit"),
+    source: require("../../../assets/game/units/unit_enemy_fighter.png") as ImageSourcePropType
+  },
   buildingPlayerCamp: asset(
     "buildingPlayerCamp",
     "buildings",

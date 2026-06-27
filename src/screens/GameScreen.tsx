@@ -1,10 +1,20 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions
+} from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
 import { GameBoard } from "../components/game/GameBoard";
 import { GameButton } from "../components/game/GameButton";
+import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
+import { getGameAsset } from "../game/assets/gameAssets";
 import { BUILDING_COSTS, UNIT_COSTS } from "../game/config/constants";
 import { useGameStore } from "../game/state/gameStore";
 import type { Resources, Tile, Unit } from "../game/types/game";
@@ -18,19 +28,28 @@ const tutorialSteps = [
   "Send fighters to destroy the enemy camp."
 ];
 
-type ActionTab = "map" | "monkeys" | "build" | "raid";
+type ActionTab = "overview" | "monkeys" | "build" | "map" | "shop" | "settings";
 
 export function GameScreen() {
   const state = useGameStore();
+  const { width } = useWindowDimensions();
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [actionTab, setActionTab] = useState<ActionTab>("monkeys");
+  const [actionTab, setActionTab] = useState<ActionTab>("overview");
   const selectedUnit =
     state.units.find((unit) => unit.id === state.selectedUnitId && unit.state !== "dead") ??
     null;
   const population = state.units.filter(
     (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
   ).length;
+  const fighterCount = state.units.filter(
+    (unit) =>
+      unit.owner === "player" &&
+      unit.type === "fighter" &&
+      unit.state !== "dead" &&
+      unit.hp > 0
+  ).length;
+  const boardMaxSize = Math.max(238, Math.min(width - 112, 392));
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -130,9 +149,7 @@ export function GameScreen() {
     !hasResources(state.resources, BUILDING_COSTS.trainingNest);
   const watchPostDisabled =
     state.buildings.watchPost > 0 || !hasResources(state.resources, BUILDING_COSTS.watchPost);
-  const fighterCount = state.units.filter(
-    (unit) => unit.owner === "player" && unit.type === "fighter" && unit.state !== "dead" && unit.hp > 0
-  ).length;
+  const sheet = getGameAsset("unitMonkeySheet");
 
   return (
     <View style={styles.safeScreen}>
@@ -142,102 +159,145 @@ export function GameScreen() {
         style={styles.backgroundArt}
         fallback={<View style={styles.backgroundFallback} />}
       />
+      <View style={styles.backgroundShade} />
+
       <ScrollView
         style={styles.screen}
         contentContainerStyle={styles.content}
         bounces={false}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.kicker}>Jungle Survival</Text>
-            <Text style={styles.title}>Monkey Tribe</Text>
+        <View style={styles.topBar}>
+          <View style={styles.clanCard}>
+            <View style={styles.avatarRing}>
+              <SpriteSheetImage
+                source={sheet.source}
+                sheetWidth={1341}
+                sheetHeight={1173}
+                frame={{ x: 1084, y: 18, width: 230, height: 256 }}
+                style={styles.avatar}
+                fallback={<AvatarFallback />}
+              />
+            </View>
+            <View style={styles.clanCopy}>
+              <Text style={styles.clanName}>Monkey Tribe</Text>
+              <Text style={styles.clanSubtitle}>Young Clan</Text>
+            </View>
+            <View style={styles.levelBadge}>
+              <Text style={styles.levelText}>1</Text>
+            </View>
           </View>
-          <Pressable style={styles.resetButton} onPress={state.resetGame}>
-            <Text style={styles.resetText}>Reset</Text>
-          </Pressable>
+
+          <View style={styles.topButtons}>
+            <TopPill label="Tasks" accent="!" />
+            <TopIcon label="Trophy" glyph="T" />
+            <TopIcon label="Settings" glyph="S" onPress={state.resetGame} />
+          </View>
         </View>
 
-        <View style={styles.hud}>
-          <ResourceCard label="Bananas" value={state.resources.bananas} assetKey="resourceBanana" />
-          <ResourceCard label="Stones" value={state.resources.stones} assetKey="resourceStone" />
-          <ResourceCard label="Wood" value={state.resources.wood} assetKey="resourceWood" />
-          <ResourceCard
-            label="Pop"
+        <View style={styles.resourceBar}>
+          <ResourceChip label="Bananas" value={state.resources.bananas} rate="+18/turn" assetKey="resourceBanana" />
+          <ResourceChip label="Stones" value={state.resources.stones} rate="+12/turn" assetKey="resourceStone" />
+          <ResourceChip label="Wood" value={state.resources.wood} rate="+9/turn" assetKey="resourceWood" />
+          <ResourceChip
+            label="Population"
             value={`${population}/${state.maxPopulation}`}
+            rate="+1/turn"
             assetKey="resourcePopulation"
           />
         </View>
 
-        <View style={styles.campStrip}>
-          <CampStat label="Your Camp" value={state.playerCampHp} tone="player" />
-          <CampStat label="Enemy Camp" value={state.enemyCampHp} tone="enemy" />
+        <View style={styles.mainStage}>
+          <View style={styles.sideNav}>
+            <SideNavButton
+              label="Overview"
+              glyph="O"
+              active={actionTab === "overview"}
+              onPress={() => setActionTab("overview")}
+            />
+            <SideNavButton
+              label="Monkeys"
+              glyph="M"
+              badge={population}
+              active={actionTab === "monkeys"}
+              onPress={() => setActionTab("monkeys")}
+            />
+            <SideNavButton
+              label="Build"
+              glyph="B"
+              active={actionTab === "build"}
+              onPress={() => setActionTab("build")}
+            />
+            <SideNavButton
+              label="Map"
+              glyph="Map"
+              active={actionTab === "map"}
+              onPress={() => setActionTab("map")}
+            />
+            <SideNavButton
+              label="Shop"
+              glyph="Hut"
+              active={actionTab === "shop"}
+              onPress={() => setActionTab("shop")}
+            />
+            <SideNavButton
+              label="Settings"
+              glyph="S"
+              active={actionTab === "settings"}
+              onPress={() => setActionTab("settings")}
+            />
+          </View>
+
+          <View style={styles.playColumn}>
+            <View style={styles.boardShell}>
+              <GameBoard
+                tiles={state.mapTiles}
+                units={state.units}
+                selectedUnitId={state.selectedUnitId}
+                playerCampHp={state.playerCampHp}
+                enemyCampHp={state.enemyCampHp}
+                maxSize={boardMaxSize}
+                onCellPress={handleCellPress}
+              />
+            </View>
+
+            {state.feedback ? (
+              <View style={styles.feedback}>
+                <Text style={styles.feedbackText}>{state.feedback.text}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         <View style={styles.objectivePanel}>
-          <Text style={styles.objectiveTitle}>Objectives</Text>
-          <Text style={styles.objectiveText}>Gather wood and stone to build your tribe.</Text>
-          <Text style={styles.objectiveText}>Build a Training Nest, train fighters, then raid.</Text>
-          <View style={styles.objectiveChips}>
-            <ObjectiveChip done={state.buildings.trainingNest > 0} label="Nest" />
-            <ObjectiveChip done={fighterCount > 0} label="Fighter" />
-            <ObjectiveChip done={state.enemyCampHp <= 60} label="Raid" />
+          <View style={styles.objectiveHeader}>
+            <Text style={styles.objectiveTitle}>Objectives</Text>
+            <Text style={styles.objectiveCounter}>Tasks</Text>
           </View>
+          <ObjectiveRow label="Build a Hut" value={`${state.buildings.hut > 0 ? 1 : 0}/1`} done={state.buildings.hut > 0} />
+          <ObjectiveRow
+            label="Gather 100 Bananas"
+            value={`${Math.min(state.resources.bananas, 100)}/100`}
+            done={state.resources.bananas >= 100}
+          />
+          <ObjectiveRow label="Train a Fighter" value={`${fighterCount > 0 ? 1 : 0}/1`} done={fighterCount > 0} />
+          <ObjectiveRow label="Defeat Enemy Camp" value={`${state.enemyCampHp <= 0 ? 1 : 0}/1`} done={state.enemyCampHp <= 0} />
         </View>
-
-        {state.feedback ? (
-          <View style={styles.feedback}>
-            <Text style={styles.feedbackText}>{state.feedback.text}</Text>
-          </View>
-        ) : null}
-
-        <GameBoard
-          tiles={state.mapTiles}
-          units={state.units}
-          selectedUnitId={state.selectedUnitId}
-          playerCampHp={state.playerCampHp}
-          enemyCampHp={state.enemyCampHp}
-          onCellPress={handleCellPress}
-        />
 
         <SelectedUnitPanel unit={selectedUnit} />
 
-        <View style={styles.buildingStrip}>
-          <BuildingBadge label="Hut" active={state.buildings.hut > 0} />
-          <BuildingBadge label="Nest" active={state.buildings.trainingNest > 0} />
-          <BuildingBadge label="Post" active={state.buildings.watchPost > 0} />
+        <View style={styles.bottomDock}>
+          <View style={styles.actionCards}>{renderActionCards()}</View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={state.raidEnemyCamp}
+            style={({ pressed }) => [styles.raidButton, pressed ? styles.raidButtonPressed : null]}
+          >
+            <Text style={styles.raidIcon}>X</Text>
+            <Text style={styles.raidText}>RAID!</Text>
+          </Pressable>
         </View>
-
-        <View style={styles.actions}>{renderActionPanel()}</View>
       </ScrollView>
-
-      <View style={styles.bottomTabs}>
-        <NavButton tab="map" active={actionTab === "map"} label="Map" assetKey="uiButtonMap" onPress={setActionTab} />
-        <NavButton
-          tab="monkeys"
-          active={actionTab === "monkeys"}
-          label="Monkeys"
-          assetKey="uiButtonMonkeys"
-          onPress={setActionTab}
-        />
-        <NavButton
-          tab="build"
-          active={actionTab === "build"}
-          label="Build"
-          assetKey="uiButtonBuild"
-          onPress={setActionTab}
-        />
-        <NavButton
-          tab="raid"
-          active={actionTab === "raid"}
-          label="Raid"
-          assetKey="uiButtonRaid"
-          onPress={(tab) => {
-            setActionTab(tab);
-            state.raidEnemyCamp();
-          }}
-        />
-      </View>
 
       <TutorialOverlay
         visible={showTutorial}
@@ -248,91 +308,63 @@ export function GameScreen() {
     </View>
   );
 
-  function renderActionPanel() {
+  function renderActionCards() {
+    if (actionTab === "monkeys") {
+      return (
+        <>
+          <ActionCard
+            title="Worker"
+            cost={costText(UNIT_COSTS.worker)}
+            glyph="M"
+            disabled={createWorkerDisabled}
+            onPress={state.createWorker}
+          />
+          <ActionCard
+            title="Fighter"
+            cost={fighterLocked ? "Nest" : costText(UNIT_COSTS.fighter)}
+            glyph="X"
+            disabled={trainFighterDisabled}
+            onPress={state.trainFighter}
+          />
+          <ActionCard title="Move" cost="Tap" glyph="Map" onPress={() => setActionTab("map")} />
+        </>
+      );
+    }
+
     if (actionTab === "map") {
       return (
         <>
-          <Text style={styles.sectionTitle}>Map Orders</Text>
-          <Text style={styles.actionCopy}>Tap a monkey, then tap glowing tiles, resources, or the enemy camp.</Text>
-          <GameButton label="Reset Run" tone="danger" helperText="Restart this match" onPress={state.resetGame} />
-        </>
-      );
-    }
-
-    if (actionTab === "build") {
-      return (
-        <>
-          <Text style={styles.sectionTitle}>Buildings</Text>
-          <View style={styles.buildGrid}>
-            <GameButton
-              label="Hut"
-              helperText={state.buildings.hut > 0 ? "+2 capacity active" : costText(BUILDING_COSTS.hut)}
-              tone="secondary"
-              disabled={hutDisabled}
-              onPress={state.buildHut}
-            />
-            <GameButton
-              label="Training Nest"
-              helperText={
-                state.buildings.trainingNest > 0
-                  ? "Fighters unlocked"
-                  : costText(BUILDING_COSTS.trainingNest)
-              }
-              tone="secondary"
-              disabled={nestDisabled}
-              onPress={state.buildTrainingNest}
-            />
-            <GameButton
-              label="Watch Post"
-              helperText={
-                state.buildings.watchPost > 0
-                  ? "Camp defense active"
-                  : costText(BUILDING_COSTS.watchPost)
-              }
-              tone="secondary"
-              disabled={watchPostDisabled}
-              onPress={state.buildWatchPost}
-            />
-          </View>
-        </>
-      );
-    }
-
-    if (actionTab === "raid") {
-      return (
-        <>
-          <Text style={styles.sectionTitle}>Raid</Text>
-          <Text style={styles.actionCopy}>Best with fighters. The raid button orders your strongest monkey toward the enemy camp.</Text>
-          <GameButton label="Raid Enemy Camp" tone="danger" helperText="Send strongest unit" onPress={state.raidEnemyCamp} />
+          <ActionCard title="Gather" cost="Tap resource" glyph="B" onPress={() => setActionTab("overview")} />
+          <ActionCard title="Move" cost="Tap tile" glyph="Map" onPress={() => setActionTab("overview")} />
+          <ActionCard title="Cancel" cost="Reset" glyph="!" onPress={state.resetGame} />
         </>
       );
     }
 
     return (
       <>
-        <Text style={styles.sectionTitle}>Monkey Actions</Text>
-        <GameButton
-          label="Create Worker"
-          helperText={buttonHelper(
-            createWorkerDisabled,
-            population >= state.maxPopulation ? "Population full. Build a Hut." : costText(UNIT_COSTS.worker)
-          )}
-          disabled={createWorkerDisabled}
-          onPress={state.createWorker}
+        <ActionCard
+          title="Hut"
+          cost={state.buildings.hut > 0 ? "Built" : costText(BUILDING_COSTS.hut)}
+          glyph="Hut"
+          disabled={hutDisabled}
+          onPress={state.buildHut}
         />
-        <GameButton
-          label="Train Fighter"
-          helperText={buttonHelper(
-            trainFighterDisabled,
-            fighterLocked
-              ? "Requires Training Nest"
-              : population >= state.maxPopulation
-                ? "Population full. Build a Hut."
-                : costText(UNIT_COSTS.fighter)
-          )}
-          disabled={trainFighterDisabled}
-          onPress={state.trainFighter}
+        <ActionCard
+          title="Training Nest"
+          cost={state.buildings.trainingNest > 0 ? "Built" : costText(BUILDING_COSTS.trainingNest)}
+          glyph="Target"
+          disabled={nestDisabled}
+          onPress={state.buildTrainingNest}
         />
+        <ActionCard
+          title="Watch Post"
+          cost={state.buildings.watchPost > 0 ? "Built" : costText(BUILDING_COSTS.watchPost)}
+          glyph="Tower"
+          disabled={watchPostDisabled}
+          onPress={state.buildWatchPost}
+        />
+        <ActionCard title="More" cost="..." glyph="More" onPress={() => setActionTab("shop")} />
       </>
     );
   }
@@ -355,26 +387,25 @@ function costText(cost: Resources) {
   return parts.join(" + ");
 }
 
-function buttonHelper(disabled: boolean, text: string) {
-  return disabled ? text : `Cost: ${text}`;
-}
-
-function ResourceCard({
+function ResourceChip({
   label,
   value,
+  rate,
   assetKey
 }: {
   label: string;
   value: number | string;
+  rate: string;
   assetKey: "resourceBanana" | "resourceStone" | "resourceWood" | "resourcePopulation";
 }) {
   return (
-    <View style={styles.resourceCard}>
+    <View style={styles.resourceChip}>
       <AssetImage assetKey={assetKey} style={styles.resourceIcon} fallback={<ResourceFallback assetKey={assetKey} />} />
-      <View>
+      <View style={styles.resourceCopy}>
         <Text style={styles.resourceValue}>{value}</Text>
-        <Text style={styles.resourceLabel}>{label}</Text>
+        <Text style={styles.resourceRate}>{rate}</Text>
       </View>
+      <Text style={styles.hiddenLabel}>{label}</Text>
     </View>
   );
 }
@@ -405,77 +436,112 @@ function ResourceFallback({
   );
 }
 
-function ObjectiveChip({ done, label }: { done: boolean; label: string }) {
-  return (
-    <View style={[styles.objectiveChip, done ? styles.objectiveChipDone : null]}>
-      <Text style={[styles.objectiveChipText, done ? styles.objectiveChipTextDone : null]}>
-        {done ? "Done" : "Next"}: {label}
-      </Text>
-    </View>
-  );
-}
-
-function NavButton({
-  tab,
-  active,
+function SideNavButton({
   label,
-  assetKey,
+  glyph,
+  badge,
+  active,
   onPress
 }: {
-  tab: ActionTab;
-  active: boolean;
   label: string;
-  assetKey: "uiButtonBuild" | "uiButtonMonkeys" | "uiButtonMap" | "uiButtonRaid";
-  onPress: (tab: ActionTab) => void;
+  glyph: string;
+  badge?: number;
+  active?: boolean;
+  onPress: () => void;
 }) {
   return (
-    <Pressable style={[styles.navButton, active ? styles.navButtonActive : null]} onPress={() => onPress(tab)}>
-      <AssetImage assetKey={assetKey} style={styles.navIcon} fallback={<NavIconFallback tab={tab} />} />
-      <Text style={[styles.navLabel, active ? styles.navLabelActive : null]}>{label}</Text>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.sideButton,
+        active ? styles.sideButtonActive : null,
+        pressed ? styles.sideButtonPressed : null
+      ]}
+    >
+      <Text style={styles.sideGlyph}>{glyph}</Text>
+      <Text style={[styles.sideLabel, active ? styles.sideLabelActive : null]}>{label}</Text>
+      {badge ? (
+        <View style={styles.sideBadge}>
+          <Text style={styles.sideBadgeText}>{badge}</Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
 
-function NavIconFallback({ tab }: { tab: ActionTab }) {
-  const fill = tab === "raid" ? "#c84a3a" : tab === "build" ? "#ffd95a" : "#e8f0cf";
+function ObjectiveRow({ label, value, done }: { label: string; value: string; done: boolean }) {
   return (
-    <Svg width="100%" height="100%" viewBox="0 0 48 48">
-      <Circle cx="24" cy="24" r="19" fill={fill} />
-      {tab === "raid" ? <Path d="M15 32 L32 15 L36 19 L19 36 Z" fill="#5a341f" /> : null}
-      {tab === "build" ? <Rect x="15" y="21" width="18" height="15" rx="3" fill="#5a341f" /> : null}
-      {tab === "monkeys" ? <Circle cx="24" cy="25" r="10" fill="#8b5e35" /> : null}
-      {tab === "map" ? <Path d="M14 15 L24 11 L34 15 L34 34 L24 38 L14 34 Z" fill="#5fac45" /> : null}
-    </Svg>
+    <View style={styles.objectiveRow}>
+      <Text style={[styles.objectiveText, done ? styles.objectiveTextDone : null]}>{label}</Text>
+      <Text style={[styles.objectiveValue, done ? styles.objectiveTextDone : null]}>{value}</Text>
+    </View>
   );
 }
 
-function CampStat({ label, value, tone }: { label: string; value: number; tone: "player" | "enemy" }) {
+function TopPill({ label, accent }: { label: string; accent: string }) {
   return (
-    <View style={styles.campStat}>
-      <Text style={styles.campLabel}>{label}</Text>
-      <View style={styles.campTrack}>
-        <View
-          style={[
-            styles.campFill,
-            {
-              width: `${Math.max(0, Math.round((value / 120) * 100))}%`,
-              backgroundColor: tone === "player" ? theme.colors.player : theme.colors.enemy
-            }
-          ]}
-        />
+    <View style={styles.topPill}>
+      <Text style={styles.topPillText}>{label}</Text>
+      <View style={styles.topAccent}>
+        <Text style={styles.topAccentText}>{accent}</Text>
       </View>
-      <Text style={styles.campValue}>{value} HP</Text>
     </View>
   );
 }
 
-function BuildingBadge({ label, active }: { label: string; active: boolean }) {
+function TopIcon({ label, glyph, onPress }: { label: string; glyph: string; onPress?: () => void }) {
   return (
-    <View style={[styles.buildingBadge, active ? styles.buildingBadgeActive : null]}>
-      <Text style={[styles.buildingBadgeText, active ? styles.buildingBadgeTextActive : null]}>
-        {label}
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.topIcon}>
+      <Text style={styles.topIconText}>{glyph}</Text>
+    </Pressable>
+  );
+}
+
+function ActionCard({
+  title,
+  cost,
+  glyph,
+  disabled,
+  onPress
+}: {
+  title: string;
+  cost: string;
+  glyph: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.actionCard,
+        disabled ? styles.actionCardDisabled : null,
+        pressed && !disabled ? styles.actionCardPressed : null
+      ]}
+    >
+      <View style={styles.actionIcon}>
+        <Text style={styles.actionGlyph}>{glyph}</Text>
+      </View>
+      <Text style={styles.actionTitle} numberOfLines={2}>
+        {title}
       </Text>
-    </View>
+      <Text style={styles.actionCost}>{cost}</Text>
+    </Pressable>
+  );
+}
+
+function AvatarFallback() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 64 64">
+      <Circle cx="20" cy="25" r="8" fill="#8b5e35" />
+      <Circle cx="44" cy="25" r="8" fill="#8b5e35" />
+      <Circle cx="32" cy="34" r="19" fill="#8b5e35" />
+      <Circle cx="25" cy="32" r="3" fill="#1d1612" />
+      <Circle cx="39" cy="32" r="3" fill="#1d1612" />
+    </Svg>
   );
 }
 
@@ -562,10 +628,12 @@ function TutorialOverlay({
   );
 }
 
+const glass = "rgba(17, 20, 14, 0.78)";
+
 const styles = StyleSheet.create({
   safeScreen: {
     flex: 1,
-    backgroundColor: theme.colors.jungle
+    backgroundColor: "#0f1710"
   },
   screen: {
     flex: 1,
@@ -582,69 +650,144 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0f281c"
   },
+  backgroundShade: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: "rgba(4, 10, 7, 0.34)"
+  },
   content: {
     paddingTop: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingBottom: 108,
-    gap: theme.spacing.md
+    paddingHorizontal: theme.spacing.sm,
+    paddingBottom: theme.spacing.lg,
+    gap: theme.spacing.sm
   },
-  header: {
+  topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: theme.spacing.md
-  },
-  kicker: {
-    color: "#bddf96",
-    fontSize: 12,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  title: {
-    color: theme.colors.paper,
-    fontSize: 26,
-    fontWeight: "900"
-  },
-  resetButton: {
-    minHeight: 42,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#152b1d",
-    backgroundColor: "#efb0a7",
-    paddingHorizontal: theme.spacing.md,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  resetText: {
-    color: theme.colors.ink,
-    fontSize: 14,
-    fontWeight: "900"
-  },
-  hud: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     gap: theme.spacing.sm
   },
-  resourceCard: {
-    flexGrow: 1,
-    flexBasis: "46%",
-    minHeight: 58,
+  clanCard: {
+    flex: 1,
+    minHeight: 70,
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.sm,
-    borderRadius: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.16)",
+    backgroundColor: glass,
+    padding: theme.spacing.sm
+  },
+  avatarRing: {
+    width: 54,
+    height: 54,
+    overflow: "hidden",
+    borderRadius: 27,
     borderWidth: 2,
-    borderColor: "#172f20",
-    backgroundColor: theme.colors.panel,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm
+    borderColor: "#6aa04f",
+    backgroundColor: "#1b2b19"
+  },
+  avatar: {
+    width: 54,
+    height: 54
+  },
+  clanCopy: {
+    flex: 1
+  },
+  clanName: {
+    color: theme.colors.paper,
+    fontSize: 17,
+    fontWeight: "900"
+  },
+  clanSubtitle: {
+    marginTop: 2,
+    color: "#d7c99d",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  levelBadge: {
+    width: 28,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+    backgroundColor: "#5b8f3d"
+  },
+  levelText: {
+    color: theme.colors.paper,
+    fontSize: 14,
+    fontWeight: "900"
+  },
+  topButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs
+  },
+  topPill: {
+    minHeight: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 12,
+    backgroundColor: glass,
+    paddingHorizontal: theme.spacing.sm
+  },
+  topPillText: {
+    color: theme.colors.paper,
+    fontSize: 13,
+    fontWeight: "900"
+  },
+  topAccent: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: "#e49a25"
+  },
+  topAccentText: {
+    color: theme.colors.paper,
+    fontSize: 14,
+    fontWeight: "900"
+  },
+  topIcon: {
+    width: 48,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: glass
+  },
+  topIconText: {
+    color: theme.colors.paper,
+    fontSize: 17,
+    fontWeight: "900"
+  },
+  resourceBar: {
+    flexDirection: "row",
+    gap: theme.spacing.xs
+  },
+  resourceChip: {
+    flex: 1,
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 11,
+    backgroundColor: glass,
+    paddingHorizontal: 7,
+    paddingVertical: 6
   },
   resourceIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 31,
+    height: 31,
+    borderRadius: 15,
     overflow: "hidden",
-    backgroundColor: "rgba(23, 48, 34, 0.18)"
+    backgroundColor: "rgba(255, 255, 255, 0.08)"
   },
   resourceFallback: {
     flex: 1,
@@ -654,101 +797,100 @@ const styles = StyleSheet.create({
   resourceFallbackText: {
     position: "absolute",
     color: theme.colors.ink,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "900"
+  },
+  resourceCopy: {
+    minWidth: 0
   },
   resourceValue: {
-    color: theme.colors.ink,
-    fontSize: 20,
+    color: theme.colors.paper,
+    fontSize: 15,
     fontWeight: "900"
   },
-  resourceLabel: {
-    color: "#4d5837",
-    fontSize: 11,
-    fontWeight: "900",
-    textTransform: "uppercase"
+  resourceRate: {
+    color: "#a7df80",
+    fontSize: 9,
+    fontWeight: "900"
   },
-  campStrip: {
+  hiddenLabel: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    opacity: 0
+  },
+  mainStage: {
     flexDirection: "row",
+    alignItems: "stretch",
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xs
+  },
+  sideNav: {
+    width: 78,
+    gap: theme.spacing.xs
+  },
+  sideButton: {
+    minHeight: 52,
+    justifyContent: "center",
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.14)",
+    backgroundColor: "rgba(54, 43, 27, 0.84)",
+    paddingHorizontal: 7
+  },
+  sideButtonActive: {
+    borderColor: "rgba(198, 238, 137, 0.48)",
+    backgroundColor: "rgba(68, 101, 45, 0.92)"
+  },
+  sideButtonPressed: {
+    transform: [{ scale: 0.98 }]
+  },
+  sideGlyph: {
+    color: theme.colors.paper,
+    fontSize: 11,
+    fontWeight: "900"
+  },
+  sideLabel: {
+    marginTop: 3,
+    color: "#d8ccb0",
+    fontSize: 10,
+    fontWeight: "900"
+  },
+  sideLabelActive: {
+    color: theme.colors.paper
+  },
+  sideBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 9,
+    backgroundColor: "#d94b36"
+  },
+  sideBadgeText: {
+    color: theme.colors.paper,
+    fontSize: 10,
+    fontWeight: "900"
+  },
+  playColumn: {
+    flex: 1,
     gap: theme.spacing.sm
   },
-  campStat: {
-    flex: 1,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#172f20",
-    backgroundColor: "rgba(255, 248, 217, 0.9)",
-    padding: theme.spacing.sm
-  },
-  campLabel: {
-    color: theme.colors.ink,
-    fontSize: 12,
-    fontWeight: "900"
-  },
-  campTrack: {
-    height: 8,
-    marginTop: 5,
-    borderRadius: 4,
-    backgroundColor: "rgba(23, 48, 34, 0.28)",
-    overflow: "hidden"
-  },
-  campFill: {
-    height: "100%"
-  },
-  campValue: {
-    marginTop: 4,
-    color: "#4d5837",
-    fontSize: 11,
-    fontWeight: "900"
-  },
-  objectivePanel: {
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "rgba(255, 217, 90, 0.45)",
-    backgroundColor: "rgba(15, 40, 28, 0.86)",
-    padding: theme.spacing.md
-  },
-  objectiveTitle: {
-    color: theme.colors.banana,
-    fontSize: 13,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  objectiveText: {
-    marginTop: 4,
-    color: "#e3f2cf",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  objectiveChips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm
-  },
-  objectiveChip: {
-    borderRadius: 8,
+  boardShell: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 248, 217, 0.34)",
-    backgroundColor: "rgba(255, 248, 217, 0.12)",
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 5
-  },
-  objectiveChipDone: {
-    borderColor: theme.colors.player,
-    backgroundColor: "rgba(47, 168, 102, 0.28)"
-  },
-  objectiveChipText: {
-    color: "#dbeac9",
-    fontSize: 11,
-    fontWeight: "900"
-  },
-  objectiveChipTextDone: {
-    color: theme.colors.paper
+    borderColor: "rgba(255, 224, 151, 0.12)",
+    backgroundColor: "rgba(20, 27, 15, 0.38)",
+    paddingVertical: theme.spacing.xs
   },
   feedback: {
     borderRadius: 8,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: "#4c371f",
     backgroundColor: "#ffe28b",
     paddingHorizontal: theme.spacing.md,
@@ -756,16 +898,64 @@ const styles = StyleSheet.create({
   },
   feedbackText: {
     color: theme.colors.ink,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "900",
     textAlign: "center"
   },
+  objectivePanel: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.15)",
+    backgroundColor: glass,
+    padding: theme.spacing.md
+  },
+  objectiveHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingBottom: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 248, 217, 0.1)"
+  },
+  objectiveTitle: {
+    color: theme.colors.paper,
+    fontSize: 14,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  objectiveCounter: {
+    color: "#e2b15a",
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  objectiveRow: {
+    minHeight: 33,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 248, 217, 0.08)"
+  },
+  objectiveText: {
+    flex: 1,
+    color: "#d8ccb0",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  objectiveValue: {
+    color: "#d8ccb0",
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  objectiveTextDone: {
+    color: "#a7df80"
+  },
   panel: {
-    minHeight: 104,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: theme.colors.ink,
-    backgroundColor: theme.colors.panel,
+    minHeight: 92,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.18)",
+    backgroundColor: "rgba(15, 40, 28, 0.84)",
     padding: theme.spacing.md
   },
   panelHeader: {
@@ -776,118 +966,114 @@ const styles = StyleSheet.create({
   },
   panelTitle: {
     flex: 1,
-    color: theme.colors.ink,
-    fontSize: 18,
+    color: theme.colors.paper,
+    fontSize: 16,
     fontWeight: "900"
   },
   hpText: {
-    color: theme.colors.enemyDark,
-    fontSize: 14,
+    color: "#a7df80",
+    fontSize: 13,
     fontWeight: "900"
   },
   panelText: {
     marginTop: theme.spacing.xs,
-    color: theme.colors.ink,
-    fontSize: 14,
+    color: "#d8ccb0",
+    fontSize: 13,
     fontWeight: "700"
   },
   panelHint: {
     marginTop: theme.spacing.sm,
-    color: "#4d5837",
-    fontSize: 13,
+    color: "#e3f2cf",
+    fontSize: 12,
     fontWeight: "800"
   },
-  buildingStrip: {
+  bottomDock: {
     flexDirection: "row",
-    gap: theme.spacing.sm
-  },
-  buildingBadge: {
-    flex: 1,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "rgba(255, 248, 217, 0.45)",
-    backgroundColor: "rgba(19, 41, 28, 0.7)",
-    paddingVertical: theme.spacing.sm
-  },
-  buildingBadgeActive: {
-    borderColor: theme.colors.banana,
-    backgroundColor: "#365b31"
-  },
-  buildingBadgeText: {
-    color: "#bddf96",
-    fontSize: 12,
-    fontWeight: "900",
-    textAlign: "center"
-  },
-  buildingBadgeTextActive: {
-    color: theme.colors.paper
-  },
-  actions: {
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "rgba(255, 248, 217, 0.32)",
-    backgroundColor: "rgba(15, 40, 28, 0.84)",
-    padding: theme.spacing.md,
+    alignItems: "stretch",
     gap: theme.spacing.sm,
-    paddingBottom: theme.spacing.md
-  },
-  sectionTitle: {
-    marginTop: theme.spacing.xs,
-    color: theme.colors.paper,
-    fontSize: 13,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  buildGrid: {
-    gap: theme.spacing.sm
-  },
-  buildButton: {
-    width: "100%"
-  },
-  actionCopy: {
-    color: "#e3f2cf",
-    fontSize: 13,
-    fontWeight: "700"
-  },
-  bottomTabs: {
-    position: "absolute",
-    left: theme.spacing.md,
-    right: theme.spacing.md,
-    bottom: theme.spacing.md,
-    minHeight: 72,
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#172f20",
-    backgroundColor: "rgba(244, 232, 183, 0.94)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.14)",
+    backgroundColor: "rgba(42, 38, 29, 0.9)",
     padding: theme.spacing.sm
   },
-  navButton: {
+  actionCards: {
     flex: 1,
-    minHeight: 54,
+    flexDirection: "row",
+    gap: theme.spacing.sm
+  },
+  actionCard: {
+    flex: 1,
+    minHeight: 98,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "rgba(255, 224, 151, 0.12)",
+    backgroundColor: "rgba(28, 32, 20, 0.92)",
+    padding: 6
+  },
+  actionCardDisabled: {
+    opacity: 0.48
+  },
+  actionCardPressed: {
+    transform: [{ translateY: 2 }, { scale: 0.98 }]
+  },
+  actionIcon: {
+    width: 38,
+    height: 38,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "transparent"
+    backgroundColor: "rgba(255, 224, 151, 0.12)"
   },
-  navButtonActive: {
-    borderColor: theme.colors.ink,
-    backgroundColor: theme.colors.banana
+  actionGlyph: {
+    color: "#e2b15a",
+    fontSize: 13,
+    fontWeight: "900",
+    textAlign: "center"
   },
-  navIcon: {
-    width: 28,
-    height: 28
-  },
-  navLabel: {
-    marginTop: 2,
-    color: "#4d5837",
+  actionTitle: {
+    marginTop: 6,
+    minHeight: 28,
+    color: theme.colors.paper,
     fontSize: 10,
+    fontWeight: "900",
+    textAlign: "center"
+  },
+  actionCost: {
+    color: "#f1cd74",
+    fontSize: 10,
+    fontWeight: "900",
+    textAlign: "center"
+  },
+  raidButton: {
+    width: 95,
+    minHeight: 98,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "#7b330e",
+    backgroundColor: "#d96516",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 8
+  },
+  raidButtonPressed: {
+    transform: [{ translateY: 2 }, { scale: 0.98 }]
+  },
+  raidIcon: {
+    color: theme.colors.paper,
+    fontSize: 24,
     fontWeight: "900"
   },
-  navLabelActive: {
-    color: theme.colors.ink
+  raidText: {
+    color: theme.colors.paper,
+    fontSize: 22,
+    fontWeight: "900"
   },
   modalScrim: {
     flex: 1,

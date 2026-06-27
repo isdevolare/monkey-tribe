@@ -1,4 +1,4 @@
-import { SafeAreaView, StatusBar } from "react-native";
+import { SafeAreaView, StatusBar, StyleSheet, View } from "react-native";
 import { useGameStore } from "./src/game/state/gameStore";
 import { MainMenuScreen } from "./src/screens/MainMenuScreen";
 import { GameScreen } from "./src/screens/GameScreen";
@@ -9,11 +9,28 @@ export default function App() {
   const screen = useGameStore((state) => state.currentScreen);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.jungle }}>
-      <StatusBar barStyle="light-content" />
-      {screen === "menu" ? <MainMenuScreen /> : null}
-      {screen === "game" ? <GameScreen /> : null}
-      {screen === "result" ? <ResultScreen /> : null}
-    </SafeAreaView>
+    <View style={styles.appShell}>
+      <SafeAreaView style={styles.phoneFrame}>
+        <StatusBar barStyle="light-content" />
+        {screen === "menu" ? <MainMenuScreen /> : null}
+        {screen === "game" ? <GameScreen /> : null}
+        {screen === "result" ? <ResultScreen /> : null}
+      </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  appShell: {
+    flex: 1,
+    alignItems: "center",
+    backgroundColor: "#050806"
+  },
+  phoneFrame: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 430,
+    overflow: "hidden",
+    backgroundColor: theme.colors.jungle
+  }
+});
