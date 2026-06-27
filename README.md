@@ -1,6 +1,6 @@
 # Monkey Tribe
 
-Monkey Tribe is a mobile-first 2D top-down strategy prototype built with Expo, React Native, TypeScript, Zustand, and in-code SVG visuals.
+Monkey Tribe is a mobile-first 2D top-down strategy prototype built with Expo, React Native, TypeScript, Zustand, and an asset-ready image pipeline with vector fallbacks.
 
 ## Game Concept
 
@@ -21,6 +21,7 @@ You command a small monkey tribe from a jungle camp. Worker monkeys gather banan
 ## Current Features
 
 - 10x10 portrait-first top-down grid.
+- Typed PNG asset registry with safe fallback rendering.
 - Jungle-style board with grass, darker jungle, mud paths, bushes, banana trees, stone rocks, wood groves, and distinct camps.
 - Worker and fighter unit types.
 - Wood as a third resource.
@@ -57,6 +58,10 @@ Other scripts:
 npm run typecheck
 npm run doctor
 ```
+
+## Asset Pipeline
+
+Drop production PNGs into `assets/game/...` using the exact file names in [DESIGN_GUIDE.md](./DESIGN_GUIDE.md). Asset mode is enabled by default in `src/game/assets/gameAssets.ts`; switch `VISUAL_MODE` to `"fallback"` to debug with vector placeholders only.
 
 ## Testing Checklist
 

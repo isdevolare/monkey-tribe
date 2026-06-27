@@ -565,6 +565,44 @@ export const useGameStore = create<GameState>((set) => ({
         )
       };
     }),
+  raidEnemyCamp: () =>
+    set((state) => {
+      const raider =
+        state.units.find(
+          (unit) =>
+            unit.owner === "player" &&
+            unit.type === "fighter" &&
+            unit.state !== "dead" &&
+            unit.hp > 0
+        ) ??
+        state.units.find(
+          (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
+        );
+
+      if (!raider) {
+        return {
+          ...state,
+          feedback: { id: Date.now(), text: "No monkeys are ready to raid" }
+        };
+      }
+
+      return {
+        ...state,
+        selectedUnitId: raider.id,
+        units: state.units.map((unit) =>
+          unit.id === raider.id
+            ? {
+                ...unit,
+                state: "attacking",
+                target: { kind: "camp", owner: "enemy" },
+                gatherTarget: undefined,
+                carriedResource: null
+              }
+            : unit
+        ),
+        feedback: { id: Date.now(), text: "Raid order sent to enemy camp" }
+      };
+    }),
   createWorker: () => set((state) => createPlayerUnit(state, "worker")),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
   buildHut: () => set((state) => buildPlayerBuilding(state, "hut")),

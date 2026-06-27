@@ -97,6 +97,7 @@ export type GameState = {
   commandAttack: (target: UnitTarget) => void;
   createWorker: () => void;
   trainFighter: () => void;
+  raidEnemyCamp: () => void;
   buildHut: () => void;
   buildTrainingNest: () => void;
   buildWatchPost: () => void;
