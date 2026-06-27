@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Monkey Tribe",
+    "slug": "monkey-tribe",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#3f8f42"
+      }
+    }
+  }
+}
