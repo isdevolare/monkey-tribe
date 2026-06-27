@@ -1,15 +1,24 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { theme } from "../../theme/theme";
 
 type GameButtonProps = {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  helperText?: string;
+  tone?: "primary" | "secondary" | "danger";
   children?: ReactNode;
 };
 
-export function GameButton({ label, onPress, disabled, children }: GameButtonProps) {
+export function GameButton({
+  label,
+  onPress,
+  disabled,
+  helperText,
+  tone = "primary",
+  children
+}: GameButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -18,12 +27,19 @@ export function GameButton({ label, onPress, disabled, children }: GameButtonPro
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        tone === "secondary" ? styles.secondary : null,
+        tone === "danger" ? styles.danger : null,
         disabled ? styles.disabled : null,
         pressed && !disabled ? styles.pressed : null
       ]}
     >
       {children}
-      <Text style={[styles.label, disabled ? styles.disabledLabel : null]}>{label}</Text>
+      <View style={styles.copy}>
+        <Text style={[styles.label, disabled ? styles.disabledLabel : null]}>{label}</Text>
+        {helperText ? (
+          <Text style={[styles.helper, disabled ? styles.disabledLabel : null]}>{helperText}</Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -42,6 +58,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm
   },
+  secondary: {
+    backgroundColor: theme.colors.panel
+  },
+  danger: {
+    backgroundColor: "#efb0a7"
+  },
+  copy: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center"
+  },
   disabled: {
     borderColor: theme.colors.panelDark,
     backgroundColor: "#d8d2aa"
@@ -52,6 +79,13 @@ const styles = StyleSheet.create({
   label: {
     color: theme.colors.ink,
     fontSize: 16,
+    fontWeight: "800",
+    textAlign: "center"
+  },
+  helper: {
+    marginTop: 2,
+    color: "#4d5837",
+    fontSize: 11,
     fontWeight: "800",
     textAlign: "center"
   },

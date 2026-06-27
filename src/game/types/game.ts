@@ -1,11 +1,16 @@
 export type ScreenId = "menu" | "game" | "result";
 export type GameStatus = "menu" | "playing" | "victory" | "defeat";
 export type Owner = "player" | "enemy";
-export type ResourceKind = "bananas" | "stones";
+export type ResourceKind = "bananas" | "stones" | "wood";
+export type BuildingType = "hut" | "trainingNest" | "watchPost";
 export type TileType =
   | "grass"
+  | "jungle"
+  | "mudPath"
   | "bananaTree"
   | "stoneRock"
+  | "woodGrove"
+  | "bush"
   | "playerCamp"
   | "enemyCamp"
   | "empty";
@@ -26,6 +31,7 @@ export type Position = {
 
 export type Tile = Position & {
   type: TileType;
+  variant: number;
 };
 
 export type CarriedResource = {
@@ -61,6 +67,14 @@ export type Unit = Position & {
 export type Resources = {
   bananas: number;
   stones: number;
+  wood: number;
+};
+
+export type Buildings = Record<BuildingType, number>;
+
+export type FeedbackMessage = {
+  id: number;
+  text: string;
 };
 
 export type GameState = {
@@ -70,9 +84,12 @@ export type GameState = {
   units: Unit[];
   selectedUnitId: string | null;
   resources: Resources;
+  buildings: Buildings;
+  maxPopulation: number;
   playerCampHp: number;
   enemyCampHp: number;
   nextEnemySpawnAt: number;
+  feedback: FeedbackMessage | null;
   startGame: () => void;
   selectUnit: (unitId: string | null) => void;
   commandMove: (x: number, y: number) => void;
@@ -80,6 +97,9 @@ export type GameState = {
   commandAttack: (target: UnitTarget) => void;
   createWorker: () => void;
   trainFighter: () => void;
+  buildHut: () => void;
+  buildTrainingNest: () => void;
+  buildWatchPost: () => void;
   tickGame: (now?: number) => void;
   resetGame: () => void;
   goToMenu: () => void;

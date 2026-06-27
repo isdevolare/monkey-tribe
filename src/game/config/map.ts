@@ -10,8 +10,52 @@ const specialTiles: Array<{ x: number; y: number; type: TileType }> = [
   { x: 5, y: 3, type: "bananaTree" },
   { x: 3, y: 8, type: "stoneRock" },
   { x: 6, y: 5, type: "stoneRock" },
-  { x: 7, y: 3, type: "stoneRock" }
+  { x: 7, y: 3, type: "stoneRock" },
+  { x: 0, y: 8, type: "woodGrove" },
+  { x: 3, y: 5, type: "woodGrove" },
+  { x: 6, y: 2, type: "woodGrove" },
+  { x: 8, y: 4, type: "woodGrove" },
+  { x: 0, y: 0, type: "bush" },
+  { x: 1, y: 0, type: "bush" },
+  { x: 9, y: 0, type: "bush" },
+  { x: 0, y: 9, type: "bush" },
+  { x: 5, y: 8, type: "bush" },
+  { x: 9, y: 9, type: "bush" }
 ];
+
+const mudPathTiles = new Set([
+  "1,8",
+  "2,8",
+  "3,8",
+  "4,8",
+  "4,7",
+  "5,7",
+  "5,6",
+  "6,6",
+  "6,5",
+  "7,5",
+  "7,4",
+  "8,4",
+  "8,3",
+  "8,2",
+  "8,1"
+]);
+
+function fallbackTileType(x: number, y: number): TileType {
+  if (mudPathTiles.has(`${x},${y}`)) {
+    return "mudPath";
+  }
+
+  if (x === 0 || y === 0 || x === BOARD_SIZE - 1 || y === BOARD_SIZE - 1) {
+    return "jungle";
+  }
+
+  if ((x * 3 + y * 5) % 11 === 0) {
+    return "jungle";
+  }
+
+  return (x + y) % 5 === 0 ? "empty" : "grass";
+}
 
 export function createInitialMap(): Tile[] {
   const tiles: Tile[] = [];
@@ -22,7 +66,8 @@ export function createInitialMap(): Tile[] {
       tiles.push({
         x,
         y,
-        type: special?.type ?? ((x + y) % 4 === 0 ? "empty" : "grass")
+        type: special?.type ?? fallbackTileType(x, y),
+        variant: (x * 17 + y * 23) % 4
       });
     }
   }
@@ -60,7 +105,6 @@ export function createUnit(
 export function createInitialUnits(now: number): Unit[] {
   return [
     createUnit("player-worker-1", "worker", "player", 1, 7, now),
-    createUnit("player-fighter-1", "fighter", "player", 2, 8, now),
     createUnit("enemy-fighter-1", "fighter", "enemy", 8, 2, now),
     createUnit("enemy-fighter-2", "fighter", "enemy", 7, 1, now),
     createUnit("enemy-fighter-3", "fighter", "enemy", 9, 1, now)

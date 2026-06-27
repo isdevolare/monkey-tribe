@@ -1,20 +1,27 @@
 import { create } from "zustand";
 import {
   ATTACK_INTERVAL_MS,
+  BASE_POPULATION_CAP,
   BOARD_SIZE,
+  BUILDING_COSTS,
   CAMP_MAX_HP,
   ENEMY_CAMP,
   ENEMY_DETECTION_RANGE,
   ENEMY_SPAWN_INTERVAL_MS,
   GATHER_AMOUNTS,
   GATHER_DURATION_MS,
+  HUT_POPULATION_BONUS,
   MOVE_INTERVAL_MS,
   PLAYER_CAMP,
+  STARTING_BUILDINGS,
   STARTING_RESOURCES,
-  UNIT_COSTS
+  UNIT_COSTS,
+  WATCH_POST_DAMAGE_REDUCTION
 } from "../config/constants";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import type {
+  BuildingType,
+  Buildings,
   GameState,
   GatherTarget,
   Owner,
@@ -28,8 +35,11 @@ import type {
 type MutableGame = {
   units: Unit[];
   resources: Resources;
+  buildings: Buildings;
+  maxPopulation: number;
   playerCampHp: number;
   enemyCampHp: number;
+  feedbackText: string | null;
 };
 
 function createFreshState(now: number) {
@@ -40,9 +50,12 @@ function createFreshState(now: number) {
     units: createInitialUnits(now),
     selectedUnitId: null,
     resources: { ...STARTING_RESOURCES },
+    buildings: { ...STARTING_BUILDINGS },
+    maxPopulation: BASE_POPULATION_CAP,
     playerCampHp: CAMP_MAX_HP,
     enemyCampHp: CAMP_MAX_HP,
-    nextEnemySpawnAt: now + ENEMY_SPAWN_INTERVAL_MS
+    nextEnemySpawnAt: now + ENEMY_SPAWN_INTERVAL_MS,
+    feedback: null
   };
 }
 
@@ -84,14 +97,33 @@ function isInsideBoard(x: number, y: number) {
 }
 
 function hasResources(resources: Resources, cost: Resources) {
-  return resources.bananas >= cost.bananas && resources.stones >= cost.stones;
+  return (
+    resources.bananas >= cost.bananas &&
+    resources.stones >= cost.stones &&
+    resources.wood >= cost.wood
+  );
 }
 
 function spendResources(resources: Resources, cost: Resources): Resources {
   return {
     bananas: resources.bananas - cost.bananas,
-    stones: resources.stones - cost.stones
+    stones: resources.stones - cost.stones,
+    wood: resources.wood - cost.wood
   };
+}
+
+function currentPopulation(units: Unit[]) {
+  return units.filter((unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0)
+    .length;
+}
+
+function costText(cost: Resources) {
+  const parts = [
+    cost.bananas > 0 ? `${cost.bananas} bananas` : null,
+    cost.stones > 0 ? `${cost.stones} stones` : null,
+    cost.wood > 0 ? `${cost.wood} wood` : null
+  ].filter(Boolean);
+  return parts.join(" + ");
 }
 
 function nextStepToward(unit: Unit, target: Position): Position {
@@ -215,6 +247,7 @@ function processReturning(unit: Unit, game: MutableGame, now: number) {
     if (unit.carriedResource) {
       const key = unit.carriedResource.kind;
       game.resources[key] += unit.carriedResource.amount;
+      game.feedbackText = `Worker gathered +${unit.carriedResource.amount} ${key}`;
     }
 
     unit.carriedResource = null;
@@ -288,11 +321,20 @@ function processAttacking(unit: Unit, game: MutableGame, now: number) {
 
   if (unit.target.kind === "unit") {
     damageUnit(game.units, unit.target.unitId, unit.attack);
+    game.feedbackText =
+      unit.owner === "player"
+        ? `${unit.type === "fighter" ? "Fighter" : "Worker"} attacked enemy`
+        : "Enemy fighter struck back";
   } else if (unit.target.kind === "camp") {
     if (unit.target.owner === "player") {
-      game.playerCampHp = Math.max(0, game.playerCampHp - unit.attack);
+      const blocked = game.buildings.watchPost > 0 ? WATCH_POST_DAMAGE_REDUCTION : 0;
+      const damage = Math.max(1, unit.attack - blocked);
+      game.playerCampHp = Math.max(0, game.playerCampHp - damage);
+      game.feedbackText =
+        blocked > 0 ? `Watch Post blocked ${blocked} damage` : "Enemy attacked your camp";
     } else {
       game.enemyCampHp = Math.max(0, game.enemyCampHp - unit.attack);
+      game.feedbackText = `${unit.type === "fighter" ? "Fighter" : "Worker"} attacked enemy camp`;
     }
   }
 
@@ -348,9 +390,26 @@ function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
     return state;
   }
 
+  if (type === "fighter" && state.buildings.trainingNest <= 0) {
+    return {
+      ...state,
+      feedback: { id: Date.now(), text: "Build a Training Nest to unlock fighters" }
+    };
+  }
+
+  if (currentPopulation(state.units) >= state.maxPopulation) {
+    return {
+      ...state,
+      feedback: { id: Date.now(), text: "Build a Hut to raise monkey capacity" }
+    };
+  }
+
   const cost = UNIT_COSTS[type];
   if (!hasResources(state.resources, cost)) {
-    return state;
+    return {
+      ...state,
+      feedback: { id: Date.now(), text: `Need ${costText(cost)} for ${type}` }
+    };
   }
 
   const now = Date.now();
@@ -361,8 +420,57 @@ function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
     units: [
       ...state.units,
       createUnit(`player-${type}-${now}`, type, "player", spawn.x, spawn.y, now)
-    ]
+    ],
+    feedback: {
+      id: now,
+      text: type === "worker" ? "Worker joined the tribe" : "Fighter trained at the nest"
+    }
   };
+}
+
+function buildPlayerBuilding(state: GameState, building: BuildingType) {
+  if (state.gameStatus !== "playing") {
+    return state;
+  }
+
+  if (state.buildings[building] > 0) {
+    return {
+      ...state,
+      feedback: { id: Date.now(), text: "That building is already active" }
+    };
+  }
+
+  const cost = BUILDING_COSTS[building];
+  if (!hasResources(state.resources, cost)) {
+    return {
+      ...state,
+      feedback: { id: Date.now(), text: `Need ${costText(cost)} to build ${buildingName(building)}` }
+    };
+  }
+
+  const buildings = { ...state.buildings, [building]: state.buildings[building] + 1 };
+  const now = Date.now();
+
+  return {
+    ...state,
+    buildings,
+    resources: spendResources(state.resources, cost),
+    maxPopulation:
+      building === "hut" ? state.maxPopulation + HUT_POPULATION_BONUS : state.maxPopulation,
+    feedback: { id: now, text: `${buildingName(building)} built` }
+  };
+}
+
+function buildingName(building: BuildingType) {
+  if (building === "trainingNest") {
+    return "Training Nest";
+  }
+
+  if (building === "watchPost") {
+    return "Watch Post";
+  }
+
+  return "Hut";
 }
 
 const initialNow = Date.now();
@@ -459,6 +567,9 @@ export const useGameStore = create<GameState>((set) => ({
     }),
   createWorker: () => set((state) => createPlayerUnit(state, "worker")),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
+  buildHut: () => set((state) => buildPlayerBuilding(state, "hut")),
+  buildTrainingNest: () => set((state) => buildPlayerBuilding(state, "trainingNest")),
+  buildWatchPost: () => set((state) => buildPlayerBuilding(state, "watchPost")),
   tickGame: (now = Date.now()) =>
     set((state) => {
       if (state.gameStatus !== "playing") {
@@ -469,8 +580,11 @@ export const useGameStore = create<GameState>((set) => ({
       const game: MutableGame = {
         units,
         resources: { ...state.resources },
+        buildings: { ...state.buildings },
+        maxPopulation: state.maxPopulation,
         playerCampHp: state.playerCampHp,
-        enemyCampHp: state.enemyCampHp
+        enemyCampHp: state.enemyCampHp,
+        feedbackText: null
       };
       let nextEnemySpawnAt = state.nextEnemySpawnAt;
 
@@ -480,6 +594,7 @@ export const useGameStore = create<GameState>((set) => ({
           createUnit(`enemy-fighter-${now}`, "fighter", "enemy", spawn.x, spawn.y, now)
         );
         nextEnemySpawnAt = now + ENEMY_SPAWN_INTERVAL_MS;
+        game.feedbackText = "Enemy camp trained a fighter";
       }
 
       assignEnemyOrders(units);
@@ -498,12 +613,24 @@ export const useGameStore = create<GameState>((set) => ({
       );
       const canRecover =
         hasResources(game.resources, UNIT_COSTS.worker) ||
-        hasResources(game.resources, UNIT_COSTS.fighter);
+        (state.buildings.trainingNest > 0 && hasResources(game.resources, UNIT_COSTS.fighter));
+      const feedback = game.feedbackText
+        ? { id: now, text: game.feedbackText }
+        : state.feedback;
+      const nextGame = {
+        units: game.units,
+        resources: game.resources,
+        buildings: game.buildings,
+        maxPopulation: game.maxPopulation,
+        playerCampHp: game.playerCampHp,
+        enemyCampHp: game.enemyCampHp
+      };
 
       if (game.enemyCampHp <= 0) {
         return {
           ...state,
-          ...game,
+          ...nextGame,
+          feedback,
           selectedUnitId: null,
           currentScreen: "result",
           gameStatus: "victory",
@@ -514,7 +641,8 @@ export const useGameStore = create<GameState>((set) => ({
       if (game.playerCampHp <= 0 || (!playerUnitsAlive && !canRecover)) {
         return {
           ...state,
-          ...game,
+          ...nextGame,
+          feedback,
           selectedUnitId: null,
           currentScreen: "result",
           gameStatus: "defeat",
@@ -524,7 +652,8 @@ export const useGameStore = create<GameState>((set) => ({
 
       return {
         ...state,
-        ...game,
+        ...nextGame,
+        feedback,
         selectedUnitId,
         nextEnemySpawnAt
       };
