@@ -14,6 +14,8 @@ export type GameAssetFolder =
   | "fx";
 
 export type GameAssetKey =
+  | "uiLogo"
+  | "unitMonkeySheet"
   | "terrainGrass"
   | "terrainJungle"
   | "terrainMud"
@@ -138,14 +140,28 @@ export const gameAssets = {
     "resource_population.png",
     "256x256 transparent icon"
   ),
+  uiLogo: {
+    ...asset("uiLogo", "ui", "logo.png", "1024x1024 transparent or square logo"),
+    source: require("../../../assets/game/ui/logo.png") as ImageSourcePropType
+  },
+  unitMonkeySheet: {
+    ...asset("unitMonkeySheet", "units", "monkey_units_sheet.png", "1341x1173 sprite sheet"),
+    source: require("../../../assets/game/units/monkey_units_sheet.png") as ImageSourcePropType
+  },
   uiButtonBuild: asset("uiButtonBuild", "ui", "ui_button_build.png", "256x256 transparent icon"),
   uiButtonMonkeys: asset("uiButtonMonkeys", "ui", "ui_button_monkeys.png", "256x256 transparent icon"),
   uiButtonMap: asset("uiButtonMap", "ui", "ui_button_map.png", "256x256 transparent icon"),
   uiButtonRaid: asset("uiButtonRaid", "ui", "ui_button_raid.png", "256x256 transparent icon"),
   uiPanelDark: asset("uiPanelDark", "ui", "ui_panel_dark.png", "512x256 nine-slice style panel"),
   uiPanelLight: asset("uiPanelLight", "ui", "ui_panel_light.png", "512x256 nine-slice style panel"),
-  bgMainMenu: asset("bgMainMenu", "backgrounds", "bg_main_menu.png", "1440x2560 portrait"),
-  bgJungleGame: asset("bgJungleGame", "backgrounds", "bg_jungle_game.png", "1440x2560 portrait")
+  bgMainMenu: {
+    ...asset("bgMainMenu", "backgrounds", "bg_main_menu.png", "1440x2560 portrait"),
+    source: require("../../../assets/game/backgrounds/bg_main_menu.png") as ImageSourcePropType
+  },
+  bgJungleGame: {
+    ...asset("bgJungleGame", "backgrounds", "bg_jungle_game.png", "1440x2560 portrait"),
+    source: require("../../../assets/game/backgrounds/bg_jungle_game.png") as ImageSourcePropType
+  }
 } satisfies Record<GameAssetKey, GameAssetDefinition>;
 
 export function getGameAsset(key: GameAssetKey) {

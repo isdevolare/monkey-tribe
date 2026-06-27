@@ -13,7 +13,7 @@ export function MainMenuScreen() {
       <AssetImage assetKey="bgMainMenu" resizeMode="cover" style={styles.backdrop} fallback={<MenuBackdrop />} />
 
       <View style={styles.hero}>
-        <AssetImage assetKey="unitFighter" style={styles.heroAsset} fallback={<HeroFallback />} />
+        <AssetImage assetKey="uiLogo" style={styles.heroAsset} fallback={<HeroFallback />} />
       </View>
 
       <Text style={styles.kicker}>Survival RTS Prototype</Text>

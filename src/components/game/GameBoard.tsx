@@ -1,8 +1,9 @@
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
+import { SpriteSheetImage, type SpriteFrame } from "./SpriteSheetImage";
 import { BOARD_SIZE, CAMP_MAX_HP } from "../../game/config/constants";
-import type { GameAssetKey } from "../../game/assets/gameAssets";
+import { getGameAsset, type GameAssetKey } from "../../game/assets/gameAssets";
 import type { Tile, TileType, Unit } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
@@ -258,15 +259,20 @@ function UnitArt({ unit, selected }: { unit: Unit; selected: boolean }) {
   const face = player ? "#d9a86c" : "#c38452";
   const ring = player ? theme.colors.banana : "#f0ebe5";
   const hpPercent = Math.max(0, Math.round((unit.hp / unit.maxHp) * 100));
+  const sheet = getGameAsset("unitMonkeySheet");
 
   return (
     <View style={styles.unitLayer} pointerEvents="none">
-      <AssetImage
-        assetKey={unitAssetKey(unit)}
+      {selected ? <View style={[styles.selectionRing, { borderColor: ring }]} /> : null}
+      <SpriteSheetImage
+        source={sheet.source}
+        sheetWidth={1341}
+        sheetHeight={1173}
+        frame={unitSpriteFrame(unit)}
         style={styles.unitAsset}
         fallback={
           <UnitFallback
-            selected={selected}
+            selected={false}
             ring={ring}
             body={body}
             face={face}
@@ -289,6 +295,24 @@ function UnitArt({ unit, selected }: { unit: Unit; selected: boolean }) {
       <Text style={styles.unitLetter}>{unit.type === "fighter" ? "F" : "W"}</Text>
     </View>
   );
+}
+
+function unitSpriteFrame(unit: Unit): SpriteFrame {
+  const row =
+    unit.owner === "enemy"
+      ? 3
+      : unit.type === "fighter"
+        ? 1
+        : unit.type === "worker"
+          ? 0
+          : 2;
+
+  return {
+    x: 1084,
+    y: row * 293 + 18,
+    width: 230,
+    height: 256
+  };
 }
 
 function unitAssetKey(unit: Unit): GameAssetKey {
@@ -400,10 +424,18 @@ const styles = StyleSheet.create({
     height: "92%"
   },
   unitAsset: {
-    width: "100%",
-    height: "100%",
+    width: "92%",
+    height: "92%",
     alignItems: "center",
     justifyContent: "center"
+  },
+  selectionRing: {
+    position: "absolute",
+    width: "82%",
+    height: "82%",
+    borderRadius: 999,
+    borderWidth: 4,
+    backgroundColor: "rgba(255, 217, 90, 0.12)"
   },
   selectedTile: {
     backgroundColor: "#d8f470"
