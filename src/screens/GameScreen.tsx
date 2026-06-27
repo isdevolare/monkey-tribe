@@ -12,7 +12,6 @@ import {
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
 import { GameBoard } from "../components/game/GameBoard";
-import { GameButton } from "../components/game/GameButton";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { getGameAsset } from "../game/assets/gameAssets";
 import { BUILDING_COSTS, UNIT_COSTS } from "../game/config/constants";
@@ -254,6 +253,7 @@ export function GameScreen() {
                 tiles={state.mapTiles}
                 units={state.units}
                 selectedUnitId={state.selectedUnitId}
+                buildings={state.buildings}
                 playerCampHp={state.playerCampHp}
                 enemyCampHp={state.enemyCampHp}
                 maxSize={boardMaxSize}
@@ -316,6 +316,7 @@ export function GameScreen() {
             title="Worker"
             cost={costText(UNIT_COSTS.worker)}
             glyph="M"
+            assetKey="unitWorker"
             disabled={createWorkerDisabled}
             onPress={state.createWorker}
           />
@@ -323,6 +324,7 @@ export function GameScreen() {
             title="Fighter"
             cost={fighterLocked ? "Nest" : costText(UNIT_COSTS.fighter)}
             glyph="X"
+            assetKey="unitFighter"
             disabled={trainFighterDisabled}
             onPress={state.trainFighter}
           />
@@ -347,6 +349,7 @@ export function GameScreen() {
           title="Hut"
           cost={state.buildings.hut > 0 ? "Built" : costText(BUILDING_COSTS.hut)}
           glyph="Hut"
+          assetKey="buildingHut"
           disabled={hutDisabled}
           onPress={state.buildHut}
         />
@@ -354,6 +357,7 @@ export function GameScreen() {
           title="Training Nest"
           cost={state.buildings.trainingNest > 0 ? "Built" : costText(BUILDING_COSTS.trainingNest)}
           glyph="Target"
+          assetKey="buildingTrainingNest"
           disabled={nestDisabled}
           onPress={state.buildTrainingNest}
         />
@@ -361,6 +365,7 @@ export function GameScreen() {
           title="Watch Post"
           cost={state.buildings.watchPost > 0 ? "Built" : costText(BUILDING_COSTS.watchPost)}
           glyph="Tower"
+          assetKey="buildingWatchPost"
           disabled={watchPostDisabled}
           onPress={state.buildWatchPost}
         />
@@ -502,12 +507,14 @@ function ActionCard({
   title,
   cost,
   glyph,
+  assetKey,
   disabled,
   onPress
 }: {
   title: string;
   cost: string;
   glyph: string;
+  assetKey?: "buildingHut" | "buildingTrainingNest" | "buildingWatchPost" | "unitWorker" | "unitFighter";
   disabled?: boolean;
   onPress: () => void;
 }) {
@@ -523,7 +530,15 @@ function ActionCard({
       ]}
     >
       <View style={styles.actionIcon}>
-        <Text style={styles.actionGlyph}>{glyph}</Text>
+        {assetKey ? (
+          <AssetImage
+            assetKey={assetKey}
+            style={styles.actionAsset}
+            fallback={<Text style={styles.actionGlyph}>{glyph}</Text>}
+          />
+        ) : (
+          <Text style={styles.actionGlyph}>{glyph}</Text>
+        )}
       </View>
       <Text style={styles.actionTitle} numberOfLines={2}>
         {title}
@@ -662,7 +677,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.md,
     paddingHorizontal: theme.spacing.sm,
     paddingBottom: theme.spacing.lg,
-    gap: theme.spacing.sm
+    gap: 7
   },
   topBar: {
     flexDirection: "row",
@@ -882,11 +897,11 @@ const styles = StyleSheet.create({
   boardShell: {
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.12)",
-    backgroundColor: "rgba(20, 27, 15, 0.38)",
-    paddingVertical: theme.spacing.xs
+    borderColor: "rgba(255, 224, 151, 0.2)",
+    backgroundColor: "rgba(20, 27, 15, 0.24)",
+    padding: 3
   },
   feedback: {
     borderRadius: 8,
@@ -1020,12 +1035,16 @@ const styles = StyleSheet.create({
     transform: [{ translateY: 2 }, { scale: 0.98 }]
   },
   actionIcon: {
-    width: 38,
-    height: 38,
+    width: 46,
+    height: 46,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
     backgroundColor: "rgba(255, 224, 151, 0.12)"
+  },
+  actionAsset: {
+    width: "100%",
+    height: "100%"
   },
   actionGlyph: {
     color: "#e2b15a",

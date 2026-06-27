@@ -75,18 +75,14 @@ export const gameAssets = {
   terrainMud: asset("terrainMud", "terrain", "terrain_mud.png", "256x256 tile"),
   terrainRock: asset("terrainRock", "terrain", "terrain_rock.png", "256x256 tile"),
   terrainWater: asset("terrainWater", "terrain", "terrain_water.png", "256x256 tile"),
-  terrainBananaTree: asset(
-    "terrainBananaTree",
-    "terrain",
-    "terrain_banana_tree.png",
-    "512x512 transparent prop"
-  ),
-  terrainWoodTree: asset(
-    "terrainWoodTree",
-    "terrain",
-    "terrain_wood_tree.png",
-    "512x512 transparent prop"
-  ),
+  terrainBananaTree: {
+    ...asset("terrainBananaTree", "terrain", "terrain_banana_tree.png", "512x512 transparent prop"),
+    source: require("../../../assets/game/terrain/terrain_banana_tree.png") as ImageSourcePropType
+  },
+  terrainWoodTree: {
+    ...asset("terrainWoodTree", "terrain", "terrain_wood_tree.png", "512x512 transparent prop"),
+    source: require("../../../assets/game/terrain/terrain_wood_tree.png") as ImageSourcePropType
+  },
   unitWorker: {
     ...asset("unitWorker", "units", "unit_worker.png", "512x512 transparent unit"),
     source: require("../../../assets/game/units/unit_worker.png") as ImageSourcePropType
@@ -103,31 +99,26 @@ export const gameAssets = {
     ...asset("unitEnemyFighter", "units", "unit_enemy_fighter.png", "512x512 transparent unit"),
     source: require("../../../assets/game/units/unit_enemy_fighter.png") as ImageSourcePropType
   },
-  buildingPlayerCamp: asset(
-    "buildingPlayerCamp",
-    "buildings",
-    "building_player_camp.png",
-    "768x768 transparent building"
-  ),
-  buildingEnemyCamp: asset(
-    "buildingEnemyCamp",
-    "buildings",
-    "building_enemy_camp.png",
-    "768x768 transparent building"
-  ),
-  buildingHut: asset("buildingHut", "buildings", "building_hut.png", "512x512 transparent building"),
-  buildingTrainingNest: asset(
-    "buildingTrainingNest",
-    "buildings",
-    "building_training_nest.png",
-    "512x512 transparent building"
-  ),
-  buildingWatchPost: asset(
-    "buildingWatchPost",
-    "buildings",
-    "building_watch_post.png",
-    "512x512 transparent building"
-  ),
+  buildingPlayerCamp: {
+    ...asset("buildingPlayerCamp", "buildings", "building_player_camp.png", "768x768 transparent building"),
+    source: require("../../../assets/game/buildings/building_player_camp.png") as ImageSourcePropType
+  },
+  buildingEnemyCamp: {
+    ...asset("buildingEnemyCamp", "buildings", "building_enemy_camp.png", "768x768 transparent building"),
+    source: require("../../../assets/game/buildings/building_enemy_camp.png") as ImageSourcePropType
+  },
+  buildingHut: {
+    ...asset("buildingHut", "buildings", "building_hut.png", "512x512 transparent building"),
+    source: require("../../../assets/game/buildings/building_hut.png") as ImageSourcePropType
+  },
+  buildingTrainingNest: {
+    ...asset("buildingTrainingNest", "buildings", "building_training_nest.png", "512x512 transparent building"),
+    source: require("../../../assets/game/buildings/building_training_nest.png") as ImageSourcePropType
+  },
+  buildingWatchPost: {
+    ...asset("buildingWatchPost", "buildings", "building_watch_post.png", "512x512 transparent building"),
+    source: require("../../../assets/game/buildings/building_watch_post.png") as ImageSourcePropType
+  },
   resourceBanana: asset(
     "resourceBanana",
     "resources",

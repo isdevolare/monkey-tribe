@@ -4,13 +4,14 @@ import { AssetImage } from "./AssetImage";
 import { SpriteSheetImage, type SpriteFrame } from "./SpriteSheetImage";
 import { BOARD_SIZE, CAMP_MAX_HP } from "../../game/config/constants";
 import { getGameAsset, type GameAssetKey } from "../../game/assets/gameAssets";
-import type { Tile, TileType, Unit } from "../../game/types/game";
+import type { Buildings, Tile, Unit } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type GameBoardProps = {
   tiles: Tile[];
   units: Unit[];
   selectedUnitId: string | null;
+  buildings: Buildings;
   playerCampHp: number;
   enemyCampHp: number;
   maxSize?: number;
@@ -30,6 +31,7 @@ export function GameBoard({
   tiles,
   units,
   selectedUnitId,
+  buildings,
   playerCampHp,
   enemyCampHp,
   maxSize = 430,
@@ -40,6 +42,7 @@ export function GameBoard({
   const aliveUnits = units.filter((unit) => unit.state !== "dead" && unit.hp > 0);
   const selectedUnit = aliveUnits.find((unit) => unit.id === selectedUnitId);
   const sceneItems = [
+    ...baseCampItems(buildings),
     ...tiles.flatMap((tile) => visualItemsForTile(tile, playerCampHp, enemyCampHp)),
     ...aliveUnits.map((unit) => visualItemForUnit(unit, unit.id === selectedUnitId))
   ].sort((a, b) => a.zIndex - b.zIndex);
@@ -53,6 +56,8 @@ export function GameBoard({
         fallback={<View style={styles.sceneFallback} />}
       />
       <View style={styles.sceneVignette} pointerEvents="none" />
+      <CampFence />
+      <Campfire />
 
       <View style={styles.visualLayer} pointerEvents="none">
         {sceneItems.map((item) => (
@@ -110,6 +115,45 @@ export function GameBoard({
       })}
     </View>
   );
+}
+
+function baseCampItems(buildings: Buildings): SceneItem[] {
+  const items: SceneItem[] = [];
+
+  if (buildings.hut > 0) {
+    items.push({
+      key: "built-hut",
+      x: 46,
+      y: 12,
+      size: 22,
+      zIndex: 18,
+      node: <AssetImage assetKey="buildingHut" style={styles.fullAsset} fallback={<CampFallback main="#2fa866" dark="#1f7047" banner="#ffd95a" />} />
+    });
+  }
+
+  if (buildings.trainingNest > 0) {
+    items.push({
+      key: "built-training-nest",
+      x: 60,
+      y: 37,
+      size: 18,
+      zIndex: 42,
+      node: <AssetImage assetKey="buildingTrainingNest" style={styles.fullAsset} fallback={<TargetFallback />} />
+    });
+  }
+
+  if (buildings.watchPost > 0) {
+    items.push({
+      key: "built-watch-post",
+      x: 73,
+      y: 27,
+      size: 18,
+      zIndex: 35,
+      node: <AssetImage assetKey="buildingWatchPost" style={styles.fullAsset} fallback={<TowerFallback />} />
+    });
+  }
+
+  return items;
 }
 
 function visualItemsForTile(tile: Tile, playerCampHp: number, enemyCampHp: number): SceneItem[] {
@@ -212,6 +256,41 @@ function CampArt({ player, hpPercent }: { player: boolean; hpPercent: number }) 
           ]}
         />
       </View>
+    </View>
+  );
+}
+
+function CampFence() {
+  return (
+    <View style={styles.fenceLayer} pointerEvents="none">
+      <Svg width="100%" height="100%" viewBox="0 0 100 100">
+        <Path
+          d="M17 38 C24 18 47 8 69 18 C87 27 91 51 80 70 C68 90 36 91 20 72 C10 60 10 48 17 38 Z"
+          fill="none"
+          stroke="rgba(111, 74, 38, 0.82)"
+          strokeWidth="3.2"
+          strokeLinecap="round"
+          strokeDasharray="3 2"
+        />
+        <Path
+          d="M20 41 C27 23 48 15 67 23 C82 30 85 50 76 66 C65 81 38 82 24 67 C15 57 14 48 20 41 Z"
+          fill="rgba(77, 112, 46, 0.08)"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+function Campfire() {
+  return (
+    <View style={styles.campfire} pointerEvents="none">
+      <Svg width="100%" height="100%" viewBox="0 0 64 64">
+        <Circle cx="32" cy="42" r="18" fill="rgba(255, 163, 40, 0.2)" />
+        <Line x1="17" y1="48" x2="47" y2="35" stroke="#6a3b1d" strokeWidth="6" strokeLinecap="round" />
+        <Line x1="18" y1="35" x2="48" y2="49" stroke="#7b4b24" strokeWidth="6" strokeLinecap="round" />
+        <Path d="M32 38 C22 30 34 20 31 11 C43 22 44 31 36 39 Z" fill="#ff8c1a" />
+        <Path d="M31 39 C27 32 35 27 34 20 C42 31 37 37 33 43 Z" fill="#ffd95a" />
+      </Svg>
     </View>
   );
 }
@@ -325,6 +404,30 @@ function WoodFallback() {
   );
 }
 
+function TargetFallback() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 64 64">
+      <Rect x="14" y="35" width="36" height="16" rx="4" fill="#7b4b24" />
+      <Circle cx="32" cy="28" r="16" fill="#e9d5a2" />
+      <Circle cx="32" cy="28" r="10" fill="#c84a3a" />
+      <Circle cx="32" cy="28" r="4" fill="#f6f0d2" />
+      <Line x1="48" y1="12" x2="34" y2="28" stroke="#d6a46b" strokeWidth="4" />
+    </Svg>
+  );
+}
+
+function TowerFallback() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 64 64">
+      <Rect x="22" y="25" width="20" height="28" rx="3" fill="#7b4b24" />
+      <Polygon points="16,28 32,12 48,28" fill="#c84a3a" />
+      <Rect x="28" y="37" width="8" height="16" rx="2" fill="#4c2b18" />
+      <Line x1="18" y1="18" x2="10" y2="9" stroke="#efe3bb" strokeWidth="4" />
+      <Line x1="46" y1="18" x2="54" y2="9" stroke="#efe3bb" strokeWidth="4" />
+    </Svg>
+  );
+}
+
 function BushFallback() {
   return (
     <Svg width="100%" height="100%" viewBox="0 0 64 64">
@@ -415,6 +518,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     backgroundColor: "rgba(16, 34, 20, 0.08)"
+  },
+  fenceLayer: {
+    position: "absolute",
+    top: "8%",
+    right: "4%",
+    bottom: "6%",
+    left: "5%"
+  },
+  campfire: {
+    position: "absolute",
+    left: "43%",
+    top: "42%",
+    width: "15%",
+    height: "15%",
+    zIndex: 44
   },
   visualLayer: {
     position: "absolute",
