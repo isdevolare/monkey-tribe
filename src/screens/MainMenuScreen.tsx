@@ -1,7 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
-import { GameButton } from "../components/game/GameButton";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
 
@@ -11,19 +10,49 @@ export function MainMenuScreen() {
   return (
     <View style={styles.screen}>
       <AssetImage assetKey="bgMainMenu" resizeMode="cover" style={styles.backdrop} fallback={<MenuBackdrop />} />
+      <View style={styles.overlay} />
 
-      <View style={styles.hero}>
-        <AssetImage assetKey="uiLogo" style={styles.heroAsset} fallback={<HeroFallback />} />
-      </View>
+      <View style={styles.content}>
+        <View style={styles.logoShadow}>
+          <AssetImage assetKey="uiLogo" style={styles.logo} fallback={<HeroFallback />} />
+        </View>
 
-      <Text style={styles.kicker}>Survival RTS Prototype</Text>
-      <Text style={styles.title}>Monkey Tribe</Text>
-      <Text style={styles.subtitle}>Gather the jungle, raise huts, train fighters, and break the rival camp.</Text>
+        <Text style={styles.kicker}>Survival RTS Prototype</Text>
+        <Text style={styles.subtitle}>Gather the jungle, raise huts, train fighters, and break the rival camp.</Text>
 
-      <View style={styles.buttonWrap}>
-        <GameButton label="Start Game" helperText="Lead the tribe" onPress={startGame} />
+        <View style={styles.buttonStack}>
+          <WoodButton label="Start Game" onPress={startGame} primary />
+          <WoodButton label="Settings" onPress={() => undefined} />
+          <WoodButton label="Credits" onPress={() => undefined} />
+        </View>
       </View>
     </View>
+  );
+}
+
+function WoodButton({
+  label,
+  onPress,
+  primary
+}: {
+  label: string;
+  onPress: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.woodButton,
+        primary ? styles.woodButtonPrimary : styles.woodButtonSecondary,
+        pressed ? styles.woodButtonPressed : null
+      ]}
+    >
+      <View style={styles.woodGrainTop} />
+      <Text style={[styles.woodButtonText, primary ? styles.woodButtonTextPrimary : null]}>{label}</Text>
+      <View style={styles.woodGrainBottom} />
+    </Pressable>
   );
 }
 
@@ -70,9 +99,6 @@ function HeroFallback() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: theme.spacing.xl,
     backgroundColor: theme.colors.jungle
   },
   backdrop: {
@@ -82,40 +108,120 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0
   },
-  hero: {
-    width: 190,
-    height: 190,
-    marginBottom: theme.spacing.lg
+  overlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: "rgba(6, 18, 11, 0.42)"
   },
-  heroAsset: {
-    width: 190,
-    height: 190
+  content: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 52,
+    paddingRight: theme.spacing.xl,
+    paddingBottom: 38,
+    paddingLeft: theme.spacing.xl
+  },
+  logoShadow: {
+    width: 282,
+    height: 282,
+    marginBottom: theme.spacing.md,
+    shadowColor: "#000",
+    shadowOpacity: 0.48,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 14
+  },
+  logo: {
+    width: 282,
+    height: 282
   },
   kicker: {
-    color: "#bddf96",
+    color: theme.colors.banana,
     fontSize: 13,
     fontWeight: "900",
     letterSpacing: 0,
     textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.7)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
     textTransform: "uppercase"
-  },
-  title: {
-    color: theme.colors.paper,
-    fontSize: 43,
-    fontWeight: "900",
-    textAlign: "center"
   },
   subtitle: {
     maxWidth: 320,
     marginTop: theme.spacing.sm,
-    color: "#e3f2cf",
-    fontSize: 17,
-    fontWeight: "700",
-    textAlign: "center"
+    color: "#f3f0d7",
+    fontSize: 16,
+    fontWeight: "800",
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.75)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4
   },
-  buttonWrap: {
+  buttonStack: {
     width: "100%",
-    maxWidth: 300,
+    maxWidth: 310,
+    gap: theme.spacing.sm,
     marginTop: theme.spacing.xl
+  },
+  woodButton: {
+    minHeight: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    borderRadius: 8,
+    borderWidth: 3,
+    borderColor: "#2a1608",
+    paddingHorizontal: theme.spacing.lg,
+    shadowColor: "#000",
+    shadowOpacity: 0.32,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6
+  },
+  woodButtonPrimary: {
+    backgroundColor: "#9a5a22"
+  },
+  woodButtonSecondary: {
+    minHeight: 48,
+    backgroundColor: "#6f421f"
+  },
+  woodButtonPressed: {
+    transform: [{ translateY: 2 }, { scale: 0.985 }],
+    opacity: 0.92
+  },
+  woodButtonText: {
+    color: "#ffe9ad",
+    fontSize: 16,
+    fontWeight: "900",
+    textAlign: "center",
+    textShadowColor: "rgba(42, 22, 8, 0.9)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 2
+  },
+  woodButtonTextPrimary: {
+    color: "#fff2bf",
+    fontSize: 19
+  },
+  woodGrainTop: {
+    position: "absolute",
+    top: 10,
+    left: 18,
+    right: 18,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: "rgba(255, 215, 136, 0.28)"
+  },
+  woodGrainBottom: {
+    position: "absolute",
+    bottom: 11,
+    left: 32,
+    right: 28,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: "rgba(59, 28, 10, 0.34)"
   }
 });
