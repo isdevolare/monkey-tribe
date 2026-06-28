@@ -38,6 +38,7 @@ export function AssetImage({
 
 const styles = StyleSheet.create({
   wrap: {
+    position: "relative",
     overflow: "hidden"
   },
   image: {

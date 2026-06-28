@@ -96,6 +96,7 @@ export type GameState = {
   feedback: FeedbackMessage | null;
   startGame: () => void;
   selectUnit: (unitId: string | null) => void;
+  collectResource: (resource: ResourceKind) => void;
   commandMove: (x: number, y: number) => void;
   commandGather: (x: number, y: number, resource: ResourceKind) => void;
   commandAttack: (target: UnitTarget) => void;

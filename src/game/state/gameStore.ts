@@ -545,6 +545,53 @@ function buildPlayerBuilding(state: GameState, building: BuildingType) {
   };
 }
 
+function collectVillageResource(state: GameState, resource: ResourceKind): GameState {
+  const now = Date.now();
+
+  if (state.gameStatus !== "playing" || state.gameMode !== "village") {
+    return state;
+  }
+
+  const worker = state.units.find(
+    (unit) =>
+      unit.owner === "player" &&
+      unit.type === "worker" &&
+      unit.state !== "dead" &&
+      unit.hp > 0
+  );
+
+  if (!worker) {
+    return {
+      ...state,
+      feedback: { id: now, text: "Train a worker to collect resources" }
+    };
+  }
+
+  const amount = GATHER_AMOUNTS[resource];
+
+  return {
+    ...state,
+    resources: {
+      ...state.resources,
+      [resource]: state.resources[resource] + amount
+    },
+    selectedUnitId: null,
+    units: state.units.map((unit) =>
+      unit.id === worker.id
+        ? {
+            ...unit,
+            state: "idle",
+            carriedResource: null,
+            target: undefined,
+            gatherTarget: undefined,
+            lastActionAt: now
+          }
+        : unit
+    ),
+    feedback: { id: now, text: `Collected +${amount} ${resource}` }
+  };
+}
+
 function buildingName(building: BuildingType) {
   if (building === "trainingNest") {
     return "Training Nest";
@@ -586,6 +633,7 @@ export const useGameStore = create<GameState>((set) => ({
 
       return unit ? { ...state, selectedUnitId: unit.id } : state;
     }),
+  collectResource: (resource) => set((state) => collectVillageResource(state, resource)),
   commandMove: (x, y) =>
     set((state) => {
       if (!state.selectedUnitId || !isInsideBoard(x, y)) {

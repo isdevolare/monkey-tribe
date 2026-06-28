@@ -17,15 +17,16 @@ import { VillageBoard } from "../components/game/VillageBoard";
 import { getGameAsset } from "../game/assets/gameAssets";
 import { BUILDING_COSTS, UNIT_COSTS } from "../game/config/constants";
 import { useGameStore } from "../game/state/gameStore";
-import type { Resources, Tile, Unit } from "../game/types/game";
+import type { Resources, Tile } from "../game/types/game";
 import { theme } from "../theme/theme";
 
 const TUTORIAL_KEY = "monkey-tribe:tutorial-seen";
+const PHONE_FRAME_WIDTH = 430;
 const tutorialSteps = [
-  "Select a worker monkey near your camp.",
-  "Tap bananas, stone, or wood to send the worker gathering.",
-  "Build a Training Nest, then train a fighter.",
-  "Send fighters to destroy the enemy camp."
+  "Tap banana trees, stone piles, and wood groves to collect village resources.",
+  "Build huts, a Training Nest, and a Watch Post from the bottom dock.",
+  "Train fighters once the Training Nest is ready.",
+  "Press RAID to send fighters into a separate enemy camp battle."
 ];
 
 type ActionTab = "overview" | "monkeys" | "build" | "map" | "shop" | "settings";
@@ -33,12 +34,10 @@ type ActionTab = "overview" | "monkeys" | "build" | "map" | "shop" | "settings";
 export function GameScreen() {
   const state = useGameStore();
   const { width } = useWindowDimensions();
+  const layoutWidth = Math.min(width, PHONE_FRAME_WIDTH);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [actionTab, setActionTab] = useState<ActionTab>("overview");
-  const selectedUnit =
-    state.units.find((unit) => unit.id === state.selectedUnitId && unit.state !== "dead") ??
-    null;
   const population = state.units.filter(
     (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
   ).length;
@@ -49,7 +48,7 @@ export function GameScreen() {
       unit.state !== "dead" &&
       unit.hp > 0
   ).length;
-  const boardMaxSize = Math.max(252, Math.min(width - 118, 404));
+  const boardMaxSize = Math.max(250, Math.min(layoutWidth - 94, 336));
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -79,36 +78,24 @@ export function GameScreen() {
     };
   }, []);
 
-  function handleCellPress(tile: Tile, unit?: Unit) {
+  function handleCellPress(tile: Tile) {
     if (state.gameStatus !== "playing" || state.gameMode !== "village") {
       return;
     }
 
-    if (unit?.owner === "player") {
-      state.selectUnit(unit.id);
+    if (tile.type === "bananaTree") {
+      state.collectResource("bananas");
       return;
     }
 
-    if (!selectedUnit) {
+    if (tile.type === "stoneRock") {
+      state.collectResource("stones");
       return;
     }
 
-    if (tile.type === "bananaTree" && selectedUnit.type === "worker") {
-      state.commandGather(tile.x, tile.y, "bananas");
-      return;
+    if (tile.type === "woodGrove") {
+      state.collectResource("wood");
     }
-
-    if (tile.type === "stoneRock" && selectedUnit.type === "worker") {
-      state.commandGather(tile.x, tile.y, "stones");
-      return;
-    }
-
-    if (tile.type === "woodGrove" && selectedUnit.type === "worker") {
-      state.commandGather(tile.x, tile.y, "wood");
-      return;
-    }
-
-    return;
   }
 
   function closeTutorial() {
@@ -258,9 +245,7 @@ export function GameScreen() {
                   <VillageBoard
                     tiles={state.mapTiles}
                     units={state.units}
-                    selectedUnitId={state.selectedUnitId}
                     buildings={state.buildings}
-                    playerCampHp={state.playerCampHp}
                     maxSize={boardMaxSize}
                     feedbackText={state.feedback?.text}
                     onCellPress={handleCellPress}
@@ -284,8 +269,6 @@ export function GameScreen() {
               <ObjectiveRow label="Train a Fighter" value={`${fighterCount > 0 ? 1 : 0}/1`} done={fighterCount > 0} />
               <ObjectiveRow label="Win a Raid" value={`${state.enemyCampHp <= 0 ? 1 : 0}/1`} done={state.enemyCampHp <= 0} />
             </View>
-
-            <SelectedUnitPanel unit={selectedUnit} />
 
             <View style={styles.bottomDock}>
               <PanelTexture dark />
@@ -345,7 +328,7 @@ export function GameScreen() {
             disabled={trainFighterDisabled}
             onPress={state.trainFighter}
           />
-          <ActionCard title="Move" cost="Tap" glyph="Map" onPress={() => setActionTab("map")} />
+          <ActionCard title="Raid Prep" cost={`${fighterCount} ready`} glyph="X" onPress={() => setActionTab("map")} />
         </>
       );
     }
@@ -353,7 +336,7 @@ export function GameScreen() {
     if (actionTab === "map") {
       return (
         <>
-          <ActionCard title="Gather" cost="Tap resource" glyph="B" onPress={() => setActionTab("overview")} />
+          <ActionCard title="Collect" cost="Tap nodes" glyph="B" onPress={() => setActionTab("overview")} />
           <ActionCard title="Village" cost="Base view" glyph="Map" onPress={() => setActionTab("overview")} />
           <ActionCard title="Cancel" cost="Reset" glyph="!" onPress={state.resetGame} />
         </>
@@ -616,48 +599,6 @@ function AvatarFallback() {
   );
 }
 
-function SelectedUnitPanel({ unit }: { unit: Unit | null }) {
-  if (!unit) {
-    return (
-      <View style={styles.panel}>
-        <PanelTexture dark />
-        <Text style={styles.panelTitle}>No monkey selected</Text>
-        <Text style={styles.panelText}>Tap a player monkey, then tap a nearby tile or resource.</Text>
-      </View>
-    );
-  }
-
-  const carried = unit.carriedResource
-    ? ` Carrying ${unit.carriedResource.amount} ${unit.carriedResource.kind}.`
-    : "";
-
-  return (
-    <View style={styles.panel}>
-      <PanelTexture dark />
-      <View style={styles.panelHeader}>
-        <Text style={styles.panelTitle}>
-          {unit.type === "fighter" ? "Fighter Monkey" : "Worker Monkey"}
-        </Text>
-        <Text style={styles.hpText}>
-          {unit.hp}/{unit.maxHp} HP
-        </Text>
-      </View>
-      <Text style={styles.panelText}>
-        State: {unit.state}.{carried}
-      </Text>
-      <Text style={styles.panelHint}>{hintForUnit(unit)}</Text>
-    </View>
-  );
-}
-
-function hintForUnit(unit: Unit) {
-  if (unit.type === "worker") {
-    return "Gather bananas, stones, or wood. Workers can fight, but only barely.";
-  }
-
-  return "Fighters hit hard. Tap enemy monkeys or the red camp.";
-}
-
 function TutorialOverlay({
   visible,
   step,
@@ -746,7 +687,7 @@ const styles = StyleSheet.create({
   },
   clanCard: {
     flex: 1,
-    minHeight: 70,
+    minHeight: 62,
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.sm,
@@ -758,10 +699,10 @@ const styles = StyleSheet.create({
     overflow: "hidden"
   },
   avatarRing: {
-    width: 54,
-    height: 54,
+    width: 46,
+    height: 46,
     overflow: "hidden",
-    borderRadius: 27,
+    borderRadius: 23,
     borderWidth: 2,
     borderColor: "#6aa04f",
     backgroundColor: "#1b2b19",
@@ -769,8 +710,8 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   avatar: {
-    width: 54,
-    height: 54
+    width: 46,
+    height: 46
   },
   clanCopy: {
     flex: 1
@@ -805,7 +746,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs
   },
   topPill: {
-    minHeight: 56,
+    minHeight: 50,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -833,8 +774,8 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   },
   topIcon: {
-    width: 48,
-    height: 56,
+    width: 44,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 12,
@@ -852,7 +793,7 @@ const styles = StyleSheet.create({
   },
   resourceChip: {
     flex: 1,
-    minHeight: 56,
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
@@ -863,17 +804,17 @@ const styles = StyleSheet.create({
     overflow: "hidden"
   },
   resourceIcon: {
-    width: 35,
-    height: 35,
-    borderRadius: 17,
+    width: 31,
+    height: 31,
+    borderRadius: 15,
     overflow: "hidden",
     backgroundColor: "rgba(255, 255, 255, 0.08)",
     alignItems: "center",
     justifyContent: "center"
   },
   resourceIconArt: {
-    width: 29,
-    height: 29
+    width: 26,
+    height: 26
   },
   resourceFallback: {
     flex: 1,
@@ -912,17 +853,17 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs
   },
   sideNav: {
-    width: 86,
-    gap: theme.spacing.xs
+    width: 60,
+    gap: 5
   },
   sideButton: {
-    minHeight: 55,
+    minHeight: 46,
     justifyContent: "center",
     borderRadius: 9,
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.14)",
     backgroundColor: "rgba(54, 43, 27, 0.84)",
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     overflow: "hidden"
   },
   sideButtonActive: {
@@ -939,15 +880,15 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   sideIconFrame: {
-    width: 26,
-    height: 26,
+    width: 22,
+    height: 22,
     alignItems: "center",
     justifyContent: "center"
   },
   sideLabel: {
-    marginTop: 3,
+    marginTop: 2,
     color: "#d8ccb0",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "900"
   },
   sideLabelActive: {
@@ -992,8 +933,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.15)",
     backgroundColor: glass,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 7,
     overflow: "hidden"
   },
   objectiveHeader: {
@@ -1016,7 +957,7 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   },
   objectiveRow: {
-    minHeight: 28,
+    minHeight: 24,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1084,7 +1025,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.14)",
     backgroundColor: "rgba(42, 38, 29, 0.9)",
-    padding: 8,
+    padding: 6,
     overflow: "hidden"
   },
   actionCards: {
@@ -1094,7 +1035,7 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     flex: 1,
-    minHeight: 88,
+    minHeight: 76,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 12,
@@ -1111,8 +1052,8 @@ const styles = StyleSheet.create({
     transform: [{ translateY: 2 }, { scale: 0.98 }]
   },
   actionIcon: {
-    width: 42,
-    height: 42,
+    width: 34,
+    height: 34,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
@@ -1151,8 +1092,8 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   raidButton: {
-    width: 112,
-    minHeight: 98,
+    width: 92,
+    minHeight: 86,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 14,
@@ -1171,7 +1112,7 @@ const styles = StyleSheet.create({
   },
   raidIcon: {
     color: theme.colors.paper,
-    fontSize: 27,
+    fontSize: 22,
     fontWeight: "900",
     textShadowColor: "rgba(0, 0, 0, 0.55)",
     textShadowOffset: { width: 0, height: 2 },
@@ -1179,7 +1120,7 @@ const styles = StyleSheet.create({
   },
   raidText: {
     color: theme.colors.paper,
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "900",
     textShadowColor: "rgba(0, 0, 0, 0.55)",
     textShadowOffset: { width: 0, height: 2 },

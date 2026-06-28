@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
-import { CAMP_MAX_HP } from "../../game/config/constants";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import type { Buildings, Tile, Unit } from "../../game/types/game";
 import { theme } from "../../theme/theme";
@@ -10,12 +9,10 @@ import { theme } from "../../theme/theme";
 type VillageBoardProps = {
   tiles: Tile[];
   units: Unit[];
-  selectedUnitId: string | null;
   buildings: Buildings;
-  playerCampHp: number;
   maxSize?: number;
   feedbackText?: string;
-  onCellPress: (tile: Tile, unit?: Unit) => void;
+  onCellPress: (tile: Tile) => void;
 };
 
 type Point = {
@@ -85,25 +82,23 @@ const FENCE_POSTS = [
 export function VillageBoard({
   tiles,
   units,
-  selectedUnitId,
   buildings,
-  playerCampHp,
   maxSize = 430,
   feedbackText,
   onCellPress
 }: VillageBoardProps) {
   const { width } = useWindowDimensions();
   const sceneWidth = Math.min(width - theme.spacing.lg * 2, maxSize);
-  const sceneHeight = sceneWidth * 1.06;
+  const sceneHeight = sceneWidth * 0.94;
   const aliveUnits = units.filter(
     (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
   );
   const decorativeItems = [
     ...resourceItems(tiles),
-    ...villageItems(buildings, playerCampHp)
+    ...villageItems(buildings)
   ].sort((a, b) => a.zIndex - b.zIndex);
   const unitItems = aliveUnits
-    .map((unit) => unitSceneItem(unit, unit.id === selectedUnitId))
+    .map((unit) => unitSceneItem(unit))
     .sort((a, b) => a.zIndex - b.zIndex);
 
   return (
@@ -118,28 +113,24 @@ export function VillageBoard({
       </View>
 
       <View style={styles.hitLayer}>
-        {tiles.map((tile) => {
-          const tileUnit = aliveUnits.find((unit) => unit.x === tile.x && unit.y === tile.y);
-          const selected = tileUnit?.id === selectedUnitId;
+        {tiles.filter(isResourceTile).map((tile) => {
           const point = pointForTile(tile);
-          const resource = isResourceTile(tile);
 
           return (
             <Pressable
               key={`${tile.x}-${tile.y}`}
-              onPress={() => onCellPress(tile, tileUnit)}
+              onPress={() => onCellPress(tile)}
               style={[
                 styles.hitZone,
                 {
-                  left: `${point.x - 4.8}%`,
-                  top: `${point.y - 4.8}%`,
-                  width: "9.6%",
-                  height: "9.6%"
+                  left: `${point.x - 5.2}%`,
+                  top: `${point.y - 5.2}%`,
+                  width: "10.4%",
+                  height: "10.4%"
                 }
               ]}
             >
-              {resource ? <View style={styles.resourceDot} /> : null}
-              {selected ? <View style={styles.selectedTileRing} /> : null}
+              <View style={styles.resourceDot} />
             </Pressable>
           );
         })}
@@ -272,7 +263,7 @@ function resourceItems(tiles: Tile[]): SceneItem[] {
   });
 }
 
-function villageItems(buildings: Buildings, playerCampHp: number): SceneItem[] {
+function villageItems(buildings: Buildings): SceneItem[] {
   return [
     item("edge-tree-left", { x: 5, y: 35 }, 23, 20, (
       <AssetImage assetKey="terrainWoodTree" style={styles.full} fallback={<WoodFallback />} />
@@ -288,9 +279,7 @@ function villageItems(buildings: Buildings, playerCampHp: number): SceneItem[] {
     )),
     item("watch-post", BUILDING_SLOTS.watchPost, 20, 38, buildingNode(buildings.watchPost > 0, "buildingWatchPost")),
     item("hut", BUILDING_SLOTS.hut, 23, 49, buildingNode(buildings.hut > 0, "buildingHut")),
-    item("player-camp", BUILDING_SLOTS.camp, 30, 54, (
-      <CampArt player hpPercent={Math.max(0, Math.round((playerCampHp / CAMP_MAX_HP) * 100))} />
-    )),
+    item("player-camp", BUILDING_SLOTS.camp, 30, 54, <CampArt player />),
     item(
       "training-nest",
       BUILDING_SLOTS.trainingNest,
@@ -328,10 +317,10 @@ function isResourceTile(tile: Tile) {
   return tile.type === "bananaTree" || tile.type === "stoneRock" || tile.type === "woodGrove";
 }
 
-function unitSceneItem(unit: Unit, selected: boolean): SceneItem {
+function unitSceneItem(unit: Unit): SceneItem {
   const center = pointForUnit(unit);
-  return item(unit.id, center, unit.owner === "player" ? 18 : 17, 80 + center.y, (
-    <UnitArt unit={unit} selected={selected} />
+  return item(unit.id, center, unit.type === "fighter" ? 15 : 14, 80 + center.y, (
+    <UnitArt unit={unit} />
   ));
 }
 
@@ -400,7 +389,7 @@ function stableIndex(value: string, modulo: number) {
   return hash % modulo;
 }
 
-function CampArt({ player, hpPercent }: { player: boolean; hpPercent: number }) {
+function CampArt({ player }: { player: boolean }) {
   const main = player ? theme.colors.player : theme.colors.enemy;
   const dark = player ? theme.colors.playerDark : theme.colors.enemyDark;
   const banner = player ? "#ffd95a" : "#efdfc6";
@@ -412,40 +401,20 @@ function CampArt({ player, hpPercent }: { player: boolean; hpPercent: number }) 
         style={styles.full}
         fallback={<CampFallback main={main} dark={dark} banner={banner} />}
       />
-      <HealthBar percent={hpPercent} enemy={!player} large />
     </View>
   );
 }
 
-function UnitArt({ unit, selected }: { unit: Unit; selected: boolean }) {
+function UnitArt({ unit }: { unit: Unit }) {
   const player = unit.owner === "player";
-  const hpPercent = Math.max(0, Math.round((unit.hp / unit.maxHp) * 100));
 
   return (
     <View style={styles.unitWrap}>
-      {selected ? <View style={[styles.selectionRing, { borderColor: player ? theme.colors.banana : "#f8efe4" }]} /> : null}
       <AssetImage
         assetKey={unitAssetKey(unit)}
         style={styles.unitAsset}
         imageStyle={styles.unitImage}
         fallback={<UnitFallback player={player} fighter={unit.type === "fighter"} />}
-      />
-      <HealthBar percent={hpPercent} enemy={!player} />
-    </View>
-  );
-}
-
-function HealthBar({ percent, enemy, large }: { percent: number; enemy?: boolean; large?: boolean }) {
-  return (
-    <View style={[styles.hpTrack, large ? styles.hpTrackLarge : null]}>
-      <View
-        style={[
-          styles.hpFill,
-          {
-            width: `${percent}%`,
-            backgroundColor: enemy ? theme.colors.enemy : theme.colors.player
-          }
-        ]}
       />
     </View>
   );
@@ -636,35 +605,6 @@ const styles = StyleSheet.create({
   },
   assetMissing: {
     flex: 1
-  },
-  selectionRing: {
-    position: "absolute",
-    bottom: "10%",
-    width: "74%",
-    height: "24%",
-    borderRadius: 999,
-    borderWidth: 3,
-    backgroundColor: "rgba(56, 228, 85, 0.22)"
-  },
-  hpTrack: {
-    position: "absolute",
-    left: "18%",
-    right: "18%",
-    top: "7%",
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(21, 37, 25, 0.78)",
-    overflow: "hidden",
-    zIndex: 2
-  },
-  hpTrackLarge: {
-    left: "19%",
-    right: "19%",
-    top: "4%",
-    height: 5
-  },
-  hpFill: {
-    height: "100%"
   },
   resourceDot: {
     width: 8,

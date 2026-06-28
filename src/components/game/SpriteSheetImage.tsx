@@ -70,6 +70,7 @@ export function SpriteSheetImage({
 
 const styles = StyleSheet.create({
   wrap: {
+    position: "relative",
     overflow: "hidden"
   },
   sheet: {
