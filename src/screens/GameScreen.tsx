@@ -259,15 +259,10 @@ export function GameScreen() {
                 playerCampHp={state.playerCampHp}
                 enemyCampHp={state.enemyCampHp}
                 maxSize={boardMaxSize}
+                feedbackText={state.feedback?.text}
                 onCellPress={handleCellPress}
               />
             </View>
-
-            {state.feedback ? (
-              <View style={styles.feedback}>
-                <Text style={styles.feedbackText}>{state.feedback.text}</Text>
-              </View>
-            ) : null}
           </View>
         </View>
 
@@ -981,20 +976,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 224, 151, 0.2)",
     backgroundColor: "rgba(20, 27, 15, 0.24)",
     padding: 2
-  },
-  feedback: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#4c371f",
-    backgroundColor: "#ffe28b",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm
-  },
-  feedbackText: {
-    color: theme.colors.ink,
-    fontSize: 13,
-    fontWeight: "900",
-    textAlign: "center"
   },
   objectivePanel: {
     borderRadius: 12,
