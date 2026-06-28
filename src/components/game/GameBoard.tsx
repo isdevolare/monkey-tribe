@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
@@ -24,7 +25,7 @@ type SceneItem = {
   y: number;
   size: number;
   zIndex: number;
-  node: React.ReactNode;
+  node: ReactNode;
 };
 
 export function GameBoard({
@@ -56,6 +57,29 @@ export function GameBoard({
         fallback={<View style={styles.sceneFallback} />}
       />
       <View style={styles.sceneVignette} pointerEvents="none" />
+      <View style={styles.terrainTextureLayer} pointerEvents="none">
+        {tiles.map((tile) => (
+          <View
+            key={`texture-${tile.x}-${tile.y}`}
+            style={[
+              styles.terrainTexture,
+              {
+                left: `${(tile.x / BOARD_SIZE) * 100}%`,
+                top: `${(tile.y / BOARD_SIZE) * 100}%`,
+                width: `${100 / BOARD_SIZE}%`,
+                height: `${100 / BOARD_SIZE}%`
+              }
+            ]}
+          >
+            <AssetImage
+              assetKey={terrainTileAssetKey(tile.type)}
+              resizeMode="cover"
+              style={styles.fullAsset}
+              fallback={<View style={styles.emptyTextureFallback} />}
+            />
+          </View>
+        ))}
+      </View>
       <CampFence />
       <Campfire />
 
@@ -156,6 +180,22 @@ function baseCampItems(buildings: Buildings): SceneItem[] {
   return items;
 }
 
+function terrainTileAssetKey(type: Tile["type"]): GameAssetKey {
+  if (type === "jungle" || type === "bush") {
+    return "terrainJungleTile";
+  }
+
+  if (type === "mudPath") {
+    return "terrainMudPathTile";
+  }
+
+  if (type === "empty") {
+    return "terrainGrassTile";
+  }
+
+  return "terrainGrassTile";
+}
+
 function visualItemsForTile(tile: Tile, playerCampHp: number, enemyCampHp: number): SceneItem[] {
   if (tile.type === "bananaTree") {
     return [
@@ -187,7 +227,7 @@ function visualItemsForTile(tile: Tile, playerCampHp: number, enemyCampHp: numbe
         zIndex: tile.y * 10,
         node:
           tile.type === "bush" ? (
-            <BushFallback />
+            <AssetImage assetKey="terrainBush" style={styles.fullAsset} fallback={<BushFallback />} />
           ) : (
             <AssetImage assetKey="terrainWoodTree" style={styles.fullAsset} fallback={<WoodFallback />} />
           )
@@ -518,6 +558,23 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     backgroundColor: "rgba(16, 34, 20, 0.08)"
+  },
+  terrainTextureLayer: {
+    position: "absolute",
+    top: "10%",
+    right: "8%",
+    bottom: "8%",
+    left: "8%",
+    opacity: 0.16,
+    overflow: "hidden",
+    borderRadius: 120
+  },
+  terrainTexture: {
+    position: "absolute"
+  },
+  emptyTextureFallback: {
+    flex: 1,
+    backgroundColor: "rgba(101, 160, 67, 0.2)"
   },
   fenceLayer: {
     position: "absolute",

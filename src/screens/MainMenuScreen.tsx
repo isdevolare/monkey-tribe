@@ -49,6 +49,12 @@ function WoodButton({
         pressed ? styles.woodButtonPressed : null
       ]}
     >
+      <AssetImage
+        assetKey="uiButtonWoodLarge"
+        resizeMode="stretch"
+        style={styles.woodButtonArt}
+        fallback={<View style={primary ? styles.woodButtonPrimaryFill : styles.woodButtonSecondaryFill} />}
+      />
       <View style={styles.woodGrainTop} />
       <Text style={[styles.woodButtonText, primary ? styles.woodButtonTextPrimary : null]}>{label}</Text>
       <View style={styles.woodGrainBottom} />
@@ -174,7 +180,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderRadius: 8,
     borderWidth: 3,
-    borderColor: "#2a1608",
+    borderColor: "rgba(42, 22, 8, 0.65)",
     paddingHorizontal: theme.spacing.lg,
     shadowColor: "#000",
     shadowOpacity: 0.32,
@@ -188,6 +194,17 @@ const styles = StyleSheet.create({
   woodButtonSecondary: {
     minHeight: 48,
     backgroundColor: "#6f421f"
+  },
+  woodButtonPrimaryFill: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#9a5a22"
+  },
+  woodButtonSecondaryFill: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#6f421f"
+  },
+  woodButtonArt: {
+    ...StyleSheet.absoluteFillObject
   },
   woodButtonPressed: {
     transform: [{ translateY: 2 }, { scale: 0.985 }],

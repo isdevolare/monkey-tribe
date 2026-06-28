@@ -168,7 +168,9 @@ export function GameScreen() {
       >
         <View style={styles.topBar}>
           <View style={styles.clanCard}>
+            <PanelTexture dark />
             <View style={styles.avatarRing}>
+              <IconFrame />
               <SpriteSheetImage
                 source={sheet.source}
                 sheetWidth={1341}
@@ -270,6 +272,7 @@ export function GameScreen() {
         </View>
 
         <View style={styles.objectivePanel}>
+          <PanelTexture dark />
           <View style={styles.objectiveHeader}>
             <Text style={styles.objectiveTitle}>Objectives</Text>
             <Text style={styles.objectiveCounter}>Tasks</Text>
@@ -287,12 +290,26 @@ export function GameScreen() {
         <SelectedUnitPanel unit={selectedUnit} />
 
         <View style={styles.bottomDock}>
+          <PanelTexture dark />
           <View style={styles.actionCards}>{renderActionCards()}</View>
           <Pressable
             accessibilityRole="button"
             onPress={state.raidEnemyCamp}
             style={({ pressed }) => [styles.raidButton, pressed ? styles.raidButtonPressed : null]}
           >
+            <AssetImage
+              assetKey="uiButtonRaidLarge"
+              resizeMode="stretch"
+              style={styles.raidButtonArt}
+              fallback={
+                <AssetImage
+                  assetKey="uiButtonRaid"
+                  resizeMode="stretch"
+                  style={styles.raidButtonArt}
+                  fallback={<View style={styles.raidButtonFallback} />}
+                />
+              }
+            />
             <Text style={styles.raidIcon}>X</Text>
             <Text style={styles.raidText}>RAID!</Text>
           </Pressable>
@@ -405,7 +422,11 @@ function ResourceChip({
 }) {
   return (
     <View style={styles.resourceChip}>
-      <AssetImage assetKey={assetKey} style={styles.resourceIcon} fallback={<ResourceFallback assetKey={assetKey} />} />
+      <PanelTexture dark />
+      <View style={styles.resourceIcon}>
+        <IconFrame />
+        <AssetImage assetKey={assetKey} style={styles.resourceIconArt} fallback={<ResourceFallback assetKey={assetKey} />} />
+      </View>
       <View style={styles.resourceCopy}>
         <Text style={styles.resourceValue}>{value}</Text>
         <Text style={styles.resourceRate}>{rate}</Text>
@@ -464,7 +485,11 @@ function SideNavButton({
         pressed ? styles.sideButtonPressed : null
       ]}
     >
-      <Text style={styles.sideGlyph}>{glyph}</Text>
+      <PanelTexture dark />
+      <View style={styles.sideIconFrame}>
+        <IconFrame />
+        <Text style={styles.sideGlyph}>{glyph}</Text>
+      </View>
       <Text style={[styles.sideLabel, active ? styles.sideLabelActive : null]}>{label}</Text>
       {badge ? (
         <View style={styles.sideBadge}>
@@ -484,9 +509,32 @@ function ObjectiveRow({ label, value, done }: { label: string; value: string; do
   );
 }
 
+function PanelTexture({ dark = true }: { dark?: boolean }) {
+  return (
+    <AssetImage
+      assetKey={dark ? "uiPanelDark" : "uiPanelLight"}
+      resizeMode="stretch"
+      style={styles.surfaceTexture}
+      fallback={<View style={dark ? styles.surfaceDarkFallback : styles.surfaceLightFallback} />}
+    />
+  );
+}
+
+function IconFrame() {
+  return (
+    <AssetImage
+      assetKey="uiIconFrame"
+      resizeMode="stretch"
+      style={styles.iconFrame}
+      fallback={<View style={styles.iconFrameFallback} />}
+    />
+  );
+}
+
 function TopPill({ label, accent }: { label: string; accent: string }) {
   return (
     <View style={styles.topPill}>
+      <PanelTexture dark />
       <Text style={styles.topPillText}>{label}</Text>
       <View style={styles.topAccent}>
         <Text style={styles.topAccentText}>{accent}</Text>
@@ -498,6 +546,8 @@ function TopPill({ label, accent }: { label: string; accent: string }) {
 function TopIcon({ label, glyph, onPress }: { label: string; glyph: string; onPress?: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.topIcon}>
+      <PanelTexture dark />
+      <IconFrame />
       <Text style={styles.topIconText}>{glyph}</Text>
     </Pressable>
   );
@@ -529,6 +579,12 @@ function ActionCard({
         pressed && !disabled ? styles.actionCardPressed : null
       ]}
     >
+      <AssetImage
+        assetKey="uiCardBuilding"
+        resizeMode="stretch"
+        style={styles.cardTexture}
+        fallback={<View style={styles.cardTextureFallback} />}
+      />
       <View style={styles.actionIcon}>
         {assetKey ? (
           <AssetImage
@@ -564,6 +620,7 @@ function SelectedUnitPanel({ unit }: { unit: Unit | null }) {
   if (!unit) {
     return (
       <View style={styles.panel}>
+        <PanelTexture dark />
         <Text style={styles.panelTitle}>No monkey selected</Text>
         <Text style={styles.panelText}>Tap a player monkey, then tap a nearby tile or resource.</Text>
       </View>
@@ -576,6 +633,7 @@ function SelectedUnitPanel({ unit }: { unit: Unit | null }) {
 
   return (
     <View style={styles.panel}>
+      <PanelTexture dark />
       <View style={styles.panelHeader}>
         <Text style={styles.panelTitle}>
           {unit.type === "fighter" ? "Fighter Monkey" : "Worker Monkey"}
@@ -615,6 +673,7 @@ function TutorialOverlay({
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.modalScrim}>
         <View style={styles.tutorialCard}>
+          <PanelTexture dark={false} />
           <Text style={styles.tutorialKicker}>Quick Start</Text>
           <Text style={styles.tutorialStep}>
             {step + 1}. {tutorialSteps[step]}
@@ -695,7 +754,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.16)",
     backgroundColor: glass,
-    padding: theme.spacing.sm
+    padding: theme.spacing.sm,
+    overflow: "hidden"
   },
   avatarRing: {
     width: 54,
@@ -704,7 +764,9 @@ const styles = StyleSheet.create({
     borderRadius: 27,
     borderWidth: 2,
     borderColor: "#6aa04f",
-    backgroundColor: "#1b2b19"
+    backgroundColor: "#1b2b19",
+    alignItems: "center",
+    justifyContent: "center"
   },
   avatar: {
     width: 54,
@@ -749,7 +811,8 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 12,
     backgroundColor: glass,
-    paddingHorizontal: theme.spacing.sm
+    paddingHorizontal: theme.spacing.sm,
+    overflow: "hidden"
   },
   topPillText: {
     color: theme.colors.paper,
@@ -775,7 +838,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 12,
-    backgroundColor: glass
+    backgroundColor: glass,
+    overflow: "hidden"
   },
   topIconText: {
     color: theme.colors.paper,
@@ -795,14 +859,21 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     backgroundColor: glass,
     paddingHorizontal: 7,
-    paddingVertical: 6
+    paddingVertical: 6,
+    overflow: "hidden"
   },
   resourceIcon: {
     width: 31,
     height: 31,
     borderRadius: 15,
     overflow: "hidden",
-    backgroundColor: "rgba(255, 255, 255, 0.08)"
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  resourceIconArt: {
+    width: 25,
+    height: 25
   },
   resourceFallback: {
     flex: 1,
@@ -851,7 +922,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.14)",
     backgroundColor: "rgba(54, 43, 27, 0.84)",
-    paddingHorizontal: 7
+    paddingHorizontal: 7,
+    overflow: "hidden"
   },
   sideButtonActive: {
     borderColor: "rgba(198, 238, 137, 0.48)",
@@ -862,8 +934,15 @@ const styles = StyleSheet.create({
   },
   sideGlyph: {
     color: theme.colors.paper,
-    fontSize: 11,
-    fontWeight: "900"
+    fontSize: 9,
+    fontWeight: "900",
+    textAlign: "center"
+  },
+  sideIconFrame: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center"
   },
   sideLabel: {
     marginTop: 3,
@@ -922,7 +1001,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.15)",
     backgroundColor: glass,
-    padding: theme.spacing.md
+    padding: theme.spacing.md,
+    overflow: "hidden"
   },
   objectiveHeader: {
     flexDirection: "row",
@@ -971,7 +1051,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.18)",
     backgroundColor: "rgba(15, 40, 28, 0.84)",
-    padding: theme.spacing.md
+    padding: theme.spacing.md,
+    overflow: "hidden"
   },
   panelHeader: {
     flexDirection: "row",
@@ -1010,7 +1091,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.14)",
     backgroundColor: "rgba(42, 38, 29, 0.9)",
-    padding: theme.spacing.sm
+    padding: theme.spacing.sm,
+    overflow: "hidden"
   },
   actionCards: {
     flex: 1,
@@ -1026,7 +1108,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(255, 224, 151, 0.12)",
     backgroundColor: "rgba(28, 32, 20, 0.92)",
-    padding: 6
+    padding: 6,
+    overflow: "hidden"
   },
   actionCardDisabled: {
     opacity: 0.48
@@ -1040,11 +1123,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
-    backgroundColor: "rgba(255, 224, 151, 0.12)"
+    backgroundColor: "rgba(255, 224, 151, 0.12)",
+    overflow: "hidden"
   },
   actionAsset: {
     width: "100%",
     height: "100%"
+  },
+  cardTexture: {
+    ...StyleSheet.absoluteFillObject
+  },
+  cardTextureFallback: {
+    flex: 1,
+    backgroundColor: "rgba(28, 32, 20, 0.92)"
   },
   actionGlyph: {
     color: "#e2b15a",
@@ -1075,6 +1166,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#7b330e",
     backgroundColor: "#d96516",
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.35,
     shadowRadius: 8,
@@ -1087,12 +1179,25 @@ const styles = StyleSheet.create({
   raidIcon: {
     color: theme.colors.paper,
     fontSize: 24,
-    fontWeight: "900"
+    fontWeight: "900",
+    textShadowColor: "rgba(0, 0, 0, 0.55)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 2
   },
   raidText: {
     color: theme.colors.paper,
     fontSize: 22,
-    fontWeight: "900"
+    fontWeight: "900",
+    textShadowColor: "rgba(0, 0, 0, 0.55)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 2
+  },
+  raidButtonArt: {
+    ...StyleSheet.absoluteFillObject
+  },
+  raidButtonFallback: {
+    flex: 1,
+    backgroundColor: "#d96516"
   },
   modalScrim: {
     flex: 1,
@@ -1108,7 +1213,8 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#172f20",
     backgroundColor: theme.colors.panel,
-    padding: theme.spacing.lg
+    padding: theme.spacing.lg,
+    overflow: "hidden"
   },
   tutorialKicker: {
     color: "#4d5837",
@@ -1165,5 +1271,26 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     fontSize: 15,
     fontWeight: "900"
+  },
+  surfaceTexture: {
+    ...StyleSheet.absoluteFillObject
+  },
+  surfaceDarkFallback: {
+    flex: 1,
+    backgroundColor: glass
+  },
+  surfaceLightFallback: {
+    flex: 1,
+    backgroundColor: theme.colors.panel
+  },
+  iconFrame: {
+    ...StyleSheet.absoluteFillObject
+  },
+  iconFrameFallback: {
+    flex: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.36)",
+    backgroundColor: "rgba(255, 255, 255, 0.08)"
   }
 });
