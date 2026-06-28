@@ -2,19 +2,17 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
-import { SpriteSheetImage, type SpriteFrame } from "./SpriteSheetImage";
 import { CAMP_MAX_HP } from "../../game/config/constants";
-import { getGameAsset } from "../../game/assets/gameAssets";
+import type { GameAssetKey } from "../../game/assets/gameAssets";
 import type { Buildings, Tile, Unit } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
-type GameBoardProps = {
+type VillageBoardProps = {
   tiles: Tile[];
   units: Unit[];
   selectedUnitId: string | null;
   buildings: Buildings;
   playerCampHp: number;
-  enemyCampHp: number;
   maxSize?: number;
   feedbackText?: string;
   onCellPress: (tile: Tile, unit?: Unit) => void;
@@ -34,8 +32,6 @@ type SceneItem = {
 };
 
 const VILLAGE_CENTER: Point = { x: 47, y: 42 };
-const ENEMY_ZONE: Point = { x: 79, y: 24 };
-
 const TILE_POINTS: Record<string, Point> = {
   "1,8": VILLAGE_CENTER,
   "1,7": { x: 37, y: 57 },
@@ -51,7 +47,7 @@ const TILE_POINTS: Record<string, Point> = {
   "3,5": { x: 16, y: 38 },
   "6,2": { x: 57, y: 17 },
   "8,4": { x: 91, y: 53 },
-  "8,1": ENEMY_ZONE,
+  "8,1": { x: 79, y: 24 },
   "7,1": { x: 69, y: 23 },
   "9,1": { x: 89, y: 24 },
   "8,2": { x: 80, y: 32 },
@@ -86,26 +82,25 @@ const FENCE_POSTS = [
   { x: 17, y: 55, rotate: -6 }
 ];
 
-export function GameBoard({
+export function VillageBoard({
   tiles,
   units,
   selectedUnitId,
   buildings,
   playerCampHp,
-  enemyCampHp,
   maxSize = 430,
   feedbackText,
   onCellPress
-}: GameBoardProps) {
+}: VillageBoardProps) {
   const { width } = useWindowDimensions();
   const sceneWidth = Math.min(width - theme.spacing.lg * 2, maxSize);
   const sceneHeight = sceneWidth * 1.06;
-  const aliveUnits = units.filter((unit) => unit.state !== "dead" && unit.hp > 0);
-  const selectedUnit = aliveUnits.find((unit) => unit.id === selectedUnitId);
+  const aliveUnits = units.filter(
+    (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
+  );
   const decorativeItems = [
-    ...resourceItems(tiles, playerCampHp, enemyCampHp),
-    ...villageItems(buildings, playerCampHp),
-    ...enemyItems(tiles, enemyCampHp)
+    ...resourceItems(tiles),
+    ...villageItems(buildings, playerCampHp)
   ].sort((a, b) => a.zIndex - b.zIndex);
   const unitItems = aliveUnits
     .map((unit) => unitSceneItem(unit, unit.id === selectedUnitId))
@@ -126,17 +121,8 @@ export function GameBoard({
         {tiles.map((tile) => {
           const tileUnit = aliveUnits.find((unit) => unit.x === tile.x && unit.y === tile.y);
           const selected = tileUnit?.id === selectedUnitId;
-          const reachable = Boolean(
-            selectedUnit &&
-              !tileUnit &&
-              Math.abs(selectedUnit.x - tile.x) + Math.abs(selectedUnit.y - tile.y) === 1
-          );
-          const attackHint = Boolean(
-            selectedUnit &&
-              (tileUnit?.owner === "enemy" || tile.type === "enemyCamp") &&
-              Math.abs(selectedUnit.x - tile.x) + Math.abs(selectedUnit.y - tile.y) <= 2
-          );
           const point = pointForTile(tile);
+          const resource = isResourceTile(tile);
 
           return (
             <Pressable
@@ -152,8 +138,7 @@ export function GameBoard({
                 }
               ]}
             >
-              {reachable ? <View style={styles.moveDot} /> : null}
-              {attackHint ? <View style={styles.attackRing} /> : null}
+              {resource ? <View style={styles.resourceDot} /> : null}
               {selected ? <View style={styles.selectedTileRing} /> : null}
             </Pressable>
           );
@@ -246,7 +231,7 @@ function VillageGround() {
   );
 }
 
-function resourceItems(tiles: Tile[], playerCampHp: number, enemyCampHp: number): SceneItem[] {
+function resourceItems(tiles: Tile[]): SceneItem[] {
   return tiles.flatMap((tile) => {
     if (tile.type === "playerCamp" || tile.type === "enemyCamp") {
       return [];
@@ -283,9 +268,6 @@ function resourceItems(tiles: Tile[], playerCampHp: number, enemyCampHp: number)
         ))
       ];
     }
-
-    void playerCampHp;
-    void enemyCampHp;
     return [];
   });
 }
@@ -304,8 +286,8 @@ function villageItems(buildings: Buildings, playerCampHp: number): SceneItem[] {
     item("edge-bush-b", { x: 75, y: 70 }, 11, 71, (
       <AssetImage assetKey="terrainBush" style={styles.full} fallback={<BushFallback />} />
     )),
-    item("watch-post", BUILDING_SLOTS.watchPost, 20, 38, buildingNode(buildings.watchPost > 0, "buildingWatchPost", <WatchScaffold />)),
-    item("hut", BUILDING_SLOTS.hut, 23, 49, buildingNode(buildings.hut > 0, "buildingHut", <ConstructionPad label="Hut" />)),
+    item("watch-post", BUILDING_SLOTS.watchPost, 20, 38, buildingNode(buildings.watchPost > 0, "buildingWatchPost")),
+    item("hut", BUILDING_SLOTS.hut, 23, 49, buildingNode(buildings.hut > 0, "buildingHut")),
     item("player-camp", BUILDING_SLOTS.camp, 30, 54, (
       <CampArt player hpPercent={Math.max(0, Math.round((playerCampHp / CAMP_MAX_HP) * 100))} />
     )),
@@ -314,45 +296,36 @@ function villageItems(buildings: Buildings, playerCampHp: number): SceneItem[] {
       BUILDING_SLOTS.trainingNest,
       21,
       58,
-      buildingNode(buildings.trainingNest > 0, "buildingTrainingNest", <TrainingScaffold />)
+      buildingNode(buildings.trainingNest > 0, "buildingTrainingNest")
     ),
     item("campfire", BUILDING_SLOTS.campfire, 16, 72, <Campfire />),
-    item("crate-stack", { x: 24, y: 53 }, 7, 66, <CrateStack />),
-    item("barrels", { x: 39, y: 55 }, 7, 67, <BarrelStack />),
-    item("banana-basket", { x: 40, y: 66 }, 8, 76, <BananaBasket />),
-    item("log-pile", { x: 58, y: 68 }, 10, 78, <LogPile />),
-    item("rope-coil", { x: 72, y: 58 }, 7, 72, <RopeCoil />),
+    item("village-bananas", { x: 40, y: 66 }, 10, 76, (
+      <AssetImage assetKey="terrainBananaTree" style={styles.full} fallback={<BananaFallback />} />
+    )),
+    item("village-wood", { x: 58, y: 69 }, 12, 78, (
+      <AssetImage assetKey="terrainWoodTree" style={styles.full} fallback={<WoodFallback />} />
+    )),
     item("village-rocks", { x: 25, y: 76 }, 8, 86, (
       <AssetImage assetKey="terrainRock" style={styles.full} fallback={<StoneFallback />} />
     ))
   ];
 }
 
-function enemyItems(tiles: Tile[], enemyCampHp: number): SceneItem[] {
-  const enemyTile = tiles.find((tile) => tile.type === "enemyCamp");
-  if (!enemyTile) {
-    return [];
-  }
-
-  return [
-    item("enemy-camp", pointForTile(enemyTile), 22, 42, (
-      <CampArt player={false} hpPercent={Math.max(0, Math.round((enemyCampHp / CAMP_MAX_HP) * 100))} />
-    )),
-    item("enemy-rock", { x: 91, y: 34 }, 8, 38, (
-      <AssetImage assetKey="terrainRock" style={styles.full} fallback={<StoneFallback />} />
-    )),
-    item("enemy-bush", { x: 72, y: 35 }, 10, 39, (
-      <AssetImage assetKey="terrainBush" style={styles.full} fallback={<BushFallback />} />
-    ))
-  ];
-}
-
 function buildingNode(
   built: boolean,
-  assetKey: "buildingHut" | "buildingTrainingNest" | "buildingWatchPost",
-  fallback: ReactNode
+  assetKey: "buildingHut" | "buildingTrainingNest" | "buildingWatchPost"
 ) {
-  return built ? <AssetImage assetKey={assetKey} style={styles.full} fallback={fallback} /> : fallback;
+  return (
+    <AssetImage
+      assetKey={assetKey}
+      style={[styles.full, built ? null : styles.unbuiltAsset]}
+      fallback={<View style={styles.assetMissing} />}
+    />
+  );
+}
+
+function isResourceTile(tile: Tile) {
+  return tile.type === "bananaTree" || tile.type === "stoneRock" || tile.type === "woodGrove";
 }
 
 function unitSceneItem(unit: Unit, selected: boolean): SceneItem {
@@ -447,17 +420,14 @@ function CampArt({ player, hpPercent }: { player: boolean; hpPercent: number }) 
 function UnitArt({ unit, selected }: { unit: Unit; selected: boolean }) {
   const player = unit.owner === "player";
   const hpPercent = Math.max(0, Math.round((unit.hp / unit.maxHp) * 100));
-  const sheet = getGameAsset("unitMonkeySheet");
 
   return (
     <View style={styles.unitWrap}>
       {selected ? <View style={[styles.selectionRing, { borderColor: player ? theme.colors.banana : "#f8efe4" }]} /> : null}
-      <SpriteSheetImage
-        source={sheet.source}
-        sheetWidth={1341}
-        sheetHeight={1173}
-        frame={unitSpriteFrame(unit)}
-        style={styles.unitSprite}
+      <AssetImage
+        assetKey={unitAssetKey(unit)}
+        style={styles.unitAsset}
+        imageStyle={styles.unitImage}
         fallback={<UnitFallback player={player} fighter={unit.type === "fighter"} />}
       />
       <HealthBar percent={hpPercent} enemy={!player} />
@@ -481,22 +451,12 @@ function HealthBar({ percent, enemy, large }: { percent: number; enemy?: boolean
   );
 }
 
-function unitSpriteFrame(unit: Unit): SpriteFrame {
-  const row =
-    unit.owner === "enemy"
-      ? 3
-      : unit.type === "fighter"
-        ? 1
-        : unit.type === "worker"
-          ? 0
-          : 2;
+function unitAssetKey(unit: Unit): GameAssetKey {
+  if (unit.owner === "enemy") {
+    return "unitEnemyFighter";
+  }
 
-  return {
-    x: 1084,
-    y: row * 293 + 18,
-    width: 230,
-    height: 256
-  };
+  return unit.type === "fighter" ? "unitFighter" : "unitWorker";
 }
 
 function Campfire() {
@@ -507,108 +467,6 @@ function Campfire() {
       <Line x1="18" y1="35" x2="48" y2="49" stroke="#7b4b24" strokeWidth="6" strokeLinecap="round" />
       <Path d="M32 38 C22 30 34 20 31 11 C43 22 44 31 36 39 Z" fill="#ff8c1a" />
       <Path d="M31 39 C27 32 35 27 34 20 C42 31 37 37 33 43 Z" fill="#ffd95a" />
-    </Svg>
-  );
-}
-
-function ConstructionPad({ label }: { label: string }) {
-  return (
-    <View style={styles.padArt}>
-      <Svg width="100%" height="100%" viewBox="0 0 64 64">
-        <Ellipse cx="32" cy="48" rx="23" ry="9" fill="rgba(59, 37, 18, 0.35)" />
-        <Path d="M14 42 L29 26 L50 36 L36 51 Z" fill="#8a6032" opacity="0.76" />
-        <Line x1="18" y1="42" x2="49" y2="36" stroke="#d2a35f" strokeWidth="4" strokeLinecap="round" />
-        <Line x1="29" y1="27" x2="36" y2="51" stroke="#5d3518" strokeWidth="3" strokeLinecap="round" />
-        <Circle cx="20" cy="39" r="3" fill="#e6c176" />
-        <Circle cx="46" cy="37" r="3" fill="#e6c176" />
-      </Svg>
-      <Text style={styles.padText}>{label}</Text>
-    </View>
-  );
-}
-
-function TrainingScaffold() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Ellipse cx="32" cy="50" rx="22" ry="8" fill="rgba(59, 37, 18, 0.36)" />
-      <Line x1="17" y1="50" x2="25" y2="18" stroke="#7b4b24" strokeWidth="5" strokeLinecap="round" />
-      <Line x1="47" y1="50" x2="39" y2="18" stroke="#7b4b24" strokeWidth="5" strokeLinecap="round" />
-      <Line x1="21" y1="26" x2="43" y2="26" stroke="#c18b45" strokeWidth="5" strokeLinecap="round" />
-      <Circle cx="32" cy="36" r="11" fill="#d7bd86" />
-      <Circle cx="32" cy="36" r="7" fill="#b34a35" />
-      <Circle cx="32" cy="36" r="3" fill="#f8efd2" />
-    </Svg>
-  );
-}
-
-function WatchScaffold() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Ellipse cx="32" cy="53" rx="20" ry="7" fill="rgba(59, 37, 18, 0.34)" />
-      <Line x1="22" y1="52" x2="27" y2="20" stroke="#75451f" strokeWidth="5" strokeLinecap="round" />
-      <Line x1="42" y1="52" x2="37" y2="20" stroke="#75451f" strokeWidth="5" strokeLinecap="round" />
-      <Rect x="21" y="17" width="22" height="12" rx="3" fill="#a66b32" />
-      <Path d="M18 18 L32 8 L46 18 Z" fill="#c84a3a" />
-    </Svg>
-  );
-}
-
-function CrateStack() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Ellipse cx="33" cy="51" rx="22" ry="7" fill="rgba(45, 28, 14, 0.32)" />
-      <Rect x="12" y="30" width="20" height="18" rx="3" fill="#9c6530" stroke="#4d2a13" strokeWidth="2" />
-      <Rect x="31" y="25" width="21" height="23" rx="3" fill="#b17635" stroke="#4d2a13" strokeWidth="2" />
-      <Line x1="15" y1="33" x2="29" y2="46" stroke="#d6a45b" strokeWidth="2" />
-      <Line x1="49" y1="28" x2="34" y2="46" stroke="#d6a45b" strokeWidth="2" />
-    </Svg>
-  );
-}
-
-function BarrelStack() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Ellipse cx="32" cy="51" rx="20" ry="7" fill="rgba(45, 28, 14, 0.32)" />
-      <Rect x="16" y="20" width="18" height="28" rx="7" fill="#8a4f25" stroke="#4d2a13" strokeWidth="2" />
-      <Rect x="32" y="27" width="17" height="22" rx="7" fill="#a4632c" stroke="#4d2a13" strokeWidth="2" />
-      <Line x1="17" y1="28" x2="34" y2="28" stroke="#d3a25b" strokeWidth="3" />
-      <Line x1="33" y1="34" x2="48" y2="34" stroke="#d3a25b" strokeWidth="3" />
-      <Line x1="17" y1="41" x2="34" y2="41" stroke="#5a3117" strokeWidth="3" />
-    </Svg>
-  );
-}
-
-function LogPile() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Ellipse cx="32" cy="50" rx="24" ry="8" fill="rgba(45, 28, 14, 0.32)" />
-      <Rect x="10" y="32" width="40" height="8" rx="4" fill="#8a4f25" transform="rotate(-9 30 36)" />
-      <Rect x="15" y="40" width="40" height="8" rx="4" fill="#b06c32" transform="rotate(8 35 44)" />
-      <Circle cx="13" cy="35" r="4" fill="#d49a54" />
-      <Circle cx="52" cy="45" r="4" fill="#d49a54" />
-    </Svg>
-  );
-}
-
-function RopeCoil() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Ellipse cx="32" cy="51" rx="20" ry="6" fill="rgba(45, 28, 14, 0.28)" />
-      <Circle cx="32" cy="34" r="18" fill="none" stroke="#d6a45b" strokeWidth="6" />
-      <Circle cx="32" cy="34" r="10" fill="none" stroke="#8d5a2b" strokeWidth="5" />
-      <Path d="M43 45 C50 48 52 53 48 58" stroke="#d6a45b" strokeWidth="4" fill="none" strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-function BananaBasket() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Ellipse cx="32" cy="52" rx="19" ry="6" fill="rgba(45, 28, 14, 0.3)" />
-      <Path d="M16 35 H49 L44 52 H21 Z" fill="#9b5d2b" stroke="#4d2a13" strokeWidth="2" />
-      <Path d="M21 34 C24 18 39 18 43 34" fill="none" stroke="#d6a45b" strokeWidth="4" />
-      <Path d="M24 29 C30 26 34 31 28 37" stroke="#ffd95a" strokeWidth="5" fill="none" strokeLinecap="round" />
-      <Path d="M34 27 C42 29 42 37 33 39" stroke="#f3c739" strokeWidth="5" fill="none" strokeLinecap="round" />
     </Svg>
   );
 }
@@ -764,11 +622,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "visible"
   },
-  unitSprite: {
+  unitAsset: {
     width: "100%",
     height: "100%",
-    overflow: "visible",
     zIndex: 1
+  },
+  unitImage: {
+    width: "100%",
+    height: "100%"
+  },
+  unbuiltAsset: {
+    opacity: 0.46
+  },
+  assetMissing: {
+    flex: 1
   },
   selectionRing: {
     position: "absolute",
@@ -799,23 +666,15 @@ const styles = StyleSheet.create({
   hpFill: {
     height: "100%"
   },
-  moveDot: {
+  resourceDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(105, 255, 114, 0.72)",
+    backgroundColor: "rgba(255, 224, 91, 0.72)",
     shadowColor: "#85ff70",
     shadowOpacity: 0.8,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 0 }
-  },
-  attackRing: {
-    width: 21,
-    height: 21,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: "rgba(255, 238, 196, 0.92)",
-    backgroundColor: "rgba(204, 67, 45, 0.48)"
   },
   selectedTileRing: {
     position: "absolute",
@@ -847,21 +706,4 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textAlign: "center"
   },
-  padArt: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    opacity: 0.86
-  },
-  padText: {
-    position: "absolute",
-    bottom: "8%",
-    color: "#f3d891",
-    fontSize: 7,
-    fontWeight: "900",
-    textShadowColor: "rgba(0, 0, 0, 0.8)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1
-  }
 });

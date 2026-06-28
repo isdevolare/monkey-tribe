@@ -46,6 +46,8 @@ function createFreshState(now: number) {
   return {
     currentScreen: "menu" as const,
     gameStatus: "menu" as const,
+    gameMode: "village" as const,
+    raidStatus: "idle" as const,
     mapTiles: createInitialMap(),
     units: createInitialUnits(now),
     selectedUnitId: null,
@@ -385,6 +387,88 @@ function findSpawnPosition(units: Unit[], owner: Owner): Position {
   return camp;
 }
 
+function createRaidEnemies(now: number): Unit[] {
+  return [
+    createUnit(`raid-enemy-fighter-1-${now}`, "fighter", "enemy", 8, 2, now),
+    createUnit(`raid-enemy-fighter-2-${now}`, "fighter", "enemy", 7, 1, now),
+    createUnit(`raid-enemy-fighter-3-${now}`, "fighter", "enemy", 9, 1, now)
+  ];
+}
+
+function deployRaidUnits(units: Unit[], now: number) {
+  let fighterIndex = 0;
+
+  return [
+    ...units
+      .filter((unit) => unit.owner === "player")
+      .map((unit) => {
+        if (unit.type !== "fighter" || unit.state === "dead" || unit.hp <= 0) {
+          return {
+            ...unit,
+            state: "idle" as const,
+            target: undefined,
+            gatherTarget: undefined,
+            carriedResource: null
+          };
+        }
+
+        const slot = fighterIndex;
+        fighterIndex += 1;
+
+        return {
+          ...unit,
+          x: 6 + (slot % 2),
+          y: 3 + Math.floor(slot / 2),
+          state: "attacking" as const,
+          target: { kind: "camp", owner: "enemy" } as UnitTarget,
+          gatherTarget: undefined,
+          carriedResource: null,
+          lastStepAt: now,
+          lastActionAt: now
+        };
+      }),
+    ...createRaidEnemies(now)
+  ];
+}
+
+function returnPlayerUnitsToVillage(units: Unit[]) {
+  let playerIndex = 0;
+
+  return units
+    .filter((unit) => unit.owner === "player")
+    .map((unit) => {
+      const slot = playerIndex;
+      playerIndex += 1;
+
+      return {
+        ...unit,
+        x: PLAYER_CAMP.x + (slot % 2),
+        y: PLAYER_CAMP.y - 1 + Math.floor(slot / 2),
+        state: unit.hp > 0 ? ("idle" as const) : ("dead" as const),
+        target: undefined,
+        gatherTarget: undefined,
+        carriedResource: null
+      };
+    });
+}
+
+function assignRaidOrders(units: Unit[]) {
+  assignEnemyOrders(units);
+
+  for (const unit of units) {
+    if (
+      unit.owner === "player" &&
+      unit.type === "fighter" &&
+      unit.state !== "dead" &&
+      unit.hp > 0 &&
+      unit.state === "idle"
+    ) {
+      unit.state = "attacking";
+      unit.target = { kind: "camp", owner: "enemy" };
+    }
+  }
+}
+
 function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
   if (state.gameStatus !== "playing") {
     return state;
@@ -482,7 +566,9 @@ export const useGameStore = create<GameState>((set) => ({
     set(() => ({
       ...createFreshState(Date.now()),
       currentScreen: "game",
-      gameStatus: "playing"
+      gameStatus: "playing",
+      gameMode: "village",
+      raidStatus: "idle"
     })),
   selectUnit: (unitId) =>
     set((state) => {
@@ -567,42 +653,41 @@ export const useGameStore = create<GameState>((set) => ({
     }),
   raidEnemyCamp: () =>
     set((state) => {
-      const raider =
-        state.units.find(
-          (unit) =>
-            unit.owner === "player" &&
-            unit.type === "fighter" &&
-            unit.state !== "dead" &&
-            unit.hp > 0
-        ) ??
-        state.units.find(
-          (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
-        );
+      const now = Date.now();
+      const fighters = state.units.filter(
+        (unit) =>
+          unit.owner === "player" &&
+          unit.type === "fighter" &&
+          unit.state !== "dead" &&
+          unit.hp > 0
+      );
 
-      if (!raider) {
+      if (fighters.length <= 0) {
         return {
           ...state,
-          feedback: { id: Date.now(), text: "No monkeys are ready to raid" }
+          feedback: { id: now, text: "Train a fighter before raiding" }
         };
       }
 
       return {
         ...state,
-        selectedUnitId: raider.id,
-        units: state.units.map((unit) =>
-          unit.id === raider.id
-            ? {
-                ...unit,
-                state: "attacking",
-                target: { kind: "camp", owner: "enemy" },
-                gatherTarget: undefined,
-                carriedResource: null
-              }
-            : unit
-        ),
-        feedback: { id: Date.now(), text: "Raid order sent to enemy camp" }
+        gameMode: "raid",
+        raidStatus: "active",
+        enemyCampHp: CAMP_MAX_HP,
+        selectedUnitId: null,
+        units: deployRaidUnits(state.units, now),
+        feedback: { id: now, text: "Raid started. Fighters are attacking!" }
       };
     }),
+  returnToVillage: () =>
+    set((state) => ({
+      ...state,
+      gameMode: "village",
+      raidStatus: "idle",
+      selectedUnitId: null,
+      units: returnPlayerUnitsToVillage(state.units),
+      feedback: { id: Date.now(), text: "Raid party returned to the village" }
+    })),
   createWorker: () => set((state) => createPlayerUnit(state, "worker")),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
   buildHut: () => set((state) => buildPlayerBuilding(state, "hut")),
@@ -626,19 +711,69 @@ export const useGameStore = create<GameState>((set) => ({
       };
       let nextEnemySpawnAt = state.nextEnemySpawnAt;
 
-      if (now >= nextEnemySpawnAt) {
-        const spawn = findSpawnPosition(units, "enemy");
-        units.push(
-          createUnit(`enemy-fighter-${now}`, "fighter", "enemy", spawn.x, spawn.y, now)
+      if (state.gameMode === "raid" && state.raidStatus === "active") {
+        assignRaidOrders(units);
+
+        for (const unit of units) {
+          if (
+            unit.owner === "enemy" ||
+            (unit.owner === "player" && unit.type === "fighter")
+          ) {
+            processUnit(unit, game, now);
+          }
+        }
+
+        const raidFightersAlive = units.some(
+          (unit) =>
+            unit.owner === "player" &&
+            unit.type === "fighter" &&
+            unit.state !== "dead" &&
+            unit.hp > 0
         );
-        nextEnemySpawnAt = now + ENEMY_SPAWN_INTERVAL_MS;
-        game.feedbackText = "Enemy camp trained a fighter";
+
+        if (game.enemyCampHp <= 0) {
+          return {
+            ...state,
+            units: game.units,
+            resources: {
+              bananas: game.resources.bananas + 25,
+              stones: game.resources.stones + 10,
+              wood: game.resources.wood + 10
+            },
+            enemyCampHp: 0,
+            feedback: { id: now, text: "Raid victory! +25 bananas, +10 stones, +10 wood" },
+            selectedUnitId: null,
+            raidStatus: "victory",
+            nextEnemySpawnAt
+          };
+        }
+
+        if (!raidFightersAlive) {
+          return {
+            ...state,
+            units: game.units,
+            enemyCampHp: game.enemyCampHp,
+            feedback: { id: now, text: "Raid failed. Return and train more fighters" },
+            selectedUnitId: null,
+            raidStatus: "defeat",
+            nextEnemySpawnAt
+          };
+        }
+
+        return {
+          ...state,
+          units: game.units,
+          enemyCampHp: game.enemyCampHp,
+          feedback: game.feedbackText ? { id: now, text: game.feedbackText } : state.feedback,
+          selectedUnitId: null,
+          nextEnemySpawnAt
+        };
       }
 
-      assignEnemyOrders(units);
-
       for (const unit of units) {
-        processUnit(unit, game, now);
+        if (unit.owner === "player") {
+          processUnit(unit, game, now);
+        }
       }
 
       const selectedUnit = units.find((unit) => unit.id === state.selectedUnitId);
@@ -664,18 +799,6 @@ export const useGameStore = create<GameState>((set) => ({
         enemyCampHp: game.enemyCampHp
       };
 
-      if (game.enemyCampHp <= 0) {
-        return {
-          ...state,
-          ...nextGame,
-          feedback,
-          selectedUnitId: null,
-          currentScreen: "result",
-          gameStatus: "victory",
-          nextEnemySpawnAt
-        };
-      }
-
       if (game.playerCampHp <= 0 || (!playerUnitsAlive && !canRecover)) {
         return {
           ...state,
@@ -700,7 +823,9 @@ export const useGameStore = create<GameState>((set) => ({
     set(() => ({
       ...createFreshState(Date.now()),
       currentScreen: "game",
-      gameStatus: "playing"
+      gameStatus: "playing",
+      gameMode: "village",
+      raidStatus: "idle"
     })),
   goToMenu: () =>
     set(() => ({

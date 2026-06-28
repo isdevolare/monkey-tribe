@@ -1,5 +1,7 @@
 export type ScreenId = "menu" | "game" | "result";
 export type GameStatus = "menu" | "playing" | "victory" | "defeat";
+export type GameMode = "village" | "raid";
+export type RaidStatus = "idle" | "active" | "victory" | "defeat";
 export type Owner = "player" | "enemy";
 export type ResourceKind = "bananas" | "stones" | "wood";
 export type BuildingType = "hut" | "trainingNest" | "watchPost";
@@ -80,6 +82,8 @@ export type FeedbackMessage = {
 export type GameState = {
   currentScreen: ScreenId;
   gameStatus: GameStatus;
+  gameMode: GameMode;
+  raidStatus: RaidStatus;
   mapTiles: Tile[];
   units: Unit[];
   selectedUnitId: string | null;
@@ -98,6 +102,7 @@ export type GameState = {
   createWorker: () => void;
   trainFighter: () => void;
   raidEnemyCamp: () => void;
+  returnToVillage: () => void;
   buildHut: () => void;
   buildTrainingNest: () => void;
   buildWatchPost: () => void;

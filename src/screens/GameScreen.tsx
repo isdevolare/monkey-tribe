@@ -11,8 +11,9 @@ import {
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
-import { GameBoard } from "../components/game/GameBoard";
+import { RaidBoard } from "../components/game/RaidBoard";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
+import { VillageBoard } from "../components/game/VillageBoard";
 import { getGameAsset } from "../game/assets/gameAssets";
 import { BUILDING_COSTS, UNIT_COSTS } from "../game/config/constants";
 import { useGameStore } from "../game/state/gameStore";
@@ -79,7 +80,7 @@ export function GameScreen() {
   }, []);
 
   function handleCellPress(tile: Tile, unit?: Unit) {
-    if (state.gameStatus !== "playing") {
+    if (state.gameStatus !== "playing" || state.gameMode !== "village") {
       return;
     }
 
@@ -89,11 +90,6 @@ export function GameScreen() {
     }
 
     if (!selectedUnit) {
-      return;
-    }
-
-    if (unit?.owner === "enemy") {
-      state.commandAttack({ kind: "unit", unitId: unit.id });
       return;
     }
 
@@ -112,12 +108,7 @@ export function GameScreen() {
       return;
     }
 
-    if (tile.type === "enemyCamp") {
-      state.commandAttack({ kind: "camp", owner: "enemy" });
-      return;
-    }
-
-    state.commandMove(tile.x, tile.y);
+    return;
   }
 
   function closeTutorial() {
@@ -208,107 +199,121 @@ export function GameScreen() {
           />
         </View>
 
-        <View style={styles.mainStage}>
-          <View style={styles.sideNav}>
-            <SideNavButton
-              label="Overview"
-              glyph="O"
-              active={actionTab === "overview"}
-              onPress={() => setActionTab("overview")}
-            />
-            <SideNavButton
-              label="Monkeys"
-              glyph="M"
-              badge={population}
-              active={actionTab === "monkeys"}
-              onPress={() => setActionTab("monkeys")}
-            />
-            <SideNavButton
-              label="Build"
-              glyph="B"
-              active={actionTab === "build"}
-              onPress={() => setActionTab("build")}
-            />
-            <SideNavButton
-              label="Map"
-              glyph="Map"
-              active={actionTab === "map"}
-              onPress={() => setActionTab("map")}
-            />
-            <SideNavButton
-              label="Shop"
-              glyph="Hut"
-              active={actionTab === "shop"}
-              onPress={() => setActionTab("shop")}
-            />
-            <SideNavButton
-              label="Settings"
-              glyph="S"
-              active={actionTab === "settings"}
-              onPress={() => setActionTab("settings")}
+        {state.gameMode === "raid" ? (
+          <View style={styles.raidStage}>
+            <RaidBoard
+              units={state.units}
+              enemyCampHp={state.enemyCampHp}
+              raidStatus={state.raidStatus}
+              maxSize={Math.min(width - theme.spacing.md * 2, 404)}
+              feedbackText={state.feedback?.text}
+              onReturn={state.returnToVillage}
             />
           </View>
+        ) : (
+          <>
+            <View style={styles.mainStage}>
+              <View style={styles.sideNav}>
+                <SideNavButton
+                  label="Overview"
+                  glyph="O"
+                  active={actionTab === "overview"}
+                  onPress={() => setActionTab("overview")}
+                />
+                <SideNavButton
+                  label="Monkeys"
+                  glyph="M"
+                  badge={population}
+                  active={actionTab === "monkeys"}
+                  onPress={() => setActionTab("monkeys")}
+                />
+                <SideNavButton
+                  label="Build"
+                  glyph="B"
+                  active={actionTab === "build"}
+                  onPress={() => setActionTab("build")}
+                />
+                <SideNavButton
+                  label="Map"
+                  glyph="Map"
+                  active={actionTab === "map"}
+                  onPress={() => setActionTab("map")}
+                />
+                <SideNavButton
+                  label="Shop"
+                  glyph="Hut"
+                  active={actionTab === "shop"}
+                  onPress={() => setActionTab("shop")}
+                />
+                <SideNavButton
+                  label="Settings"
+                  glyph="S"
+                  active={actionTab === "settings"}
+                  onPress={() => setActionTab("settings")}
+                />
+              </View>
 
-          <View style={styles.playColumn}>
-            <View style={styles.boardShell}>
-              <GameBoard
-                tiles={state.mapTiles}
-                units={state.units}
-                selectedUnitId={state.selectedUnitId}
-                buildings={state.buildings}
-                playerCampHp={state.playerCampHp}
-                enemyCampHp={state.enemyCampHp}
-                maxSize={boardMaxSize}
-                feedbackText={state.feedback?.text}
-                onCellPress={handleCellPress}
-              />
+              <View style={styles.playColumn}>
+                <View style={styles.boardShell}>
+                  <VillageBoard
+                    tiles={state.mapTiles}
+                    units={state.units}
+                    selectedUnitId={state.selectedUnitId}
+                    buildings={state.buildings}
+                    playerCampHp={state.playerCampHp}
+                    maxSize={boardMaxSize}
+                    feedbackText={state.feedback?.text}
+                    onCellPress={handleCellPress}
+                  />
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
 
-        <View style={styles.objectivePanel}>
-          <PanelTexture dark />
-          <View style={styles.objectiveHeader}>
-            <Text style={styles.objectiveTitle}>Objectives</Text>
-            <Text style={styles.objectiveCounter}>Tasks</Text>
-          </View>
-          <ObjectiveRow label="Build a Hut" value={`${state.buildings.hut > 0 ? 1 : 0}/1`} done={state.buildings.hut > 0} />
-          <ObjectiveRow
-            label="Gather 100 Bananas"
-            value={`${Math.min(state.resources.bananas, 100)}/100`}
-            done={state.resources.bananas >= 100}
-          />
-          <ObjectiveRow label="Train a Fighter" value={`${fighterCount > 0 ? 1 : 0}/1`} done={fighterCount > 0} />
-          <ObjectiveRow label="Defeat Enemy Camp" value={`${state.enemyCampHp <= 0 ? 1 : 0}/1`} done={state.enemyCampHp <= 0} />
-        </View>
+            <View style={styles.objectivePanel}>
+              <PanelTexture dark />
+              <View style={styles.objectiveHeader}>
+                <Text style={styles.objectiveTitle}>Objectives</Text>
+                <Text style={styles.objectiveCounter}>Tasks</Text>
+              </View>
+              <ObjectiveRow label="Build a Hut" value={`${state.buildings.hut > 0 ? 1 : 0}/1`} done={state.buildings.hut > 0} />
+              <ObjectiveRow
+                label="Gather 100 Bananas"
+                value={`${Math.min(state.resources.bananas, 100)}/100`}
+                done={state.resources.bananas >= 100}
+              />
+              <ObjectiveRow label="Train a Fighter" value={`${fighterCount > 0 ? 1 : 0}/1`} done={fighterCount > 0} />
+              <ObjectiveRow label="Win a Raid" value={`${state.enemyCampHp <= 0 ? 1 : 0}/1`} done={state.enemyCampHp <= 0} />
+            </View>
 
-        <SelectedUnitPanel unit={selectedUnit} />
+            <SelectedUnitPanel unit={selectedUnit} />
 
-        <View style={styles.bottomDock}>
-          <PanelTexture dark />
-          <View style={styles.actionCards}>{renderActionCards()}</View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={state.raidEnemyCamp}
-            style={({ pressed }) => [styles.raidButton, pressed ? styles.raidButtonPressed : null]}
-          >
-            <AssetImage
-              assetKey="uiButtonRaidLarge"
-              resizeMode="stretch"
-              style={styles.raidButtonArt}
-              fallback={
+            <View style={styles.bottomDock}>
+              <PanelTexture dark />
+              <View style={styles.actionCards}>{renderActionCards()}</View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={state.raidEnemyCamp}
+                style={({ pressed }) => [styles.raidButton, pressed ? styles.raidButtonPressed : null]}
+              >
                 <AssetImage
-                  assetKey="uiButtonRaid"
+                  assetKey="uiButtonRaidLarge"
                   resizeMode="stretch"
                   style={styles.raidButtonArt}
-                  fallback={<View style={styles.raidButtonFallback} />}
+                  fallback={
+                    <AssetImage
+                      assetKey="uiButtonRaid"
+                      resizeMode="stretch"
+                      style={styles.raidButtonArt}
+                      fallback={<View style={styles.raidButtonFallback} />}
+                    />
+                  }
                 />
-              }
-            />
-            <Text style={styles.raidIcon}>X</Text>
-            <Text style={styles.raidText}>RAID!</Text>
-          </Pressable>
-        </View>
+                <Text style={styles.raidIcon}>X</Text>
+                <Text style={styles.raidText}>RAID!</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
       </ScrollView>
 
       <TutorialOverlay
@@ -349,7 +354,7 @@ export function GameScreen() {
       return (
         <>
           <ActionCard title="Gather" cost="Tap resource" glyph="B" onPress={() => setActionTab("overview")} />
-          <ActionCard title="Move" cost="Tap tile" glyph="Map" onPress={() => setActionTab("overview")} />
+          <ActionCard title="Village" cost="Base view" glyph="Map" onPress={() => setActionTab("overview")} />
           <ActionCard title="Cancel" cost="Reset" glyph="!" onPress={state.resetGame} />
         </>
       );
@@ -967,6 +972,11 @@ const styles = StyleSheet.create({
   playColumn: {
     flex: 1,
     gap: theme.spacing.sm
+  },
+  raidStage: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: theme.spacing.xs
   },
   boardShell: {
     alignItems: "center",

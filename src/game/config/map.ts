@@ -104,10 +104,7 @@ export function createUnit(
 
 export function createInitialUnits(now: number): Unit[] {
   return [
-    createUnit("player-worker-1", "worker", "player", 1, 7, now),
-    createUnit("enemy-fighter-1", "fighter", "enemy", 8, 2, now),
-    createUnit("enemy-fighter-2", "fighter", "enemy", 7, 1, now),
-    createUnit("enemy-fighter-3", "fighter", "enemy", 9, 1, now)
+    createUnit("player-worker-1", "worker", "player", 1, 7, now)
   ];
 }
 
