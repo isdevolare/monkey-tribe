@@ -48,7 +48,7 @@ export function GameScreen() {
       unit.state !== "dead" &&
       unit.hp > 0
   ).length;
-  const boardMaxSize = Math.max(238, Math.min(width - 112, 392));
+  const boardMaxSize = Math.max(252, Math.min(width - 118, 404));
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -733,10 +733,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(4, 10, 7, 0.34)"
   },
   content: {
-    paddingTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
     paddingHorizontal: theme.spacing.sm,
-    paddingBottom: theme.spacing.lg,
-    gap: 7
+    paddingBottom: theme.spacing.md,
+    gap: 6
   },
   topBar: {
     flexDirection: "row",
@@ -848,32 +848,32 @@ const styles = StyleSheet.create({
   },
   resourceBar: {
     flexDirection: "row",
-    gap: theme.spacing.xs
+    gap: 5
   },
   resourceChip: {
     flex: 1,
-    minHeight: 52,
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 7,
     borderRadius: 11,
     backgroundColor: glass,
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 6,
     overflow: "hidden"
   },
   resourceIcon: {
-    width: 31,
-    height: 31,
-    borderRadius: 15,
+    width: 35,
+    height: 35,
+    borderRadius: 17,
     overflow: "hidden",
     backgroundColor: "rgba(255, 255, 255, 0.08)",
     alignItems: "center",
     justifyContent: "center"
   },
   resourceIconArt: {
-    width: 25,
-    height: 25
+    width: 29,
+    height: 29
   },
   resourceFallback: {
     flex: 1,
@@ -891,12 +891,12 @@ const styles = StyleSheet.create({
   },
   resourceValue: {
     color: theme.colors.paper,
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: "900"
   },
   resourceRate: {
     color: "#a7df80",
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "900"
   },
   hiddenLabel: {
@@ -912,17 +912,17 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs
   },
   sideNav: {
-    width: 78,
+    width: 86,
     gap: theme.spacing.xs
   },
   sideButton: {
-    minHeight: 52,
+    minHeight: 55,
     justifyContent: "center",
     borderRadius: 9,
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.14)",
     backgroundColor: "rgba(54, 43, 27, 0.84)",
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     overflow: "hidden"
   },
   sideButtonActive: {
@@ -934,20 +934,20 @@ const styles = StyleSheet.create({
   },
   sideGlyph: {
     color: theme.colors.paper,
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "900",
     textAlign: "center"
   },
   sideIconFrame: {
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
     alignItems: "center",
     justifyContent: "center"
   },
   sideLabel: {
     marginTop: 3,
     color: "#d8ccb0",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "900"
   },
   sideLabelActive: {
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.2)",
     backgroundColor: "rgba(20, 27, 15, 0.24)",
-    padding: 3
+    padding: 2
   },
   feedback: {
     borderRadius: 8,
@@ -1001,14 +1001,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.15)",
     backgroundColor: glass,
-    padding: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
     overflow: "hidden"
   },
   objectiveHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingBottom: theme.spacing.sm,
+    paddingBottom: 7,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255, 248, 217, 0.1)"
   },
@@ -1024,7 +1025,7 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   },
   objectiveRow: {
-    minHeight: 33,
+    minHeight: 28,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1046,12 +1047,13 @@ const styles = StyleSheet.create({
     color: "#a7df80"
   },
   panel: {
-    minHeight: 92,
+    minHeight: 74,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.18)",
     backgroundColor: "rgba(15, 40, 28, 0.84)",
-    padding: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
     overflow: "hidden"
   },
   panelHeader: {
@@ -1072,13 +1074,13 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   },
   panelText: {
-    marginTop: theme.spacing.xs,
+    marginTop: 3,
     color: "#d8ccb0",
     fontSize: 13,
     fontWeight: "700"
   },
   panelHint: {
-    marginTop: theme.spacing.sm,
+    marginTop: 5,
     color: "#e3f2cf",
     fontSize: 12,
     fontWeight: "800"
@@ -1086,22 +1088,22 @@ const styles = StyleSheet.create({
   bottomDock: {
     flexDirection: "row",
     alignItems: "stretch",
-    gap: theme.spacing.sm,
+    gap: 7,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.14)",
     backgroundColor: "rgba(42, 38, 29, 0.9)",
-    padding: theme.spacing.sm,
+    padding: 8,
     overflow: "hidden"
   },
   actionCards: {
     flex: 1,
     flexDirection: "row",
-    gap: theme.spacing.sm
+    gap: 6
   },
   actionCard: {
     flex: 1,
-    minHeight: 98,
+    minHeight: 88,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 12,
@@ -1118,8 +1120,8 @@ const styles = StyleSheet.create({
     transform: [{ translateY: 2 }, { scale: 0.98 }]
   },
   actionIcon: {
-    width: 46,
-    height: 46,
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
@@ -1144,8 +1146,8 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   actionTitle: {
-    marginTop: 6,
-    minHeight: 28,
+    marginTop: 4,
+    minHeight: 25,
     color: theme.colors.paper,
     fontSize: 10,
     fontWeight: "900",
@@ -1158,7 +1160,7 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   raidButton: {
-    width: 95,
+    width: 112,
     minHeight: 98,
     alignItems: "center",
     justifyContent: "center",
@@ -1168,17 +1170,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#d96516",
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 8
+    shadowOpacity: 0.48,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 12
   },
   raidButtonPressed: {
     transform: [{ translateY: 2 }, { scale: 0.98 }]
   },
   raidIcon: {
     color: theme.colors.paper,
-    fontSize: 24,
+    fontSize: 27,
     fontWeight: "900",
     textShadowColor: "rgba(0, 0, 0, 0.55)",
     textShadowOffset: { width: 0, height: 2 },
@@ -1186,7 +1188,7 @@ const styles = StyleSheet.create({
   },
   raidText: {
     color: theme.colors.paper,
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "900",
     textShadowColor: "rgba(0, 0, 0, 0.55)",
     textShadowOffset: { width: 0, height: 2 },

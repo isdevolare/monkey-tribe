@@ -28,6 +28,54 @@ type SceneItem = {
   node: ReactNode;
 };
 
+type VisualCenter = {
+  x: number;
+  y: number;
+};
+
+const VISUAL_TILE_CENTERS: Record<string, VisualCenter> = {
+  "0,0": { x: 12, y: 13 },
+  "1,0": { x: 24, y: 11 },
+  "9,0": { x: 90, y: 10 },
+  "8,1": { x: 77, y: 18 },
+  "7,1": { x: 67, y: 19 },
+  "9,1": { x: 88, y: 20 },
+  "8,2": { x: 77, y: 28 },
+  "6,2": { x: 58, y: 13 },
+  "5,3": { x: 79, y: 43 },
+  "7,3": { x: 88, y: 35 },
+  "8,4": { x: 91, y: 51 },
+  "0,5": { x: 11, y: 55 },
+  "3,5": { x: 17, y: 38 },
+  "6,5": { x: 78, y: 61 },
+  "2,6": { x: 25, y: 71 },
+  "4,7": { x: 63, y: 75 },
+  "1,7": { x: 35, y: 55 },
+  "0,8": { x: 10, y: 82 },
+  "1,8": { x: 50, y: 33 },
+  "2,8": { x: 36, y: 64 },
+  "3,8": { x: 35, y: 81 },
+  "5,8": { x: 62, y: 86 },
+  "0,9": { x: 12, y: 93 },
+  "9,9": { x: 91, y: 91 }
+};
+
+const FENCE_POSTS = [
+  { x: 17, y: 42, rotate: -18 },
+  { x: 20, y: 32, rotate: -10 },
+  { x: 29, y: 22, rotate: 12 },
+  { x: 43, y: 18, rotate: 5 },
+  { x: 58, y: 19, rotate: -8 },
+  { x: 71, y: 27, rotate: -18 },
+  { x: 79, y: 40, rotate: -10 },
+  { x: 79, y: 55, rotate: 8 },
+  { x: 70, y: 70, rotate: 18 },
+  { x: 55, y: 78, rotate: 9 },
+  { x: 39, y: 77, rotate: -8 },
+  { x: 25, y: 68, rotate: -20 },
+  { x: 17, y: 56, rotate: -8 }
+];
+
 export function GameBoard({
   tiles,
   units,
@@ -43,7 +91,8 @@ export function GameBoard({
   const aliveUnits = units.filter((unit) => unit.state !== "dead" && unit.hp > 0);
   const selectedUnit = aliveUnits.find((unit) => unit.id === selectedUnitId);
   const sceneItems = [
-    ...baseCampItems(buildings),
+    ...villageBuildingItems(buildings),
+    ...villageDecorItems(),
     ...tiles.flatMap((tile) => visualItemsForTile(tile, playerCampHp, enemyCampHp)),
     ...aliveUnits.map((unit) => visualItemForUnit(unit, unit.id === selectedUnitId))
   ].sort((a, b) => a.zIndex - b.zIndex);
@@ -80,6 +129,7 @@ export function GameBoard({
           </View>
         ))}
       </View>
+      <VillagePathLayer />
       <CampFence />
       <Campfire />
 
@@ -141,43 +191,80 @@ export function GameBoard({
   );
 }
 
-function baseCampItems(buildings: Buildings): SceneItem[] {
+function villageBuildingItems(buildings: Buildings): SceneItem[] {
   const items: SceneItem[] = [];
 
-  if (buildings.hut > 0) {
-    items.push({
-      key: "built-hut",
-      x: 46,
-      y: 12,
-      size: 22,
-      zIndex: 18,
-      node: <AssetImage assetKey="buildingHut" style={styles.fullAsset} fallback={<CampFallback main="#2fa866" dark="#1f7047" banner="#ffd95a" />} />
-    });
-  }
+  items.push({
+    key: "built-hut",
+    ...scenePositionFromCenter({ x: 31, y: 41 }, 23),
+    zIndex: 38,
+    node:
+      buildings.hut > 0 ? (
+        <AssetImage assetKey="buildingHut" style={styles.fullAsset} fallback={<CampFallback main="#2fa866" dark="#1f7047" banner="#ffd95a" />} />
+      ) : (
+        <ConstructionPad label="Hut" />
+      )
+  });
 
-  if (buildings.trainingNest > 0) {
-    items.push({
-      key: "built-training-nest",
-      x: 60,
-      y: 37,
-      size: 18,
-      zIndex: 42,
-      node: <AssetImage assetKey="buildingTrainingNest" style={styles.fullAsset} fallback={<TargetFallback />} />
-    });
-  }
+  items.push({
+    key: "built-training-nest",
+    ...scenePositionFromCenter({ x: 65, y: 45 }, 20),
+    zIndex: 45,
+    node:
+      buildings.trainingNest > 0 ? (
+        <AssetImage assetKey="buildingTrainingNest" style={styles.fullAsset} fallback={<TargetFallback />} />
+      ) : (
+        <TrainingScaffold />
+      )
+  });
 
-  if (buildings.watchPost > 0) {
-    items.push({
-      key: "built-watch-post",
-      x: 73,
-      y: 27,
-      size: 18,
-      zIndex: 35,
-      node: <AssetImage assetKey="buildingWatchPost" style={styles.fullAsset} fallback={<TowerFallback />} />
-    });
-  }
+  items.push({
+    key: "built-watch-post",
+    ...scenePositionFromCenter({ x: 66, y: 25 }, 20),
+    zIndex: 31,
+    node:
+      buildings.watchPost > 0 ? (
+        <AssetImage assetKey="buildingWatchPost" style={styles.fullAsset} fallback={<TowerFallback />} />
+      ) : (
+        <WatchScaffold />
+      )
+  });
 
   return items;
+}
+
+function villageDecorItems(): SceneItem[] {
+  return [
+    decorItem("crate-left", { x: 24, y: 51 }, 7, 51, <CrateStack />),
+    decorItem("barrel-hut", { x: 39, y: 48 }, 6, 49, <BarrelStack />),
+    decorItem("banana-basket", { x: 42, y: 61 }, 8, 62, <BananaBasket />),
+    decorItem("log-pile", { x: 57, y: 62 }, 10, 63, <LogPile />),
+    decorItem("rope-training", { x: 73, y: 52 }, 7, 54, <RopeCoil />),
+    decorItem("crate-watch", { x: 59, y: 32 }, 6, 36, <CrateStack />),
+    decorItem("rock-scatter-a", { x: 22, y: 78 }, 8, 79, <AssetImage assetKey="terrainRock" style={styles.fullAsset} fallback={<StoneFallback />} />),
+    decorItem("rock-scatter-b", { x: 74, y: 74 }, 7, 75, <AssetImage assetKey="terrainRock" style={styles.fullAsset} fallback={<StoneFallback />} />),
+    decorItem("bush-hut-a", { x: 22, y: 39 }, 9, 40, <AssetImage assetKey="terrainBush" style={styles.fullAsset} fallback={<BushFallback />} />),
+    decorItem("bush-hut-b", { x: 39, y: 37 }, 8, 40, <AssetImage assetKey="terrainBush" style={styles.fullAsset} fallback={<BushFallback />} />),
+    decorItem("bush-training", { x: 73, y: 42 }, 9, 45, <AssetImage assetKey="terrainBush" style={styles.fullAsset} fallback={<BushFallback />} />),
+    decorItem("edge-tree-left", { x: 4, y: 30 }, 22, 28, <AssetImage assetKey="terrainWoodTree" style={styles.fullAsset} fallback={<WoodFallback />} />),
+    decorItem("edge-tree-right", { x: 95, y: 31 }, 23, 31, <AssetImage assetKey="terrainWoodTree" style={styles.fullAsset} fallback={<WoodFallback />} />),
+    decorItem("edge-tree-bottom", { x: 88, y: 87 }, 20, 88, <AssetImage assetKey="terrainWoodTree" style={styles.fullAsset} fallback={<WoodFallback />} />)
+  ];
+}
+
+function decorItem(
+  key: string,
+  center: VisualCenter,
+  size: number,
+  zIndex: number,
+  node: ReactNode
+): SceneItem {
+  return {
+    key,
+    ...scenePositionFromCenter(center, size),
+    zIndex,
+    node
+  };
 }
 
 function terrainTileAssetKey(type: Tile["type"]): GameAssetKey {
@@ -201,7 +288,7 @@ function visualItemsForTile(tile: Tile, playerCampHp: number, enemyCampHp: numbe
     return [
       {
         key: `banana-${tile.x}-${tile.y}`,
-        ...scenePosition(tile.x, tile.y, 14),
+        ...scenePosition(tile.x, tile.y, 15),
         zIndex: tile.y * 10,
         node: <AssetImage assetKey="terrainBananaTree" style={styles.fullAsset} fallback={<BananaFallback />} />
       }
@@ -223,7 +310,7 @@ function visualItemsForTile(tile: Tile, playerCampHp: number, enemyCampHp: numbe
     return [
       {
         key: `wood-${tile.x}-${tile.y}`,
-        ...scenePosition(tile.x, tile.y, tile.type === "bush" ? 12 : 15),
+        ...scenePosition(tile.x, tile.y, tile.type === "bush" ? 11 : 19),
         zIndex: tile.y * 10,
         node:
           tile.type === "bush" ? (
@@ -241,8 +328,8 @@ function visualItemsForTile(tile: Tile, playerCampHp: number, enemyCampHp: numbe
     return [
       {
         key: `camp-${tile.type}`,
-        ...scenePosition(tile.x, tile.y, 18),
-        zIndex: tile.y * 10 + 2,
+        ...scenePosition(tile.x, tile.y, player ? 24 : 18),
+        zIndex: player ? 34 : tile.y * 10 + 2,
         node: (
           <CampArt
             player={player}
@@ -257,20 +344,67 @@ function visualItemsForTile(tile: Tile, playerCampHp: number, enemyCampHp: numbe
 }
 
 function visualItemForUnit(unit: Unit, selected: boolean): SceneItem {
+  const unitSize = unit.owner === "player" ? 17 : 16;
+  const center = visualCenterForUnit(unit);
   return {
     key: unit.id,
-    ...scenePosition(unit.x, unit.y, 14),
-    zIndex: unit.y * 10 + 5,
+    ...scenePositionFromCenter(center, unitSize),
+    zIndex: Math.round(center.y) + 8,
     node: <UnitArt unit={unit} selected={selected} />
   };
 }
 
 function scenePosition(x: number, y: number, size: number) {
+  const center = visualCenterForTile(x, y);
+  return scenePositionFromCenter(center, size);
+}
+
+function scenePositionFromCenter(center: VisualCenter, size: number) {
   return {
-    x: (x + 0.5) * 10 - size / 2,
-    y: (y + 0.5) * 10 - size * 0.62,
+    x: center.x - size / 2,
+    y: center.y - size * 0.64,
     size
   };
+}
+
+function visualCenterForTile(x: number, y: number): VisualCenter {
+  const mapped = VISUAL_TILE_CENTERS[`${x},${y}`];
+  if (mapped) {
+    return mapped;
+  }
+
+  return {
+    x: 18 + x * 7.2 + Math.sin(y * 1.7) * 2.6,
+    y: 20 + y * 6.8 + Math.cos(x * 1.3) * 2.2
+  };
+}
+
+function visualCenterForUnit(unit: Unit): VisualCenter {
+  if (unit.owner === "player" && unit.state === "idle") {
+    const workerSpots = [
+      { x: 31, y: 58 },
+      { x: 37, y: 54 },
+      { x: 43, y: 62 }
+    ];
+    const fighterSpots = [
+      { x: 64, y: 58 },
+      { x: 70, y: 53 },
+      { x: 58, y: 55 }
+    ];
+    const spots = unit.type === "fighter" ? fighterSpots : workerSpots;
+    return spots[stableIndex(unit.id, spots.length)] ?? visualCenterForTile(unit.x, unit.y);
+  }
+
+  return visualCenterForTile(unit.x, unit.y);
+}
+
+function stableIndex(value: string, modulo: number) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash + value.charCodeAt(index) * (index + 1)) % 997;
+  }
+
+  return hash % modulo;
 }
 
 function CampArt({ player, hpPercent }: { player: boolean; hpPercent: number }) {
@@ -305,17 +439,61 @@ function CampFence() {
     <View style={styles.fenceLayer} pointerEvents="none">
       <Svg width="100%" height="100%" viewBox="0 0 100 100">
         <Path
-          d="M17 38 C24 18 47 8 69 18 C87 27 91 51 80 70 C68 90 36 91 20 72 C10 60 10 48 17 38 Z"
-          fill="none"
-          stroke="rgba(111, 74, 38, 0.82)"
-          strokeWidth="3.2"
-          strokeLinecap="round"
-          strokeDasharray="3 2"
+          d="M18 48 C20 27 35 16 53 18 C72 20 83 35 80 55 C77 75 58 83 38 77 C23 73 15 62 18 48 Z"
+          fill="rgba(75, 102, 45, 0.08)"
         />
         <Path
-          d="M20 41 C27 23 48 15 67 23 C82 30 85 50 76 66 C65 81 38 82 24 67 C15 57 14 48 20 41 Z"
-          fill="rgba(77, 112, 46, 0.08)"
+          d="M18 48 C20 27 35 16 53 18 C72 20 83 35 80 55 C77 75 58 83 38 77 C23 73 15 62 18 48 Z"
+          fill="none"
+          stroke="rgba(96, 61, 29, 0.9)"
+          strokeWidth="4.2"
+          strokeLinecap="round"
         />
+        {FENCE_POSTS.map((post) => (
+          <Rect
+            key={`${post.x}-${post.y}`}
+            x={post.x - 1.3}
+            y={post.y - 4}
+            width="2.6"
+            height="8"
+            rx="1.1"
+            fill="#8b5a2b"
+            stroke="#4e2d16"
+            strokeWidth="0.45"
+            transform={`rotate(${post.rotate} ${post.x} ${post.y})`}
+          />
+        ))}
+      </Svg>
+    </View>
+  );
+}
+
+function VillagePathLayer() {
+  return (
+    <View style={styles.pathLayer} pointerEvents="none">
+      <Svg width="100%" height="100%" viewBox="0 0 100 100">
+        <Path
+          d="M28 54 C37 45 45 42 50 43 C56 43 63 47 72 55"
+          stroke="rgba(127, 87, 45, 0.56)"
+          strokeWidth="10"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <Path
+          d="M50 43 C47 52 48 58 53 66"
+          stroke="rgba(127, 87, 45, 0.5)"
+          strokeWidth="9"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <Path
+          d="M50 43 C58 36 62 31 68 25"
+          stroke="rgba(127, 87, 45, 0.48)"
+          strokeWidth="8"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <Ellipse cx="50" cy="54" rx="25" ry="22" fill="none" stroke="rgba(169, 116, 57, 0.32)" strokeWidth="5" strokeDasharray="4 6" />
       </Svg>
     </View>
   );
@@ -408,6 +586,108 @@ function unitAssetKey(unit: Unit): GameAssetKey {
   }
 
   return unit.type === "fighter" ? "unitFighter" : "unitWorker";
+}
+
+function ConstructionPad({ label }: { label: string }) {
+  return (
+    <View style={styles.padArt}>
+      <Svg width="100%" height="100%" viewBox="0 0 64 64">
+        <Ellipse cx="32" cy="48" rx="23" ry="9" fill="rgba(59, 37, 18, 0.35)" />
+        <Path d="M14 42 L29 26 L50 36 L36 51 Z" fill="#8a6032" opacity="0.76" />
+        <Line x1="18" y1="42" x2="49" y2="36" stroke="#d2a35f" strokeWidth="4" strokeLinecap="round" />
+        <Line x1="29" y1="27" x2="36" y2="51" stroke="#5d3518" strokeWidth="3" strokeLinecap="round" />
+        <Circle cx="20" cy="39" r="3" fill="#e6c176" />
+        <Circle cx="46" cy="37" r="3" fill="#e6c176" />
+      </Svg>
+      <Text style={styles.padText}>{label}</Text>
+    </View>
+  );
+}
+
+function TrainingScaffold() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 64 64">
+      <Ellipse cx="32" cy="50" rx="22" ry="8" fill="rgba(59, 37, 18, 0.36)" />
+      <Line x1="17" y1="50" x2="25" y2="18" stroke="#7b4b24" strokeWidth="5" strokeLinecap="round" />
+      <Line x1="47" y1="50" x2="39" y2="18" stroke="#7b4b24" strokeWidth="5" strokeLinecap="round" />
+      <Line x1="21" y1="26" x2="43" y2="26" stroke="#c18b45" strokeWidth="5" strokeLinecap="round" />
+      <Circle cx="32" cy="36" r="11" fill="#d7bd86" />
+      <Circle cx="32" cy="36" r="7" fill="#b34a35" />
+      <Circle cx="32" cy="36" r="3" fill="#f8efd2" />
+    </Svg>
+  );
+}
+
+function WatchScaffold() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 64 64">
+      <Ellipse cx="32" cy="53" rx="20" ry="7" fill="rgba(59, 37, 18, 0.34)" />
+      <Line x1="22" y1="52" x2="27" y2="20" stroke="#75451f" strokeWidth="5" strokeLinecap="round" />
+      <Line x1="42" y1="52" x2="37" y2="20" stroke="#75451f" strokeWidth="5" strokeLinecap="round" />
+      <Rect x="21" y="17" width="22" height="12" rx="3" fill="#a66b32" />
+      <Path d="M18 18 L32 8 L46 18 Z" fill="#c84a3a" />
+    </Svg>
+  );
+}
+
+function CrateStack() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 64 64">
+      <Ellipse cx="33" cy="51" rx="22" ry="7" fill="rgba(45, 28, 14, 0.32)" />
+      <Rect x="12" y="30" width="20" height="18" rx="3" fill="#9c6530" stroke="#4d2a13" strokeWidth="2" />
+      <Rect x="31" y="25" width="21" height="23" rx="3" fill="#b17635" stroke="#4d2a13" strokeWidth="2" />
+      <Line x1="15" y1="33" x2="29" y2="46" stroke="#d6a45b" strokeWidth="2" />
+      <Line x1="49" y1="28" x2="34" y2="46" stroke="#d6a45b" strokeWidth="2" />
+    </Svg>
+  );
+}
+
+function BarrelStack() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 64 64">
+      <Ellipse cx="32" cy="51" rx="20" ry="7" fill="rgba(45, 28, 14, 0.32)" />
+      <Rect x="16" y="20" width="18" height="28" rx="7" fill="#8a4f25" stroke="#4d2a13" strokeWidth="2" />
+      <Rect x="32" y="27" width="17" height="22" rx="7" fill="#a4632c" stroke="#4d2a13" strokeWidth="2" />
+      <Line x1="17" y1="28" x2="34" y2="28" stroke="#d3a25b" strokeWidth="3" />
+      <Line x1="33" y1="34" x2="48" y2="34" stroke="#d3a25b" strokeWidth="3" />
+      <Line x1="17" y1="41" x2="34" y2="41" stroke="#5a3117" strokeWidth="3" />
+    </Svg>
+  );
+}
+
+function LogPile() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 64 64">
+      <Ellipse cx="32" cy="50" rx="24" ry="8" fill="rgba(45, 28, 14, 0.32)" />
+      <Rect x="10" y="32" width="40" height="8" rx="4" fill="#8a4f25" transform="rotate(-9 30 36)" />
+      <Rect x="15" y="40" width="40" height="8" rx="4" fill="#b06c32" transform="rotate(8 35 44)" />
+      <Circle cx="13" cy="35" r="4" fill="#d49a54" />
+      <Circle cx="52" cy="45" r="4" fill="#d49a54" />
+    </Svg>
+  );
+}
+
+function RopeCoil() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 64 64">
+      <Ellipse cx="32" cy="51" rx="20" ry="6" fill="rgba(45, 28, 14, 0.28)" />
+      <Circle cx="32" cy="34" r="18" fill="none" stroke="#d6a45b" strokeWidth="6" />
+      <Circle cx="32" cy="34" r="10" fill="none" stroke="#8d5a2b" strokeWidth="5" />
+      <Path d="M43 45 C50 48 52 53 48 58" stroke="#d6a45b" strokeWidth="4" fill="none" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function BananaBasket() {
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 64 64">
+      <Ellipse cx="32" cy="52" rx="19" ry="6" fill="rgba(45, 28, 14, 0.3)" />
+      <Path d="M16 35 H49 L44 52 H21 Z" fill="#9b5d2b" stroke="#4d2a13" strokeWidth="2" />
+      <Path d="M21 34 C24 18 39 18 43 34" fill="none" stroke="#d6a45b" strokeWidth="4" />
+      <Path d="M24 29 C30 26 34 31 28 37" stroke="#ffd95a" strokeWidth="5" fill="none" strokeLinecap="round" />
+      <Path d="M34 27 C42 29 42 37 33 39" stroke="#f3c739" strokeWidth="5" fill="none" strokeLinecap="round" />
+    </Svg>
+  );
 }
 
 function BananaFallback() {
@@ -585,11 +865,19 @@ const styles = StyleSheet.create({
   },
   campfire: {
     position: "absolute",
-    left: "43%",
-    top: "42%",
-    width: "15%",
-    height: "15%",
-    zIndex: 44
+    left: "42%",
+    top: "44%",
+    width: "16%",
+    height: "16%",
+    zIndex: 52
+  },
+  pathLayer: {
+    position: "absolute",
+    top: "4%",
+    right: "3%",
+    bottom: "4%",
+    left: "3%",
+    opacity: 0.96
   },
   visualLayer: {
     position: "absolute",
@@ -639,6 +927,23 @@ const styles = StyleSheet.create({
     height: "100%",
     alignItems: "center",
     justifyContent: "center"
+  },
+  padArt: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0.82
+  },
+  padText: {
+    position: "absolute",
+    bottom: "8%",
+    color: "#f3d891",
+    fontSize: 7,
+    fontWeight: "900",
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1
   },
   selectionRing: {
     position: "absolute",
