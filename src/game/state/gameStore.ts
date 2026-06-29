@@ -11,6 +11,7 @@ import {
   HUT_POPULATION_BONUS,
   MOVE_INTERVAL_MS,
   PLAYER_CAMP,
+  RAID_REWARD,
   STARTING_BUILDINGS,
   STARTING_RESOURCES,
   UNIT_COSTS,
@@ -629,12 +630,15 @@ export const useGameStore = create<GameState>((set) => ({
             ...state,
             units: game.units,
             resources: {
-              bananas: game.resources.bananas + 25,
-              stones: game.resources.stones + 10,
-              wood: game.resources.wood + 10
+              bananas: game.resources.bananas + RAID_REWARD.bananas,
+              stones: game.resources.stones + RAID_REWARD.stones,
+              wood: game.resources.wood + RAID_REWARD.wood
             },
             enemyCampHp: 0,
-            feedback: { id: now, text: "Raid victory! +25 bananas, +10 stones, +10 wood" },
+            feedback: {
+              id: now,
+              text: `Raid victory! +${RAID_REWARD.bananas} bananas, +${RAID_REWARD.stones} stones, +${RAID_REWARD.wood} wood`
+            },
             raidStatus: "victory"
           };
         }

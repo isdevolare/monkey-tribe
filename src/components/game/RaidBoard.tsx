@@ -1,7 +1,17 @@
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions
+} from "react-native";
 import Svg, { Circle, Ellipse, Line, Path } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
-import { CAMP_MAX_HP } from "../../game/config/constants";
+import type { GameAssetKey } from "../../game/assets/gameAssets";
+import { CAMP_MAX_HP, RAID_REWARD } from "../../game/config/constants";
 import type { RaidStatus, Unit } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
@@ -14,18 +24,31 @@ type RaidBoardProps = {
   onReturn: () => void;
 };
 
-const fighterSpots = [
+type Spot = { x: number; y: number };
+
+type DamageMarker = {
+  id: number;
+  x: number;
+  y: number;
+  amount: number;
+  tone: "ally" | "enemy" | "camp";
+};
+
+const fighterSpots: Spot[] = [
   { x: 24, y: 66 },
   { x: 34, y: 72 },
   { x: 28, y: 82 },
   { x: 42, y: 78 }
 ];
 
-const enemySpots = [
+const enemySpots: Spot[] = [
   { x: 72, y: 42 },
   { x: 82, y: 53 },
   { x: 67, y: 60 }
 ];
+
+const CAMP_CENTER: Spot = { x: 73, y: 37 };
+const STRIKE_WINDOW_MS = 220;
 
 export function RaidBoard({
   units,
@@ -46,6 +69,98 @@ export function RaidBoard({
   );
   const raidPower = fighters.reduce((total, unit) => total + unit.attack, 0);
   const resultVisible = raidStatus === "victory" || raidStatus === "defeat";
+  const victory = raidStatus === "victory";
+
+  // Map each visible unit to its screen spot so damage feedback can be placed.
+  const spotRef = useRef<Record<string, Spot>>({});
+  fighters.forEach((unit, index) => {
+    spotRef.current[unit.id] = fighterSpots[index % fighterSpots.length] ?? { x: 24, y: 66 };
+  });
+  enemies.forEach((unit, index) => {
+    spotRef.current[unit.id] = enemySpots[index % enemySpots.length] ?? { x: 72, y: 42 };
+  });
+
+  const prevHpRef = useRef<Record<string, number>>({});
+  const prevCampRef = useRef(enemyCampHp);
+  const markerSeq = useRef(0);
+  const [markers, setMarkers] = useState<DamageMarker[]>([]);
+
+  const campFlash = useRef(new Animated.Value(0)).current;
+  const campShake = useRef(new Animated.Value(0)).current;
+  const resultAnim = useRef(new Animated.Value(0)).current;
+
+  const removeMarker = useCallback((id: number) => {
+    setMarkers((current) => current.filter((marker) => marker.id !== id));
+  }, []);
+
+  const punchCamp = useCallback(() => {
+    campFlash.setValue(0.85);
+    Animated.timing(campFlash, { toValue: 0, duration: 380, useNativeDriver: true }).start();
+    Animated.sequence([
+      Animated.timing(campShake, { toValue: 1, duration: 55, useNativeDriver: true }),
+      Animated.timing(campShake, { toValue: -1, duration: 55, useNativeDriver: true }),
+      Animated.timing(campShake, { toValue: 0, duration: 55, useNativeDriver: true })
+    ]).start();
+  }, [campFlash, campShake]);
+
+  // Detect HP drops between ticks and spawn floating damage numbers.
+  useEffect(() => {
+    const fresh: DamageMarker[] = [];
+
+    for (const unit of units) {
+      const previous = prevHpRef.current[unit.id];
+      prevHpRef.current[unit.id] = unit.hp;
+
+      if (previous === undefined || unit.hp >= previous) {
+        continue;
+      }
+
+      const spot = spotRef.current[unit.id];
+      if (spot) {
+        markerSeq.current += 1;
+        fresh.push({
+          id: markerSeq.current,
+          x: spot.x,
+          y: spot.y - 7,
+          amount: previous - unit.hp,
+          tone: unit.owner === "player" ? "ally" : "enemy"
+        });
+      }
+    }
+
+    if (enemyCampHp < prevCampRef.current) {
+      markerSeq.current += 1;
+      fresh.push({
+        id: markerSeq.current,
+        x: CAMP_CENTER.x,
+        y: CAMP_CENTER.y - 4,
+        amount: prevCampRef.current - enemyCampHp,
+        tone: "camp"
+      });
+      punchCamp();
+    }
+    prevCampRef.current = enemyCampHp;
+
+    if (fresh.length > 0) {
+      setMarkers((current) => [...current, ...fresh]);
+    }
+  }, [units, enemyCampHp, punchCamp]);
+
+  // Animate the result panel in when the raid ends.
+  useEffect(() => {
+    if (resultVisible) {
+      resultAnim.setValue(0);
+      Animated.timing(resultAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.back(1.5)),
+        useNativeDriver: true
+      }).start();
+    }
+  }, [resultVisible, resultAnim]);
+
+  const campTranslate = campShake.interpolate({ inputRange: [-1, 1], outputRange: [-3, 3] });
+  const resultScale = resultAnim.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] });
 
   return (
     <View style={[styles.scene, { width: sceneWidth, height: sceneHeight }]}>
@@ -58,17 +173,15 @@ export function RaidBoard({
       <View style={styles.depthShade} />
       <BattleGround />
 
-      <View style={styles.enemyCamp}>
-        <AssetImage
-          assetKey="buildingEnemyCamp"
-          style={styles.full}
-          fallback={<CampFallback />}
-        />
+      <Animated.View style={[styles.enemyCamp, { transform: [{ translateX: campTranslate }] }]}>
+        <AssetImage assetKey="buildingEnemyCamp" style={styles.full} fallback={<CampFallback />} />
+        <Animated.View style={[styles.campFlash, { opacity: campFlash }]} pointerEvents="none" />
         <HealthBar percent={Math.max(0, Math.round((enemyCampHp / CAMP_MAX_HP) * 100))} enemy large />
-      </View>
+      </Animated.View>
 
       {fighters.map((unit, index) => {
         const spot = fighterSpots[index % fighterSpots.length] ?? { x: 24, y: 66 };
+        const striking = Date.now() - unit.lastActionAt < STRIKE_WINDOW_MS;
         return (
           <View
             key={unit.id}
@@ -77,9 +190,11 @@ export function RaidBoard({
               {
                 left: `${spot.x - 8}%`,
                 top: `${spot.y - 12}%`
-              }
+              },
+              striking ? styles.unitStriking : null
             ]}
           >
+            {striking ? <View style={styles.strikeGlow} pointerEvents="none" /> : null}
             <AssetImage assetKey="unitFighter" style={styles.full} fallback={<MonkeyFallback fighter />} />
             <HealthBar percent={Math.max(0, Math.round((unit.hp / unit.maxHp) * 100))} />
           </View>
@@ -88,6 +203,7 @@ export function RaidBoard({
 
       {enemies.map((unit, index) => {
         const spot = enemySpots[index % enemySpots.length] ?? { x: 72, y: 42 };
+        const striking = Date.now() - unit.lastActionAt < STRIKE_WINDOW_MS;
         return (
           <View
             key={unit.id}
@@ -96,9 +212,11 @@ export function RaidBoard({
               {
                 left: `${spot.x - 7}%`,
                 top: `${spot.y - 11}%`
-              }
+              },
+              striking ? styles.unitStriking : null
             ]}
           >
+            {striking ? <View style={[styles.strikeGlow, styles.strikeGlowEnemy]} pointerEvents="none" /> : null}
             <AssetImage assetKey="unitEnemyFighter" style={styles.full} fallback={<MonkeyFallback fighter enemy />} />
             <HealthBar percent={Math.max(0, Math.round((unit.hp / unit.maxHp) * 100))} enemy />
           </View>
@@ -116,6 +234,12 @@ export function RaidBoard({
         </Svg>
       </View>
 
+      <View style={styles.markerLayer} pointerEvents="none">
+        {markers.map((marker) => (
+          <FloatingNumber key={marker.id} marker={marker} onDone={removeMarker} />
+        ))}
+      </View>
+
       <View style={styles.raidHud}>
         <Text style={styles.raidTitle}>Raid Battle</Text>
         <Text style={styles.raidStat}>Enemy Camp HP {Math.max(0, enemyCampHp)} / {CAMP_MAX_HP}</Text>
@@ -129,22 +253,84 @@ export function RaidBoard({
       ) : null}
 
       {resultVisible ? (
-        <View style={styles.resultPanel}>
-          <Text style={styles.resultTitle}>{raidStatus === "victory" ? "Raid Victory" : "Raid Failed"}</Text>
-          <Text style={styles.resultText}>
-            {raidStatus === "victory"
-              ? "Rewards were added to your village stores."
-              : "Return to the village and train more fighters."}
-          </Text>
-          <Pressable accessibilityRole="button" onPress={onReturn} style={styles.returnButton}>
-            <Text style={styles.returnText}>Return to Village</Text>
-          </Pressable>
+        <View style={styles.resultScrim} pointerEvents="box-none">
+          <Animated.View
+            style={[
+              styles.resultPanel,
+              victory ? styles.resultPanelWin : styles.resultPanelLose,
+              { opacity: resultAnim, transform: [{ scale: resultScale }] }
+            ]}
+          >
+            <View style={[styles.resultEmblem, victory ? styles.resultEmblemWin : styles.resultEmblemLose]}>
+              <Text style={styles.resultEmblemText}>{victory ? "★" : "!"}</Text>
+            </View>
+            <Text style={styles.resultTitle}>{victory ? "Raid Victory" : "Raid Failed"}</Text>
+            <Text style={styles.resultText}>
+              {victory
+                ? "The enemy camp is broken. Spoils were added to your stores."
+                : "Your raid party fell. Train more fighters and try again."}
+            </Text>
+            {victory ? (
+              <View style={styles.rewardRow}>
+                <RewardChip assetKey="resourceBanana" amount={RAID_REWARD.bananas} />
+                <RewardChip assetKey="resourceStone" amount={RAID_REWARD.stones} />
+                <RewardChip assetKey="resourceWood" amount={RAID_REWARD.wood} />
+              </View>
+            ) : null}
+            <Pressable accessibilityRole="button" onPress={onReturn} style={styles.returnButton}>
+              <Text style={styles.returnText}>Return to Village</Text>
+            </Pressable>
+          </Animated.View>
         </View>
       ) : (
         <Pressable accessibilityRole="button" onPress={onReturn} style={styles.retreatButton}>
           <Text style={styles.retreatText}>Retreat</Text>
         </Pressable>
       )}
+    </View>
+  );
+}
+
+function FloatingNumber({ marker, onDone }: { marker: DamageMarker; onDone: (id: number) => void }) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 760,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true
+    }).start(({ finished }) => {
+      if (finished) {
+        onDone(marker.id);
+      }
+    });
+  }, [marker.id, onDone, progress]);
+
+  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [0, -30] });
+  const opacity = progress.interpolate({ inputRange: [0, 0.12, 0.7, 1], outputRange: [0, 1, 1, 0] });
+  const color = marker.tone === "camp" ? "#ffd95a" : marker.tone === "ally" ? "#ff8c6b" : "#ffe9b0";
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.marker,
+        { left: `${marker.x - 8}%`, top: `${marker.y - 4}%`, opacity, transform: [{ translateY }] }
+      ]}
+    >
+      <Text style={[styles.markerText, marker.tone === "camp" ? styles.markerTextCamp : null, { color }]}>
+        -{marker.amount}
+      </Text>
+    </Animated.View>
+  );
+}
+
+function RewardChip({ assetKey, amount }: { assetKey: GameAssetKey; amount: number }) {
+  return (
+    <View style={styles.rewardChip}>
+      <AssetImage assetKey={assetKey} style={styles.rewardIcon} fallback={<View style={styles.rewardIconFallback} />} />
+      <Text style={styles.rewardText}>+{amount}</Text>
     </View>
   );
 }
@@ -242,6 +428,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
+  campFlash: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 86, 56, 0.9)"
+  },
   unit: {
     position: "absolute",
     width: "18%",
@@ -256,8 +447,45 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
+  unitStriking: {
+    transform: [{ scale: 1.12 }]
+  },
+  strikeGlow: {
+    position: "absolute",
+    width: "78%",
+    height: "78%",
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 224, 130, 0.45)",
+    shadowColor: "#ffe082",
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 }
+  },
+  strikeGlowEnemy: {
+    backgroundColor: "rgba(255, 120, 96, 0.4)",
+    shadowColor: "#ff7860"
+  },
   combatLines: {
     ...StyleSheet.absoluteFillObject
+  },
+  markerLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 400
+  },
+  marker: {
+    position: "absolute",
+    width: "16%",
+    alignItems: "center"
+  },
+  markerText: {
+    fontSize: 14,
+    fontWeight: "900",
+    textShadowColor: "rgba(0, 0, 0, 0.85)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3
+  },
+  markerTextCamp: {
+    fontSize: 19
   },
   hpTrack: {
     position: "absolute",
@@ -329,15 +557,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "900"
   },
-  resultPanel: {
-    position: "absolute",
-    left: "9%",
-    right: "9%",
-    top: "31%",
+  resultScrim: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
-    borderRadius: 14,
-    backgroundColor: "rgba(17, 20, 14, 0.92)",
-    padding: 16
+    justifyContent: "center",
+    backgroundColor: "rgba(8, 14, 9, 0.55)",
+    padding: 18
+  },
+  resultPanel: {
+    width: "100%",
+    maxWidth: 320,
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 2,
+    backgroundColor: "rgba(17, 20, 14, 0.95)",
+    paddingTop: 26,
+    paddingBottom: 18,
+    paddingHorizontal: 18
+  },
+  resultPanelWin: {
+    borderColor: "rgba(122, 200, 110, 0.65)"
+  },
+  resultPanelLose: {
+    borderColor: "rgba(200, 86, 70, 0.6)"
+  },
+  resultEmblem: {
+    position: "absolute",
+    top: -22,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+    borderWidth: 3,
+    borderColor: "rgba(17, 20, 14, 0.95)"
+  },
+  resultEmblemWin: {
+    backgroundColor: "#3f9c52"
+  },
+  resultEmblemLose: {
+    backgroundColor: "#a8392c"
+  },
+  resultEmblemText: {
+    color: theme.colors.paper,
+    fontSize: 22,
+    fontWeight: "900"
   },
   resultTitle: {
     color: theme.colors.paper,
@@ -352,8 +616,37 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center"
   },
+  rewardRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 14
+  },
+  rewardChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 10,
+    backgroundColor: "rgba(255, 224, 151, 0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  },
+  rewardIcon: {
+    width: 22,
+    height: 22
+  },
+  rewardIconFallback: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(255, 224, 151, 0.4)"
+  },
+  rewardText: {
+    color: "#ffe9ad",
+    fontSize: 14,
+    fontWeight: "900"
+  },
   returnButton: {
-    marginTop: 14,
+    marginTop: 16,
     borderRadius: 10,
     backgroundColor: "#d96516",
     paddingHorizontal: 18,

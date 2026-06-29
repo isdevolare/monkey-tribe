@@ -36,6 +36,12 @@ export const UNIT_COSTS: Record<UnitType, Resources> = {
   fighter: { bananas: 15, stones: 5, wood: 3 }
 };
 
+export const RAID_REWARD: Resources = {
+  bananas: 25,
+  stones: 10,
+  wood: 10
+};
+
 export const BUILDING_COSTS: Record<BuildingType, Resources> = {
   hut: { bananas: 8, stones: 0, wood: 12 },
   trainingNest: { bananas: 12, stones: 6, wood: 12 },
