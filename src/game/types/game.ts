@@ -4,7 +4,18 @@ export type GameMode = "village" | "raid";
 export type RaidStatus = "idle" | "active" | "victory" | "defeat";
 export type Owner = "player" | "enemy";
 export type ResourceKind = "bananas" | "stones" | "wood";
-export type BuildingType = "hut" | "trainingNest" | "watchPost";
+export type VillageBuildingType =
+  | "clanHall"
+  | "lumberCamp"
+  | "stoneQuarry"
+  | "bananaGrove"
+  | "workerShelter"
+  | "trainingNest"
+  | "watchTower";
+export type VillageBuilding = {
+  type: VillageBuildingType;
+  level: number;
+};
 export type TileType =
   | "grass"
   | "jungle"
@@ -72,8 +83,6 @@ export type Resources = {
   wood: number;
 };
 
-export type Buildings = Record<BuildingType, number>;
-
 export type FeedbackMessage = {
   id: number;
   text: string;
@@ -87,20 +96,18 @@ export type GameState = {
   mapTiles: Tile[];
   units: Unit[];
   resources: Resources;
-  buildings: Buildings;
+  buildings: VillageBuilding[];
   maxPopulation: number;
   playerCampHp: number;
   enemyCampHp: number;
+  lastProductionAt: number;
   feedback: FeedbackMessage | null;
   startGame: () => void;
-  collectResource: (resource: ResourceKind) => void;
   createWorker: () => void;
   trainFighter: () => void;
   raidEnemyCamp: () => void;
   returnToVillage: () => void;
-  buildHut: () => void;
-  buildTrainingNest: () => void;
-  buildWatchPost: () => void;
+  upgradeBuilding: (type: VillageBuildingType) => void;
   tickGame: (now?: number) => void;
   resetGame: () => void;
   goToMenu: () => void;

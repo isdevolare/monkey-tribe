@@ -3,16 +3,18 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-na
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
-import type { Buildings, Tile, Unit } from "../../game/types/game";
+import { BUILDING_NAMES } from "../../game/config/buildings";
+import type { Tile, Unit, VillageBuilding, VillageBuildingType } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type VillageBoardProps = {
   tiles: Tile[];
   units: Unit[];
-  buildings: Buildings;
+  buildings: VillageBuilding[];
   maxSize?: number;
   feedbackText?: string;
-  onCellPress: (tile: Tile) => void;
+  selectedType?: VillageBuildingType | null;
+  onBuildingPress: (type: VillageBuildingType) => void;
 };
 
 type Point = {
@@ -56,12 +58,20 @@ const TILE_POINTS: Record<string, Point> = {
   "9,9": { x: 90, y: 88 }
 };
 
-const BUILDING_SLOTS = {
-  camp: VILLAGE_CENTER,
-  hut: { x: 31, y: 40 },
-  trainingNest: { x: 65, y: 48 },
-  watchPost: { x: 63, y: 27 },
-  campfire: { x: 49, y: 56 }
+const CAMPFIRE_SLOT: Point = { x: 47, y: 52 };
+
+// Where each building sits on the painted scene + which sprite represents it.
+const BUILDING_LAYOUT: Record<
+  VillageBuildingType,
+  { point: Point; size: number; asset: GameAssetKey }
+> = {
+  clanHall: { point: { x: 47, y: 38 }, size: 30, asset: "buildingPlayerCamp" },
+  bananaGrove: { point: { x: 24, y: 26 }, size: 17, asset: "terrainBananaTree" },
+  lumberCamp: { point: { x: 17, y: 49 }, size: 21, asset: "terrainWoodTree" },
+  stoneQuarry: { point: { x: 78, y: 47 }, size: 15, asset: "terrainRock" },
+  watchTower: { point: { x: 73, y: 27 }, size: 20, asset: "buildingWatchPost" },
+  workerShelter: { point: { x: 30, y: 63 }, size: 22, asset: "buildingHut" },
+  trainingNest: { point: { x: 65, y: 61 }, size: 21, asset: "buildingTrainingNest" }
 };
 
 const FENCE_POSTS = [
@@ -85,7 +95,8 @@ export function VillageBoard({
   buildings,
   maxSize = 430,
   feedbackText,
-  onCellPress
+  selectedType,
+  onBuildingPress
 }: VillageBoardProps) {
   const { width } = useWindowDimensions();
   const sceneWidth = Math.min(width - theme.spacing.lg * 2, maxSize);
@@ -93,13 +104,15 @@ export function VillageBoard({
   const aliveUnits = units.filter(
     (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
   );
-  const decorativeItems = [
-    ...resourceItems(tiles),
-    ...villageItems(buildings)
-  ].sort((a, b) => a.zIndex - b.zIndex);
+  const decorativeItems = [...resourceItems(tiles), ...sceneryItems()].sort(
+    (a, b) => a.zIndex - b.zIndex
+  );
   const unitItems = aliveUnits
     .map((unit) => unitSceneItem(unit))
     .sort((a, b) => a.zIndex - b.zIndex);
+  const buildingSprites = buildings
+    .map((building) => ({ building, layout: BUILDING_LAYOUT[building.type] }))
+    .sort((a, b) => a.layout.point.y - b.layout.point.y);
 
   return (
     <View style={[styles.scene, { width: sceneWidth, height: sceneHeight }]}>
@@ -112,33 +125,21 @@ export function VillageBoard({
         ))}
       </View>
 
-      <View style={styles.hitLayer}>
-        {tiles.filter(isResourceTile).map((tile) => {
-          const point = pointForTile(tile);
-
-          return (
-            <Pressable
-              key={`${tile.x}-${tile.y}`}
-              onPress={() => onCellPress(tile)}
-              style={[
-                styles.hitZone,
-                {
-                  left: `${point.x - 5.2}%`,
-                  top: `${point.y - 5.2}%`,
-                  width: "10.4%",
-                  height: "10.4%"
-                }
-              ]}
-            >
-              <View style={styles.resourceDot} />
-            </Pressable>
-          );
-        })}
-      </View>
-
       <View style={styles.unitLayer} pointerEvents="none">
         {unitItems.map((item) => (
           <SceneSprite item={item} key={item.key} />
+        ))}
+      </View>
+
+      <View style={styles.buildingLayer}>
+        {buildingSprites.map(({ building, layout }) => (
+          <BuildingSprite
+            key={building.type}
+            building={building}
+            layout={layout}
+            selected={selectedType === building.type}
+            onPress={() => onBuildingPress(building.type)}
+          />
         ))}
       </View>
 
@@ -148,6 +149,44 @@ export function VillageBoard({
         </View>
       ) : null}
     </View>
+  );
+}
+
+function BuildingSprite({
+  building,
+  layout,
+  selected,
+  onPress
+}: {
+  building: VillageBuilding;
+  layout: { point: Point; size: number; asset: GameAssetKey };
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const { point, size, asset } = layout;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.buildingSprite,
+        {
+          left: `${point.x - size / 2}%`,
+          top: `${point.y - size * 0.68}%`,
+          width: `${size}%`,
+          height: `${size}%`,
+          zIndex: Math.round(point.y)
+        }
+      ]}
+    >
+      {selected ? <View style={styles.buildingSelected} pointerEvents="none" /> : null}
+      <AssetImage assetKey={asset} style={styles.full} fallback={<View style={styles.assetMissing} />} />
+      <View style={styles.buildingTag} pointerEvents="none">
+        <Text style={styles.buildingTagName} numberOfLines={1}>
+          {BUILDING_NAMES[building.type]}
+        </Text>
+        <Text style={styles.buildingTagLevel}>Seviye {building.level}</Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -263,58 +302,22 @@ function resourceItems(tiles: Tile[]): SceneItem[] {
   });
 }
 
-function villageItems(buildings: Buildings): SceneItem[] {
+function sceneryItems(): SceneItem[] {
   return [
-    item("edge-tree-left", { x: 5, y: 35 }, 23, 20, (
+    item("edge-tree-left", { x: 5, y: 34 }, 22, 18, (
       <AssetImage assetKey="terrainWoodTree" style={styles.full} fallback={<WoodFallback />} />
     )),
-    item("edge-tree-right", { x: 95, y: 39 }, 24, 30, (
+    item("edge-tree-right", { x: 95, y: 38 }, 23, 22, (
       <AssetImage assetKey="terrainWoodTree" style={styles.full} fallback={<WoodFallback />} />
     )),
-    item("edge-bush-a", { x: 17, y: 31 }, 11, 32, (
+    item("edge-bush-a", { x: 10, y: 72 }, 11, 74, (
       <AssetImage assetKey="terrainBush" style={styles.full} fallback={<BushFallback />} />
     )),
-    item("edge-bush-b", { x: 75, y: 70 }, 11, 71, (
+    item("edge-bush-b", { x: 90, y: 70 }, 11, 72, (
       <AssetImage assetKey="terrainBush" style={styles.full} fallback={<BushFallback />} />
     )),
-    item("watch-post", BUILDING_SLOTS.watchPost, 20, 38, buildingNode(buildings.watchPost > 0, "buildingWatchPost")),
-    item("hut", BUILDING_SLOTS.hut, 23, 49, buildingNode(buildings.hut > 0, "buildingHut")),
-    item("player-camp", BUILDING_SLOTS.camp, 30, 54, <CampArt player />),
-    item(
-      "training-nest",
-      BUILDING_SLOTS.trainingNest,
-      21,
-      58,
-      buildingNode(buildings.trainingNest > 0, "buildingTrainingNest")
-    ),
-    item("campfire", BUILDING_SLOTS.campfire, 16, 72, <Campfire />),
-    item("village-bananas", { x: 40, y: 66 }, 10, 76, (
-      <AssetImage assetKey="terrainBananaTree" style={styles.full} fallback={<BananaFallback />} />
-    )),
-    item("village-wood", { x: 58, y: 69 }, 12, 78, (
-      <AssetImage assetKey="terrainWoodTree" style={styles.full} fallback={<WoodFallback />} />
-    )),
-    item("village-rocks", { x: 25, y: 76 }, 8, 86, (
-      <AssetImage assetKey="terrainRock" style={styles.full} fallback={<StoneFallback />} />
-    ))
+    item("campfire", CAMPFIRE_SLOT, 13, 70, <Campfire />)
   ];
-}
-
-function buildingNode(
-  built: boolean,
-  assetKey: "buildingHut" | "buildingTrainingNest" | "buildingWatchPost"
-) {
-  return (
-    <AssetImage
-      assetKey={assetKey}
-      style={[styles.full, built ? null : styles.unbuiltAsset]}
-      fallback={<View style={styles.assetMissing} />}
-    />
-  );
-}
-
-function isResourceTile(tile: Tile) {
-  return tile.type === "bananaTree" || tile.type === "stoneRock" || tile.type === "woodGrove";
 }
 
 function unitSceneItem(unit: Unit): SceneItem {
@@ -389,21 +392,6 @@ function stableIndex(value: string, modulo: number) {
   return hash % modulo;
 }
 
-function CampArt({ player }: { player: boolean }) {
-  const main = player ? theme.colors.player : theme.colors.enemy;
-  const dark = player ? theme.colors.playerDark : theme.colors.enemyDark;
-  const banner = player ? "#ffd95a" : "#efdfc6";
-
-  return (
-    <View style={styles.artWrap}>
-      <AssetImage
-        assetKey={player ? "buildingPlayerCamp" : "buildingEnemyCamp"}
-        style={styles.full}
-        fallback={<CampFallback main={main} dark={dark} banner={banner} />}
-      />
-    </View>
-  );
-}
 
 function UnitArt({ unit }: { unit: Unit }) {
   const player = unit.owner === "player";
@@ -485,19 +473,6 @@ function BushFallback() {
   );
 }
 
-function CampFallback({ main, dark, banner }: { main: string; dark: string; banner: string }) {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Rect x="15" y="28" width="34" height="24" rx="5" fill={main} />
-      <Polygon points="9,31 32,10 55,31" fill={dark} />
-      <Rect x="28" y="39" width="9" height="13" rx="2" fill="#5a341f" />
-      <Line x1="50" y1="15" x2="50" y2="44" stroke="#54321b" strokeWidth="4" />
-      <Path d="M50 16 L60 21 L50 27 Z" fill={banner} />
-      <Circle cx="20" cy="20" r="4" fill={banner} />
-    </Svg>
-  );
-}
-
 function UnitFallback({ player, fighter }: { player: boolean; fighter: boolean }) {
   const body = player ? "#8b5e35" : "#62321f";
   const face = player ? "#d9a86c" : "#c38452";
@@ -563,6 +538,47 @@ const styles = StyleSheet.create({
   unitLayer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 250
+  },
+  buildingLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 200
+  },
+  buildingSprite: {
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "flex-end"
+  },
+  buildingSelected: {
+    position: "absolute",
+    left: "8%",
+    right: "8%",
+    bottom: "2%",
+    height: "30%",
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: "rgba(150, 255, 105, 0.95)",
+    backgroundColor: "rgba(49, 198, 67, 0.18)"
+  },
+  buildingTag: {
+    position: "absolute",
+    top: "-2%",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.35)",
+    backgroundColor: "rgba(17, 20, 14, 0.82)"
+  },
+  buildingTagName: {
+    color: theme.colors.paper,
+    fontSize: 9,
+    fontWeight: "900"
+  },
+  buildingTagLevel: {
+    color: "#e2b15a",
+    fontSize: 8,
+    fontWeight: "900"
   },
   sprite: {
     position: "absolute",

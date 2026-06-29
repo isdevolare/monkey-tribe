@@ -15,21 +15,24 @@ import { RaidBoard } from "../components/game/RaidBoard";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { getGameAsset } from "../game/assets/gameAssets";
-import { BUILDING_COSTS, UNIT_COSTS } from "../game/config/constants";
+import { UNIT_COSTS } from "../game/config/constants";
+import { BUILDING_NAMES, buildingEffect, upgradeCost } from "../game/config/buildings";
 import { useGameStore } from "../game/state/gameStore";
-import type { Resources, Tile } from "../game/types/game";
+import type { Resources, VillageBuilding, VillageBuildingType } from "../game/types/game";
 import { theme } from "../theme/theme";
 
 const TUTORIAL_KEY = "monkey-tribe:tutorial-seen";
 const PHONE_FRAME_WIDTH = 430;
 const tutorialSteps = [
-  "Tap banana trees, stone piles, and wood groves to collect village resources.",
-  "Build huts, a Training Nest, and a Watch Post from the bottom dock.",
-  "Train fighters once the Training Nest is ready.",
-  "Press RAID to send fighters into a separate enemy camp battle."
+  "Binalar zamanla muz, odun ve taş üretir.",
+  "Bir binaya dokun ve Geliştir ile seviyesini yükselt.",
+  "İşçi ve savaşçı üret; Eğitim Yuvası savaşçıları açar.",
+  "Savaşçın hazır olunca BASKIN ile düşman kampına saldır."
 ];
 
-type ActionTab = "build" | "monkeys";
+function levelOf(buildings: VillageBuilding[], type: VillageBuildingType) {
+  return buildings.find((building) => building.type === type)?.level ?? 0;
+}
 
 export function GameScreen() {
   const state = useGameStore();
@@ -37,16 +40,9 @@ export function GameScreen() {
   const layoutWidth = Math.min(width, PHONE_FRAME_WIDTH);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [actionTab, setActionTab] = useState<ActionTab>("build");
+  const [selectedBuilding, setSelectedBuilding] = useState<VillageBuildingType | null>(null);
   const population = state.units.filter(
     (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
-  ).length;
-  const fighterCount = state.units.filter(
-    (unit) =>
-      unit.owner === "player" &&
-      unit.type === "fighter" &&
-      unit.state !== "dead" &&
-      unit.hp > 0
   ).length;
   const boardMaxSize = Math.max(260, Math.min(layoutWidth - 20, 404));
 
@@ -78,26 +74,6 @@ export function GameScreen() {
     };
   }, []);
 
-  function handleCellPress(tile: Tile) {
-    if (state.gameStatus !== "playing" || state.gameMode !== "village") {
-      return;
-    }
-
-    if (tile.type === "bananaTree") {
-      state.collectResource("bananas");
-      return;
-    }
-
-    if (tile.type === "stoneRock") {
-      state.collectResource("stones");
-      return;
-    }
-
-    if (tile.type === "woodGrove") {
-      state.collectResource("wood");
-    }
-  }
-
   function closeTutorial() {
     setShowTutorial(false);
     void AsyncStorage.setItem(TUTORIAL_KEY, "true");
@@ -114,18 +90,10 @@ export function GameScreen() {
 
   const createWorkerDisabled =
     population >= state.maxPopulation || !hasResources(state.resources, UNIT_COSTS.worker);
-  const fighterLocked = state.buildings.trainingNest <= 0;
   const trainFighterDisabled =
-    fighterLocked ||
+    levelOf(state.buildings, "trainingNest") <= 0 ||
     population >= state.maxPopulation ||
     !hasResources(state.resources, UNIT_COSTS.fighter);
-  const hutDisabled =
-    state.buildings.hut > 0 || !hasResources(state.resources, BUILDING_COSTS.hut);
-  const nestDisabled =
-    state.buildings.trainingNest > 0 ||
-    !hasResources(state.resources, BUILDING_COSTS.trainingNest);
-  const watchPostDisabled =
-    state.buildings.watchPost > 0 || !hasResources(state.resources, BUILDING_COSTS.watchPost);
   const sheet = getGameAsset("unitMonkeySheet");
 
   return (
@@ -175,11 +143,11 @@ export function GameScreen() {
         </View>
 
         <View style={styles.resourceBar}>
-          <ResourceChip label="Bananas" value={state.resources.bananas} assetKey="resourceBanana" />
-          <ResourceChip label="Stones" value={state.resources.stones} assetKey="resourceStone" />
-          <ResourceChip label="Wood" value={state.resources.wood} assetKey="resourceWood" />
+          <ResourceChip label="Muz" value={Math.floor(state.resources.bananas)} assetKey="resourceBanana" />
+          <ResourceChip label="Taş" value={Math.floor(state.resources.stones)} assetKey="resourceStone" />
+          <ResourceChip label="Odun" value={Math.floor(state.resources.wood)} assetKey="resourceWood" />
           <ResourceChip
-            label="Population"
+            label="Nüfus"
             value={`${population}/${state.maxPopulation}`}
             assetKey="resourcePopulation"
           />
@@ -205,44 +173,46 @@ export function GameScreen() {
                 buildings={state.buildings}
                 maxSize={boardMaxSize}
                 feedbackText={state.feedback?.text}
-                onCellPress={handleCellPress}
+                selectedType={selectedBuilding}
+                onBuildingPress={setSelectedBuilding}
               />
             </View>
 
-            <View style={styles.objectivePanel}>
-              <PanelTexture dark />
-              <View style={styles.objectiveHeader}>
-                <Text style={styles.objectiveTitle}>Objectives</Text>
-                <Text style={styles.objectiveCounter}>Tasks</Text>
+            {selectedBuilding ? (
+              <UpgradePanel
+                buildings={state.buildings}
+                resources={state.resources}
+                type={selectedBuilding}
+                onUpgrade={() => state.upgradeBuilding(selectedBuilding)}
+                onClose={() => setSelectedBuilding(null)}
+              />
+            ) : (
+              <View style={styles.hintPanel}>
+                <PanelTexture dark />
+                <Text style={styles.hintText}>Geliştirmek için bir binaya dokun</Text>
               </View>
-              <ObjectiveRow label="Build a Hut" value={`${state.buildings.hut > 0 ? 1 : 0}/1`} done={state.buildings.hut > 0} />
-              <ObjectiveRow
-                label="Gather 100 Bananas"
-                value={`${Math.min(state.resources.bananas, 100)}/100`}
-                done={state.resources.bananas >= 100}
-              />
-              <ObjectiveRow label="Train a Fighter" value={`${fighterCount > 0 ? 1 : 0}/1`} done={fighterCount > 0} />
-              <ObjectiveRow label="Win a Raid" value={`${state.enemyCampHp <= 0 ? 1 : 0}/1`} done={state.enemyCampHp <= 0} />
-            </View>
-
-            <View style={styles.dockTabs}>
-              <DockTab
-                label="Build"
-                badge={undefined}
-                active={actionTab === "build"}
-                onPress={() => setActionTab("build")}
-              />
-              <DockTab
-                label="Monkeys"
-                badge={population}
-                active={actionTab === "monkeys"}
-                onPress={() => setActionTab("monkeys")}
-              />
-            </View>
+            )}
 
             <View style={styles.bottomDock}>
               <PanelTexture dark />
-              <View style={styles.actionCards}>{renderActionCards()}</View>
+              <View style={styles.actionCards}>
+                <ActionCard
+                  title="İşçi"
+                  cost={costText(UNIT_COSTS.worker)}
+                  glyph="M"
+                  assetKey="unitWorker"
+                  disabled={createWorkerDisabled}
+                  onPress={state.createWorker}
+                />
+                <ActionCard
+                  title="Savaşçı"
+                  cost={costText(UNIT_COSTS.fighter)}
+                  glyph="X"
+                  assetKey="unitFighter"
+                  disabled={trainFighterDisabled}
+                  onPress={state.trainFighter}
+                />
+              </View>
               <Pressable
                 accessibilityRole="button"
                 onPress={state.raidEnemyCamp}
@@ -262,7 +232,7 @@ export function GameScreen() {
                   }
                 />
                 <Text style={styles.raidIcon}>X</Text>
-                <Text style={styles.raidText}>RAID!</Text>
+                <Text style={styles.raidText}>BASKIN!</Text>
               </Pressable>
             </View>
           </>
@@ -278,59 +248,59 @@ export function GameScreen() {
     </View>
   );
 
-  function renderActionCards() {
-    if (actionTab === "monkeys") {
-      return (
-        <>
-          <ActionCard
-            title="Worker"
-            cost={costText(UNIT_COSTS.worker)}
-            glyph="M"
-            assetKey="unitWorker"
-            disabled={createWorkerDisabled}
-            onPress={state.createWorker}
-          />
-          <ActionCard
-            title="Fighter"
-            cost={fighterLocked ? "Nest" : costText(UNIT_COSTS.fighter)}
-            glyph="X"
-            assetKey="unitFighter"
-            disabled={trainFighterDisabled}
-            onPress={state.trainFighter}
-          />
-        </>
-      );
-    }
+}
 
-    return (
-      <>
-        <ActionCard
-          title="Hut"
-          cost={state.buildings.hut > 0 ? "Built" : costText(BUILDING_COSTS.hut)}
-          glyph="Hut"
-          assetKey="buildingHut"
-          disabled={hutDisabled}
-          onPress={state.buildHut}
-        />
-        <ActionCard
-          title="Training Nest"
-          cost={state.buildings.trainingNest > 0 ? "Built" : costText(BUILDING_COSTS.trainingNest)}
-          glyph="Target"
-          assetKey="buildingTrainingNest"
-          disabled={nestDisabled}
-          onPress={state.buildTrainingNest}
-        />
-        <ActionCard
-          title="Watch Post"
-          cost={state.buildings.watchPost > 0 ? "Built" : costText(BUILDING_COSTS.watchPost)}
-          glyph="Tower"
-          assetKey="buildingWatchPost"
-          disabled={watchPostDisabled}
-          onPress={state.buildWatchPost}
-        />
-      </>
-    );
-  }
+function UpgradePanel({
+  buildings,
+  resources,
+  type,
+  onUpgrade,
+  onClose
+}: {
+  buildings: VillageBuilding[];
+  resources: Resources;
+  type: VillageBuildingType;
+  onUpgrade: () => void;
+  onClose: () => void;
+}) {
+  const level = levelOf(buildings, type);
+  const clanLevel = levelOf(buildings, "clanHall");
+  const cost = upgradeCost(type, level);
+  const gated = type !== "clanHall" && level >= clanLevel;
+  const disabled = gated || !hasResources(resources, cost);
+
+  return (
+    <View style={styles.upgradePanel}>
+      <PanelTexture dark />
+      <View style={styles.upgradeInfo}>
+        <Text style={styles.upgradeName} numberOfLines={1}>
+          {BUILDING_NAMES[type]}
+        </Text>
+        <Text style={styles.upgradeMeta}>
+          Seviye {level} · {buildingEffect(type, level)}
+        </Text>
+        <Text style={styles.upgradeNext}>
+          Sonraki: {buildingEffect(type, level + 1)}
+        </Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        disabled={disabled}
+        onPress={onUpgrade}
+        style={({ pressed }) => [
+          styles.upgradeButton,
+          disabled ? styles.upgradeButtonDisabled : null,
+          pressed && !disabled ? styles.upgradeButtonPressed : null
+        ]}
+      >
+        <Text style={styles.upgradeButtonLabel}>Geliştir</Text>
+        <Text style={styles.upgradeButtonCost}>{gated ? "Klan Salonu gerek" : costText(cost)}</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" onPress={onClose} style={styles.upgradeClose}>
+        <Text style={styles.upgradeCloseText}>×</Text>
+      </Pressable>
+    </View>
+  );
 }
 
 function hasResources(resources: Resources, cost: Resources) {
@@ -396,46 +366,6 @@ function ResourceFallback({
         <Circle cx="24" cy="24" r="20" fill={fill} />
       </Svg>
       <Text style={styles.resourceFallbackText}>{letter}</Text>
-    </View>
-  );
-}
-
-function DockTab({
-  label,
-  badge,
-  active,
-  onPress
-}: {
-  label: string;
-  badge?: number;
-  active?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.dockTab,
-        active ? styles.dockTabActive : null,
-        pressed ? styles.dockTabPressed : null
-      ]}
-    >
-      <Text style={[styles.dockTabLabel, active ? styles.dockTabLabelActive : null]}>{label}</Text>
-      {badge ? (
-        <View style={styles.dockTabBadge}>
-          <Text style={styles.dockTabBadgeText}>{badge}</Text>
-        </View>
-      ) : null}
-    </Pressable>
-  );
-}
-
-function ObjectiveRow({ label, value, done }: { label: string; value: string; done: boolean }) {
-  return (
-    <View style={styles.objectiveRow}>
-      <Text style={[styles.objectiveText, done ? styles.objectiveTextDone : null]}>{label}</Text>
-      <Text style={[styles.objectiveValue, done ? styles.objectiveTextDone : null]}>{value}</Text>
     </View>
   );
 }
@@ -850,6 +780,97 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 224, 151, 0.2)",
     backgroundColor: "rgba(20, 27, 15, 0.24)",
     padding: 2
+  },
+  hintPanel: {
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: theme.spacing.xs,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.14)",
+    backgroundColor: glass,
+    overflow: "hidden"
+  },
+  hintText: {
+    color: "#d8ccb0",
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  upgradePanel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+    minHeight: 64,
+    marginTop: theme.spacing.xs,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.2)",
+    backgroundColor: glass,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    overflow: "hidden"
+  },
+  upgradeInfo: {
+    flex: 1,
+    minWidth: 0
+  },
+  upgradeName: {
+    color: theme.colors.paper,
+    fontSize: 15,
+    fontWeight: "900"
+  },
+  upgradeMeta: {
+    marginTop: 2,
+    color: "#a7df80",
+    fontSize: 12,
+    fontWeight: "800"
+  },
+  upgradeNext: {
+    marginTop: 1,
+    color: "#d8ccb0",
+    fontSize: 11,
+    fontWeight: "700"
+  },
+  upgradeButton: {
+    minHeight: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#7b330e",
+    backgroundColor: "#d96516",
+    paddingHorizontal: theme.spacing.md
+  },
+  upgradeButtonDisabled: {
+    opacity: 0.5
+  },
+  upgradeButtonPressed: {
+    transform: [{ translateY: 1 }, { scale: 0.98 }]
+  },
+  upgradeButtonLabel: {
+    color: theme.colors.paper,
+    fontSize: 14,
+    fontWeight: "900"
+  },
+  upgradeButtonCost: {
+    color: "#ffe9ad",
+    fontSize: 11,
+    fontWeight: "900"
+  },
+  upgradeClose: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 15,
+    backgroundColor: "rgba(0, 0, 0, 0.35)"
+  },
+  upgradeCloseText: {
+    color: theme.colors.paper,
+    fontSize: 20,
+    fontWeight: "900",
+    lineHeight: 22
   },
   objectivePanel: {
     borderRadius: 12,

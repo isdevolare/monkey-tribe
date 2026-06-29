@@ -1,45 +1,54 @@
 import { create } from "zustand";
 import {
   ATTACK_INTERVAL_MS,
-  BASE_POPULATION_CAP,
   BOARD_SIZE,
-  BUILDING_COSTS,
   CAMP_MAX_HP,
   ENEMY_CAMP,
   ENEMY_DETECTION_RANGE,
-  GATHER_AMOUNTS,
-  HUT_POPULATION_BONUS,
   MOVE_INTERVAL_MS,
   PLAYER_CAMP,
   RAID_REWARD,
-  STARTING_BUILDINGS,
   STARTING_RESOURCES,
   UNIT_COSTS,
-  WATCH_POST_DAMAGE_REDUCTION
+  WATCH_TOWER_DAMAGE_REDUCTION
 } from "../config/constants";
+import {
+  BUILDING_NAMES,
+  BUILDING_PRODUCTION,
+  DEFAULT_BUILDINGS,
+  populationCap,
+  upgradeCost
+} from "../config/buildings";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import type {
-  BuildingType,
-  Buildings,
   GameState,
   GatherTarget,
   Owner,
   Position,
-  ResourceKind,
   Resources,
   Unit,
-  UnitTarget
+  UnitTarget,
+  VillageBuilding,
+  VillageBuildingType
 } from "../types/game";
 
 type MutableGame = {
   units: Unit[];
   resources: Resources;
-  buildings: Buildings;
+  buildings: VillageBuilding[];
   maxPopulation: number;
   playerCampHp: number;
   enemyCampHp: number;
   feedbackText: string | null;
 };
+
+function buildingLevel(buildings: VillageBuilding[], type: VillageBuildingType) {
+  return buildings.find((building) => building.type === type)?.level ?? 0;
+}
+
+function cloneBuildings(buildings: VillageBuilding[]): VillageBuilding[] {
+  return buildings.map((building) => ({ ...building }));
+}
 
 // Monotonic counter so units created in the same millisecond still get
 // unique ids (Date.now() alone collides on rapid creation / fast taps).
@@ -54,10 +63,11 @@ function createFreshState(now: number) {
     mapTiles: createInitialMap(),
     units: createInitialUnits(now),
     resources: { ...STARTING_RESOURCES },
-    buildings: { ...STARTING_BUILDINGS },
-    maxPopulation: BASE_POPULATION_CAP,
+    buildings: cloneBuildings(DEFAULT_BUILDINGS),
+    maxPopulation: populationCap(1),
     playerCampHp: CAMP_MAX_HP,
     enemyCampHp: CAMP_MAX_HP,
+    lastProductionAt: now,
     feedback: null
   };
 }
@@ -122,9 +132,9 @@ function currentPopulation(units: Unit[]) {
 
 function costText(cost: Resources) {
   const parts = [
-    cost.bananas > 0 ? `${cost.bananas} bananas` : null,
-    cost.stones > 0 ? `${cost.stones} stones` : null,
-    cost.wood > 0 ? `${cost.wood} wood` : null
+    cost.bananas > 0 ? `${cost.bananas} muz` : null,
+    cost.stones > 0 ? `${cost.stones} taş` : null,
+    cost.wood > 0 ? `${cost.wood} odun` : null
   ].filter(Boolean);
   return parts.join(" + ");
 }
@@ -270,11 +280,12 @@ function processAttacking(unit: Unit, game: MutableGame, now: number) {
         : "Enemy fighter struck back";
   } else if (unit.target.kind === "camp") {
     if (unit.target.owner === "player") {
-      const blocked = game.buildings.watchPost > 0 ? WATCH_POST_DAMAGE_REDUCTION : 0;
+      const blocked =
+        buildingLevel(game.buildings, "watchTower") * WATCH_TOWER_DAMAGE_REDUCTION;
       const damage = Math.max(1, unit.attack - blocked);
       game.playerCampHp = Math.max(0, game.playerCampHp - damage);
       game.feedbackText =
-        blocked > 0 ? `Watch Post blocked ${blocked} damage` : "Enemy attacked your camp";
+        blocked > 0 ? `Gözetleme Kulesi ${blocked} hasar engelledi` : "Düşman köyüne saldırdı";
     } else {
       game.enemyCampHp = Math.max(0, game.enemyCampHp - unit.attack);
       game.feedbackText = `${unit.type === "fighter" ? "Fighter" : "Worker"} attacked enemy camp`;
@@ -409,17 +420,17 @@ function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
     return state;
   }
 
-  if (type === "fighter" && state.buildings.trainingNest <= 0) {
+  if (type === "fighter" && buildingLevel(state.buildings, "trainingNest") <= 0) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: "Build a Training Nest to unlock fighters" }
+      feedback: { id: Date.now(), text: "Savaşçı için Eğitim Yuvası gerekli" }
     };
   }
 
   if (currentPopulation(state.units) >= state.maxPopulation) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: "Build a Hut to raise monkey capacity" }
+      feedback: { id: Date.now(), text: "İşçi Barınağı'nı geliştir, kapasite dolu" }
     };
   }
 
@@ -427,7 +438,7 @@ function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
   if (!hasResources(state.resources, cost)) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: `Need ${costText(cost)} for ${type}` }
+      feedback: { id: Date.now(), text: `${type === "worker" ? "İşçi" : "Savaşçı"} için ${costText(cost)} gerek` }
     };
   }
 
@@ -443,100 +454,48 @@ function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
     ],
     feedback: {
       id: now,
-      text: type === "worker" ? "Worker joined the tribe" : "Fighter trained at the nest"
+      text: type === "worker" ? "İşçi tribe'a katıldı" : "Savaşçı eğitildi"
     }
   };
 }
 
-function buildPlayerBuilding(state: GameState, building: BuildingType) {
+function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): GameState {
   if (state.gameStatus !== "playing") {
     return state;
   }
 
-  if (state.buildings[building] > 0) {
+  const level = buildingLevel(state.buildings, type);
+  const name = BUILDING_NAMES[type];
+
+  // Other buildings cannot exceed the Clan Hall level (it gates progression).
+  if (type !== "clanHall" && level >= buildingLevel(state.buildings, "clanHall")) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: "That building is already active" }
+      feedback: { id: Date.now(), text: `Önce Klan Salonu'nu geliştir` }
     };
   }
 
-  const cost = BUILDING_COSTS[building];
+  const cost = upgradeCost(type, level);
   if (!hasResources(state.resources, cost)) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: `Need ${costText(cost)} to build ${buildingName(building)}` }
+      feedback: { id: Date.now(), text: `${name} için ${costText(cost)} gerek` }
     };
   }
 
-  const buildings = { ...state.buildings, [building]: state.buildings[building] + 1 };
+  const buildings = state.buildings.map((building) =>
+    building.type === type ? { ...building, level: building.level + 1 } : building
+  );
   const now = Date.now();
+  const shelterLevel = buildingLevel(buildings, "workerShelter");
 
   return {
     ...state,
     buildings,
     resources: spendResources(state.resources, cost),
-    maxPopulation:
-      building === "hut" ? state.maxPopulation + HUT_POPULATION_BONUS : state.maxPopulation,
-    feedback: { id: now, text: `${buildingName(building)} built` }
+    maxPopulation: populationCap(shelterLevel),
+    feedback: { id: now, text: `${name} Seviye ${level + 1}` }
   };
-}
-
-function collectVillageResource(state: GameState, resource: ResourceKind): GameState {
-  const now = Date.now();
-
-  if (state.gameStatus !== "playing" || state.gameMode !== "village") {
-    return state;
-  }
-
-  const worker = state.units.find(
-    (unit) =>
-      unit.owner === "player" &&
-      unit.type === "worker" &&
-      unit.state !== "dead" &&
-      unit.hp > 0
-  );
-
-  if (!worker) {
-    return {
-      ...state,
-      feedback: { id: now, text: "Train a worker to collect resources" }
-    };
-  }
-
-  const amount = GATHER_AMOUNTS[resource];
-
-  return {
-    ...state,
-    resources: {
-      ...state.resources,
-      [resource]: state.resources[resource] + amount
-    },
-    units: state.units.map((unit) =>
-      unit.id === worker.id
-        ? {
-            ...unit,
-            state: "idle",
-            carriedResource: null,
-            target: undefined,
-            gatherTarget: undefined,
-            lastActionAt: now
-          }
-        : unit
-    ),
-    feedback: { id: now, text: `Collected +${amount} ${resource}` }
-  };
-}
-
-function buildingName(building: BuildingType) {
-  if (building === "trainingNest") {
-    return "Training Nest";
-  }
-
-  if (building === "watchPost") {
-    return "Watch Post";
-  }
-
-  return "Hut";
 }
 
 const initialNow = Date.now();
@@ -552,7 +511,7 @@ export const useGameStore = create<GameState>((set) => ({
       gameMode: "village",
       raidStatus: "idle"
     })),
-  collectResource: (resource) => set((state) => collectVillageResource(state, resource)),
+  upgradeBuilding: (type) => set((state) => upgradeVillageBuilding(state, type)),
   raidEnemyCamp: () =>
     set((state) => {
       const now = Date.now();
@@ -567,7 +526,7 @@ export const useGameStore = create<GameState>((set) => ({
       if (fighters.length <= 0) {
         return {
           ...state,
-          feedback: { id: now, text: "Train a fighter before raiding" }
+          feedback: { id: now, text: "Önce savaşçı eğit" }
         };
       }
 
@@ -577,7 +536,8 @@ export const useGameStore = create<GameState>((set) => ({
         raidStatus: "active",
         enemyCampHp: CAMP_MAX_HP,
         units: deployRaidUnits(state.units, now),
-        feedback: { id: now, text: "Raid started. Fighters are attacking!" }
+        lastProductionAt: now,
+        feedback: { id: now, text: "Baskın başladı! Savaşçılar saldırıyor." }
       };
     }),
   returnToVillage: () =>
@@ -586,13 +546,11 @@ export const useGameStore = create<GameState>((set) => ({
       gameMode: "village",
       raidStatus: "idle",
       units: returnPlayerUnitsToVillage(state.units),
-      feedback: { id: Date.now(), text: "Raid party returned to the village" }
+      lastProductionAt: Date.now(),
+      feedback: { id: Date.now(), text: "Baskın ekibi köye döndü" }
     })),
   createWorker: () => set((state) => createPlayerUnit(state, "worker")),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
-  buildHut: () => set((state) => buildPlayerBuilding(state, "hut")),
-  buildTrainingNest: () => set((state) => buildPlayerBuilding(state, "trainingNest")),
-  buildWatchPost: () => set((state) => buildPlayerBuilding(state, "watchPost")),
   tickGame: (now = Date.now()) =>
     set((state) => {
       if (state.gameStatus !== "playing") {
@@ -603,7 +561,7 @@ export const useGameStore = create<GameState>((set) => ({
       const game: MutableGame = {
         units,
         resources: { ...state.resources },
-        buildings: { ...state.buildings },
+        buildings: cloneBuildings(state.buildings),
         maxPopulation: state.maxPopulation,
         playerCampHp: state.playerCampHp,
         enemyCampHp: state.enemyCampHp,
@@ -672,12 +630,23 @@ export const useGameStore = create<GameState>((set) => ({
         }
       }
 
+      // Passive resource production from leveled buildings (time-based).
+      const elapsedSeconds = Math.max(0, (now - state.lastProductionAt) / 1000);
+      for (const building of game.buildings) {
+        const production = BUILDING_PRODUCTION[building.type];
+        if (production) {
+          game.resources[production.resource] +=
+            production.perSecond * building.level * elapsedSeconds;
+        }
+      }
+
       const playerUnitsAlive = units.some(
         (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
       );
       const canRecover =
         hasResources(game.resources, UNIT_COSTS.worker) ||
-        (state.buildings.trainingNest > 0 && hasResources(game.resources, UNIT_COSTS.fighter));
+        (buildingLevel(state.buildings, "trainingNest") > 0 &&
+          hasResources(game.resources, UNIT_COSTS.fighter));
       const feedback = game.feedbackText
         ? { id: now, text: game.feedbackText }
         : state.feedback;
@@ -687,7 +656,8 @@ export const useGameStore = create<GameState>((set) => ({
         buildings: game.buildings,
         maxPopulation: game.maxPopulation,
         playerCampHp: game.playerCampHp,
-        enemyCampHp: game.enemyCampHp
+        enemyCampHp: game.enemyCampHp,
+        lastProductionAt: now
       };
 
       if (game.playerCampHp <= 0 || (!playerUnitsAlive && !canRecover)) {
