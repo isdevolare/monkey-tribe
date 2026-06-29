@@ -12,10 +12,8 @@ export const STARTING_RESOURCES: Resources = {
 };
 
 export const CAMP_MAX_HP = 120;
-export const ENEMY_SPAWN_INTERVAL_MS = 32_000;
 export const MOVE_INTERVAL_MS = 380;
 export const ATTACK_INTERVAL_MS = 850;
-export const GATHER_DURATION_MS = 950;
 export const ENEMY_DETECTION_RANGE = 4;
 export const BASE_POPULATION_CAP = 3;
 export const HUT_POPULATION_BONUS = 2;

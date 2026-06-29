@@ -7,9 +7,7 @@ import {
   CAMP_MAX_HP,
   ENEMY_CAMP,
   ENEMY_DETECTION_RANGE,
-  ENEMY_SPAWN_INTERVAL_MS,
   GATHER_AMOUNTS,
-  GATHER_DURATION_MS,
   HUT_POPULATION_BONUS,
   MOVE_INTERVAL_MS,
   PLAYER_CAMP,
@@ -50,13 +48,11 @@ function createFreshState(now: number) {
     raidStatus: "idle" as const,
     mapTiles: createInitialMap(),
     units: createInitialUnits(now),
-    selectedUnitId: null,
     resources: { ...STARTING_RESOURCES },
     buildings: { ...STARTING_BUILDINGS },
     maxPopulation: BASE_POPULATION_CAP,
     playerCampHp: CAMP_MAX_HP,
     enemyCampHp: CAMP_MAX_HP,
-    nextEnemySpawnAt: now + ENEMY_SPAWN_INTERVAL_MS,
     feedback: null
   };
 }
@@ -224,66 +220,6 @@ function assignEnemyOrders(units: Unit[]) {
   }
 }
 
-function processGathering(unit: Unit, game: MutableGame, now: number) {
-  if (!unit.gatherTarget) {
-    unit.state = "idle";
-    return;
-  }
-
-  if (now - unit.lastActionAt < GATHER_DURATION_MS) {
-    return;
-  }
-
-  unit.carriedResource = {
-    kind: unit.gatherTarget.resource,
-    amount: GATHER_AMOUNTS[unit.gatherTarget.resource]
-  };
-  unit.state = "returning";
-  unit.target = { kind: "tile", ...PLAYER_CAMP };
-  unit.lastActionAt = now;
-  processReturning(unit, game, now);
-}
-
-function processReturning(unit: Unit, game: MutableGame, now: number) {
-  if (distance(unit, PLAYER_CAMP) === 0) {
-    if (unit.carriedResource) {
-      const key = unit.carriedResource.kind;
-      game.resources[key] += unit.carriedResource.amount;
-      game.feedbackText = `Worker gathered +${unit.carriedResource.amount} ${key}`;
-    }
-
-    unit.carriedResource = null;
-    unit.gatherTarget = undefined;
-    unit.target = undefined;
-    unit.state = "idle";
-    return;
-  }
-
-  moveUnitToward(unit, PLAYER_CAMP, now);
-}
-
-function processMovement(unit: Unit, now: number) {
-  if (!unit.target || unit.target.kind !== "tile") {
-    unit.state = "idle";
-    return;
-  }
-
-  const target = { x: unit.target.x, y: unit.target.y };
-  if (distance(unit, target) === 0) {
-    if (unit.type === "worker" && unit.gatherTarget) {
-      unit.state = "gathering";
-      unit.lastActionAt = now;
-      return;
-    }
-
-    unit.state = "idle";
-    unit.target = undefined;
-    return;
-  }
-
-  moveUnitToward(unit, target, now);
-}
-
 function damageUnit(units: Unit[], unitId: string, amount: number) {
   const target = units.find((unit) => unit.id === unitId);
   if (!target || target.state === "dead") {
@@ -349,14 +285,8 @@ function processUnit(unit: Unit, game: MutableGame, now: number) {
     return;
   }
 
-  if (unit.state === "gathering") {
-    processGathering(unit, game, now);
-  } else if (unit.state === "returning") {
-    processReturning(unit, game, now);
-  } else if (unit.state === "attacking") {
+  if (unit.state === "attacking") {
     processAttacking(unit, game, now);
-  } else if (unit.state === "moving") {
-    processMovement(unit, now);
   }
 }
 
@@ -575,7 +505,6 @@ function collectVillageResource(state: GameState, resource: ResourceKind): GameS
       ...state.resources,
       [resource]: state.resources[resource] + amount
     },
-    selectedUnitId: null,
     units: state.units.map((unit) =>
       unit.id === worker.id
         ? {
@@ -617,88 +546,7 @@ export const useGameStore = create<GameState>((set) => ({
       gameMode: "village",
       raidStatus: "idle"
     })),
-  selectUnit: (unitId) =>
-    set((state) => {
-      if (!unitId) {
-        return { ...state, selectedUnitId: null };
-      }
-
-      const unit = state.units.find(
-        (candidate) =>
-          candidate.id === unitId &&
-          candidate.owner === "player" &&
-          candidate.state !== "dead" &&
-          candidate.hp > 0
-      );
-
-      return unit ? { ...state, selectedUnitId: unit.id } : state;
-    }),
   collectResource: (resource) => set((state) => collectVillageResource(state, resource)),
-  commandMove: (x, y) =>
-    set((state) => {
-      if (!state.selectedUnitId || !isInsideBoard(x, y)) {
-        return state;
-      }
-
-      return {
-        ...state,
-        units: state.units.map((unit) =>
-          unit.id === state.selectedUnitId && unit.owner === "player"
-            ? {
-                ...unit,
-                state: "moving",
-                target: { kind: "tile", x, y },
-                gatherTarget: undefined,
-                carriedResource: null
-              }
-            : unit
-        )
-      };
-    }),
-  commandGather: (x, y, resource: ResourceKind) =>
-    set((state) => {
-      if (!state.selectedUnitId || !isInsideBoard(x, y)) {
-        return state;
-      }
-
-      return {
-        ...state,
-        units: state.units.map((unit) =>
-          unit.id === state.selectedUnitId &&
-          unit.owner === "player" &&
-          unit.type === "worker"
-            ? {
-                ...unit,
-                state: "moving",
-                target: { kind: "tile", x, y },
-                gatherTarget: { x, y, resource },
-                carriedResource: null
-              }
-            : unit
-        )
-      };
-    }),
-  commandAttack: (target) =>
-    set((state) => {
-      if (!state.selectedUnitId) {
-        return state;
-      }
-
-      return {
-        ...state,
-        units: state.units.map((unit) =>
-          unit.id === state.selectedUnitId && unit.owner === "player"
-            ? {
-                ...unit,
-                state: "attacking",
-                target,
-                gatherTarget: undefined,
-                carriedResource: null
-              }
-            : unit
-        )
-      };
-    }),
   raidEnemyCamp: () =>
     set((state) => {
       const now = Date.now();
@@ -722,7 +570,6 @@ export const useGameStore = create<GameState>((set) => ({
         gameMode: "raid",
         raidStatus: "active",
         enemyCampHp: CAMP_MAX_HP,
-        selectedUnitId: null,
         units: deployRaidUnits(state.units, now),
         feedback: { id: now, text: "Raid started. Fighters are attacking!" }
       };
@@ -732,7 +579,6 @@ export const useGameStore = create<GameState>((set) => ({
       ...state,
       gameMode: "village",
       raidStatus: "idle",
-      selectedUnitId: null,
       units: returnPlayerUnitsToVillage(state.units),
       feedback: { id: Date.now(), text: "Raid party returned to the village" }
     })),
@@ -757,7 +603,6 @@ export const useGameStore = create<GameState>((set) => ({
         enemyCampHp: state.enemyCampHp,
         feedbackText: null
       };
-      let nextEnemySpawnAt = state.nextEnemySpawnAt;
 
       if (state.gameMode === "raid" && state.raidStatus === "active") {
         assignRaidOrders(units);
@@ -790,9 +635,7 @@ export const useGameStore = create<GameState>((set) => ({
             },
             enemyCampHp: 0,
             feedback: { id: now, text: "Raid victory! +25 bananas, +10 stones, +10 wood" },
-            selectedUnitId: null,
-            raidStatus: "victory",
-            nextEnemySpawnAt
+            raidStatus: "victory"
           };
         }
 
@@ -802,9 +645,7 @@ export const useGameStore = create<GameState>((set) => ({
             units: game.units,
             enemyCampHp: game.enemyCampHp,
             feedback: { id: now, text: "Raid failed. Return and train more fighters" },
-            selectedUnitId: null,
-            raidStatus: "defeat",
-            nextEnemySpawnAt
+            raidStatus: "defeat"
           };
         }
 
@@ -812,9 +653,7 @@ export const useGameStore = create<GameState>((set) => ({
           ...state,
           units: game.units,
           enemyCampHp: game.enemyCampHp,
-          feedback: game.feedbackText ? { id: now, text: game.feedbackText } : state.feedback,
-          selectedUnitId: null,
-          nextEnemySpawnAt
+          feedback: game.feedbackText ? { id: now, text: game.feedbackText } : state.feedback
         };
       }
 
@@ -824,11 +663,6 @@ export const useGameStore = create<GameState>((set) => ({
         }
       }
 
-      const selectedUnit = units.find((unit) => unit.id === state.selectedUnitId);
-      const selectedUnitId =
-        selectedUnit && selectedUnit.state !== "dead" && selectedUnit.hp > 0
-          ? selectedUnit.id
-          : null;
       const playerUnitsAlive = units.some(
         (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
       );
@@ -852,19 +686,15 @@ export const useGameStore = create<GameState>((set) => ({
           ...state,
           ...nextGame,
           feedback,
-          selectedUnitId: null,
           currentScreen: "result",
-          gameStatus: "defeat",
-          nextEnemySpawnAt
+          gameStatus: "defeat"
         };
       }
 
       return {
         ...state,
         ...nextGame,
-        feedback,
-        selectedUnitId,
-        nextEnemySpawnAt
+        feedback
       };
     }),
   resetGame: () =>

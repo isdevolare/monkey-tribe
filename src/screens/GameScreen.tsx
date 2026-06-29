@@ -175,13 +175,12 @@ export function GameScreen() {
         </View>
 
         <View style={styles.resourceBar}>
-          <ResourceChip label="Bananas" value={state.resources.bananas} rate="+18/turn" assetKey="resourceBanana" />
-          <ResourceChip label="Stones" value={state.resources.stones} rate="+12/turn" assetKey="resourceStone" />
-          <ResourceChip label="Wood" value={state.resources.wood} rate="+9/turn" assetKey="resourceWood" />
+          <ResourceChip label="Bananas" value={state.resources.bananas} assetKey="resourceBanana" />
+          <ResourceChip label="Stones" value={state.resources.stones} assetKey="resourceStone" />
+          <ResourceChip label="Wood" value={state.resources.wood} assetKey="resourceWood" />
           <ResourceChip
             label="Population"
             value={`${population}/${state.maxPopulation}`}
-            rate="+1/turn"
             assetKey="resourcePopulation"
           />
         </View>
@@ -395,12 +394,10 @@ function costText(cost: Resources) {
 function ResourceChip({
   label,
   value,
-  rate,
   assetKey
 }: {
   label: string;
   value: number | string;
-  rate: string;
   assetKey: "resourceBanana" | "resourceStone" | "resourceWood" | "resourcePopulation";
 }) {
   return (
@@ -412,7 +409,6 @@ function ResourceChip({
       </View>
       <View style={styles.resourceCopy}>
         <Text style={styles.resourceValue}>{value}</Text>
-        <Text style={styles.resourceRate}>{rate}</Text>
       </View>
       <Text style={styles.hiddenLabel}>{label}</Text>
     </View>
@@ -833,11 +829,6 @@ const styles = StyleSheet.create({
   resourceValue: {
     color: theme.colors.paper,
     fontSize: 17,
-    fontWeight: "900"
-  },
-  resourceRate: {
-    color: "#a7df80",
-    fontSize: 10,
     fontWeight: "900"
   },
   hiddenLabel: {

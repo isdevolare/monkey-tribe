@@ -1,42 +1,44 @@
 # Monkey Tribe
 
-Monkey Tribe is a mobile-first 2D top-down strategy prototype built with Expo, React Native, TypeScript, Zustand, and an asset-ready image pipeline with vector fallbacks.
+Monkey Tribe is a mobile-first 2D jungle strategy prototype built with Expo, React Native, TypeScript, Zustand, and an asset-ready image pipeline with vector fallbacks.
 
 ## Game Concept
 
-You command a small monkey tribe from a jungle camp. Worker monkeys gather bananas, stones, and wood, buildings expand the tribe, fighters defend the camp, and the goal is to destroy the enemy monkey camp before its fighters overwhelm you.
+You grow a monkey tribe from a jungle camp. The game has two layers:
 
-## Controls
+- **Village (base management):** A calm, passive base. Tap resource nodes to instantly collect bananas, stones, and wood, then spend them to grow your population and put up buildings. No enemies attack the village.
+- **Raid (combat):** When you have fighters, press RAID to send them into a separate battle scene against an enemy camp. Combat resolves automatically; win to earn rewards, then return to the village to prepare for the next raid.
 
-- Tap a player monkey to select it.
-- Tap an empty or grass tile to move the selected monkey.
-- Select a worker, then tap a banana tree, stone rock, or wood grove to gather.
-- Select any monkey, then tap an enemy monkey to attack.
-- Select a monkey, then tap the enemy camp to attack it.
-- Use the bottom buttons to create workers, build camp upgrades, or train fighters when you have enough resources.
-- Build a Training Nest before training fighters.
-- Build a Hut to increase max population.
-- Build a Watch Post to reduce incoming camp damage.
+## How It Plays
+
+### Village
+
+- Tap a banana tree, stone pile, or wood grove to collect that resource instantly.
+- Use the bottom dock to create workers, train fighters, and build upgrades.
+- Build a **Training Nest** before training fighters.
+- Build a **Hut** to raise your max population.
+- Build a **Watch Post** as an additional camp upgrade.
+- Press **RAID** once you have at least one fighter.
+
+### Raid
+
+- Your fighters deploy into the raid scene and automatically attack the enemy camp.
+- Enemy fighters defend and fight back.
+- Destroy the enemy camp before your fighters fall to win rewards.
+- Win or lose, use **Return to Village** (or **Retreat**) to go back and regroup.
 
 ## Current Features
 
-- 10x10 portrait-first top-down grid.
-- Typed PNG asset registry with safe fallback rendering.
-- Jungle-style board with grass, darker jungle, mud paths, bushes, banana trees, stone rocks, wood groves, and distinct camps.
-- Worker and fighter unit types.
-- Wood as a third resource.
+- Two-mode loop: passive village base management and active raid combat.
+- Tap-to-collect village resources (bananas, stones, wood).
+- Worker and fighter unit types with a population cap.
 - Hut, Training Nest, and Watch Post buildings.
-- Max population and building unlocks.
-- Tick-based one-tile Manhattan movement.
-- Worker gather, return, and deposit loop for one trip per command.
-- Simple melee combat with attack cooldowns.
-- Defensive enemy fighters with detection range.
-- Enemy camp slowly trains extra fighters.
+- Painted top-down village and raid scenes (background art + positioned sprites).
+- Typed PNG asset registry with safe vector fallback rendering.
+- Auto-resolved raid combat with attack cooldowns and health bars.
+- Raid rewards added to village stores on victory.
 - First-start tutorial overlay.
-- Action feedback text for gathering, training, building, attacks, and enemy pressure.
-- Selection highlight, reachable tile hint, attack hint, and unit/camp health bars.
-- Victory and defeat result screen.
-- Thumb-sized production buttons with resource cost gating.
+- Objectives panel and action feedback text.
 
 ## How To Run
 
@@ -59,31 +61,27 @@ npm run typecheck
 npm run doctor
 ```
 
-## Asset Pipeline
-
-Drop production PNGs into `assets/game/...` using the exact file names in [DESIGN_GUIDE.md](./DESIGN_GUIDE.md). Asset mode is enabled by default in `src/game/assets/gameAssets.ts`; switch `VISUAL_MODE` to `"fallback"` to debug with vector placeholders only.
-
 ## Testing Checklist
 
 - Start a new game from the main menu.
-- Select the worker and gather bananas from a banana tree.
-- Select the worker and gather stones from a stone rock.
-- Select the worker and gather wood from a wood grove.
-- Confirm resources increase after the worker returns to camp.
-- Create a worker when you have at least 10 bananas.
+- Tap banana trees, stone piles, and wood groves and confirm resources increase.
+- Create a worker when you have enough bananas.
 - Build a Hut and confirm population capacity increases.
 - Build a Training Nest and confirm fighters unlock.
 - Train a fighter when you have enough bananas, stones, and wood.
-- Build a Watch Post and confirm enemy camp attacks are reduced.
-- Select a fighter and attack enemy units.
-- Attack the enemy camp until its HP reaches 0 and confirm Victory.
-- Let all player units die without enough resources to recover and confirm Defeat.
+- Build a Watch Post.
+- Press RAID with at least one fighter and confirm the raid scene opens.
+- Let the raid auto-resolve and confirm victory rewards or a failed-raid message.
+- Return to the village and confirm you are back in base management.
+
+## Asset Pipeline
+
+Drop production PNGs into `assets/game/...` using the exact file names in [DESIGN_GUIDE.md](./DESIGN_GUIDE.md). Asset mode is enabled by default in `src/game/assets/gameAssets.ts`; switch `VISUAL_MODE` to `"fallback"` to debug with vector placeholders only. If a PNG is missing or fails to load, the matching vector fallback stays visible and gameplay is unaffected.
 
 ## Known Limitations
 
-- No pathfinding beyond direct Manhattan stepping.
-- Units can share target/resource/camp tiles.
-- Workers complete one gather trip per command instead of repeating forever.
-- Enemy AI only guards and reacts to nearby player units.
+- Village is intentionally passive: no manual unit selection, no tile-by-tile movement, and no enemies attacking the village.
+- Raid combat is auto-resolved; there is no manual unit control during a raid yet.
 - Only one of each building can be built in this prototype.
+- Enemy raid force is a fixed group rather than scaling AI.
 - No save progression, multiplayer, ads, IAP, fog of war, or multiple maps.
