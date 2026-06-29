@@ -88,6 +88,10 @@ export function RaidBoard({
   const campFlash = useRef(new Animated.Value(0)).current;
   const campShake = useRef(new Animated.Value(0)).current;
   const resultAnim = useRef(new Animated.Value(0)).current;
+  // Units deploy with lastActionAt = now, so skip strike glows briefly to
+  // avoid every unit flashing at once on the first frame of the raid.
+  const mountedAtRef = useRef(Date.now());
+  const settled = Date.now() - mountedAtRef.current > 300;
 
   const removeMarker = useCallback((id: number) => {
     setMarkers((current) => current.filter((marker) => marker.id !== id));
@@ -181,7 +185,7 @@ export function RaidBoard({
 
       {fighters.map((unit, index) => {
         const spot = fighterSpots[index % fighterSpots.length] ?? { x: 24, y: 66 };
-        const striking = Date.now() - unit.lastActionAt < STRIKE_WINDOW_MS;
+        const striking = settled && Date.now() - unit.lastActionAt < STRIKE_WINDOW_MS;
         return (
           <View
             key={unit.id}
@@ -203,7 +207,7 @@ export function RaidBoard({
 
       {enemies.map((unit, index) => {
         const spot = enemySpots[index % enemySpots.length] ?? { x: 72, y: 42 };
-        const striking = Date.now() - unit.lastActionAt < STRIKE_WINDOW_MS;
+        const striking = settled && Date.now() - unit.lastActionAt < STRIKE_WINDOW_MS;
         return (
           <View
             key={unit.id}
@@ -562,7 +566,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(8, 14, 9, 0.55)",
-    padding: 18
+    padding: 18,
+    zIndex: 500
   },
   resultPanel: {
     width: "100%",

@@ -41,6 +41,10 @@ type MutableGame = {
   feedbackText: string | null;
 };
 
+// Monotonic counter so units created in the same millisecond still get
+// unique ids (Date.now() alone collides on rapid creation / fast taps).
+let unitSerial = 0;
+
 function createFreshState(now: number) {
   return {
     currentScreen: "menu" as const,
@@ -428,13 +432,14 @@ function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
   }
 
   const now = Date.now();
+  unitSerial += 1;
   const spawn = findSpawnPosition(state.units, "player");
   return {
     ...state,
     resources: spendResources(state.resources, cost),
     units: [
       ...state.units,
-      createUnit(`player-${type}-${now}`, type, "player", spawn.x, spawn.y, now)
+      createUnit(`player-${type}-${now}-${unitSerial}`, type, "player", spawn.x, spawn.y, now)
     ],
     feedback: {
       id: now,
