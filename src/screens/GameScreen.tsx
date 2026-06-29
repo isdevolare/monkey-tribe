@@ -29,7 +29,7 @@ const tutorialSteps = [
   "Press RAID to send fighters into a separate enemy camp battle."
 ];
 
-type ActionTab = "overview" | "monkeys" | "build" | "map" | "shop" | "settings";
+type ActionTab = "build" | "monkeys";
 
 export function GameScreen() {
   const state = useGameStore();
@@ -37,7 +37,7 @@ export function GameScreen() {
   const layoutWidth = Math.min(width, PHONE_FRAME_WIDTH);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [actionTab, setActionTab] = useState<ActionTab>("overview");
+  const [actionTab, setActionTab] = useState<ActionTab>("build");
   const population = state.units.filter(
     (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
   ).length;
@@ -48,7 +48,7 @@ export function GameScreen() {
       unit.state !== "dead" &&
       unit.hp > 0
   ).length;
-  const boardMaxSize = Math.max(250, Math.min(layoutWidth - 94, 336));
+  const boardMaxSize = Math.max(260, Math.min(layoutWidth - 20, 404));
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -198,59 +198,15 @@ export function GameScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.mainStage}>
-              <View style={styles.sideNav}>
-                <SideNavButton
-                  label="Overview"
-                  glyph="O"
-                  active={actionTab === "overview"}
-                  onPress={() => setActionTab("overview")}
-                />
-                <SideNavButton
-                  label="Monkeys"
-                  glyph="M"
-                  badge={population}
-                  active={actionTab === "monkeys"}
-                  onPress={() => setActionTab("monkeys")}
-                />
-                <SideNavButton
-                  label="Build"
-                  glyph="B"
-                  active={actionTab === "build"}
-                  onPress={() => setActionTab("build")}
-                />
-                <SideNavButton
-                  label="Map"
-                  glyph="Map"
-                  active={actionTab === "map"}
-                  onPress={() => setActionTab("map")}
-                />
-                <SideNavButton
-                  label="Shop"
-                  glyph="Hut"
-                  active={actionTab === "shop"}
-                  onPress={() => setActionTab("shop")}
-                />
-                <SideNavButton
-                  label="Settings"
-                  glyph="S"
-                  active={actionTab === "settings"}
-                  onPress={() => setActionTab("settings")}
-                />
-              </View>
-
-              <View style={styles.playColumn}>
-                <View style={styles.boardShell}>
-                  <VillageBoard
-                    tiles={state.mapTiles}
-                    units={state.units}
-                    buildings={state.buildings}
-                    maxSize={boardMaxSize}
-                    feedbackText={state.feedback?.text}
-                    onCellPress={handleCellPress}
-                  />
-                </View>
-              </View>
+            <View style={styles.boardShell}>
+              <VillageBoard
+                tiles={state.mapTiles}
+                units={state.units}
+                buildings={state.buildings}
+                maxSize={boardMaxSize}
+                feedbackText={state.feedback?.text}
+                onCellPress={handleCellPress}
+              />
             </View>
 
             <View style={styles.objectivePanel}>
@@ -267,6 +223,21 @@ export function GameScreen() {
               />
               <ObjectiveRow label="Train a Fighter" value={`${fighterCount > 0 ? 1 : 0}/1`} done={fighterCount > 0} />
               <ObjectiveRow label="Win a Raid" value={`${state.enemyCampHp <= 0 ? 1 : 0}/1`} done={state.enemyCampHp <= 0} />
+            </View>
+
+            <View style={styles.dockTabs}>
+              <DockTab
+                label="Build"
+                badge={undefined}
+                active={actionTab === "build"}
+                onPress={() => setActionTab("build")}
+              />
+              <DockTab
+                label="Monkeys"
+                badge={population}
+                active={actionTab === "monkeys"}
+                onPress={() => setActionTab("monkeys")}
+              />
             </View>
 
             <View style={styles.bottomDock}>
@@ -327,17 +298,6 @@ export function GameScreen() {
             disabled={trainFighterDisabled}
             onPress={state.trainFighter}
           />
-          <ActionCard title="Raid Prep" cost={`${fighterCount} ready`} glyph="X" onPress={() => setActionTab("map")} />
-        </>
-      );
-    }
-
-    if (actionTab === "map") {
-      return (
-        <>
-          <ActionCard title="Collect" cost="Tap nodes" glyph="B" onPress={() => setActionTab("overview")} />
-          <ActionCard title="Village" cost="Base view" glyph="Map" onPress={() => setActionTab("overview")} />
-          <ActionCard title="Cancel" cost="Reset" glyph="!" onPress={state.resetGame} />
         </>
       );
     }
@@ -368,7 +328,6 @@ export function GameScreen() {
           disabled={watchPostDisabled}
           onPress={state.buildWatchPost}
         />
-        <ActionCard title="More" cost="..." glyph="More" onPress={() => setActionTab("shop")} />
       </>
     );
   }
@@ -441,15 +400,13 @@ function ResourceFallback({
   );
 }
 
-function SideNavButton({
+function DockTab({
   label,
-  glyph,
   badge,
   active,
   onPress
 }: {
   label: string;
-  glyph: string;
   badge?: number;
   active?: boolean;
   onPress: () => void;
@@ -459,20 +416,15 @@ function SideNavButton({
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
-        styles.sideButton,
-        active ? styles.sideButtonActive : null,
-        pressed ? styles.sideButtonPressed : null
+        styles.dockTab,
+        active ? styles.dockTabActive : null,
+        pressed ? styles.dockTabPressed : null
       ]}
     >
-      <PanelTexture dark />
-      <View style={styles.sideIconFrame}>
-        <IconFrame />
-        <Text style={styles.sideGlyph}>{glyph}</Text>
-      </View>
-      <Text style={[styles.sideLabel, active ? styles.sideLabelActive : null]}>{label}</Text>
+      <Text style={[styles.dockTabLabel, active ? styles.dockTabLabelActive : null]}>{label}</Text>
       {badge ? (
-        <View style={styles.sideBadge}>
-          <Text style={styles.sideBadgeText}>{badge}</Text>
+        <View style={styles.dockTabBadge}>
+          <Text style={styles.dockTabBadgeText}>{badge}</Text>
         </View>
       ) : null}
     </Pressable>
@@ -837,73 +789,52 @@ const styles = StyleSheet.create({
     height: 1,
     opacity: 0
   },
-  mainStage: {
+  dockTabs: {
     flexDirection: "row",
-    alignItems: "stretch",
-    gap: theme.spacing.sm,
+    gap: 6,
     marginTop: theme.spacing.xs
   },
-  sideNav: {
-    width: 60,
-    gap: 5
-  },
-  sideButton: {
-    minHeight: 46,
+  dockTab: {
+    flex: 1,
+    minHeight: 40,
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
-    borderRadius: 9,
+    gap: 6,
+    borderRadius: 11,
     borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.14)",
+    borderColor: "rgba(255, 224, 151, 0.16)",
     backgroundColor: "rgba(54, 43, 27, 0.84)",
-    paddingHorizontal: 6,
-    overflow: "hidden"
+    paddingHorizontal: 10
   },
-  sideButtonActive: {
-    borderColor: "rgba(198, 238, 137, 0.48)",
+  dockTabActive: {
+    borderColor: "rgba(198, 238, 137, 0.5)",
     backgroundColor: "rgba(68, 101, 45, 0.92)"
   },
-  sideButtonPressed: {
+  dockTabPressed: {
     transform: [{ scale: 0.98 }]
   },
-  sideGlyph: {
-    color: theme.colors.paper,
-    fontSize: 10,
-    fontWeight: "900",
-    textAlign: "center"
-  },
-  sideIconFrame: {
-    width: 22,
-    height: 22,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  sideLabel: {
-    marginTop: 2,
+  dockTabLabel: {
     color: "#d8ccb0",
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: "900"
   },
-  sideLabelActive: {
+  dockTabLabelActive: {
     color: theme.colors.paper
   },
-  sideBadge: {
-    position: "absolute",
-    top: 4,
-    right: 4,
-    minWidth: 18,
-    height: 18,
+  dockTabBadge: {
+    minWidth: 20,
+    height: 20,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 9,
+    borderRadius: 10,
+    paddingHorizontal: 5,
     backgroundColor: "#d94b36"
   },
-  sideBadgeText: {
+  dockTabBadgeText: {
     color: theme.colors.paper,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "900"
-  },
-  playColumn: {
-    flex: 1,
-    gap: theme.spacing.sm
   },
   raidStage: {
     alignItems: "center",
@@ -913,6 +844,7 @@ const styles = StyleSheet.create({
   boardShell: {
     alignItems: "center",
     justifyContent: "center",
+    marginTop: theme.spacing.xs,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "rgba(255, 224, 151, 0.2)",
