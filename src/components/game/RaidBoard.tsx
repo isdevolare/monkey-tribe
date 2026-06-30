@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
+import { LivelyUnit } from "./LivelyUnit";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import type { RaidStatus, Resources, Unit } from "../../game/types/game";
 import { theme } from "../../theme/theme";
@@ -204,7 +205,9 @@ export function RaidBoard({
             ]}
           >
             {striking ? <View style={styles.strikeGlow} pointerEvents="none" /> : null}
-            <AssetImage assetKey="unitFighter" style={styles.full} fallback={<MonkeyFallback fighter />} />
+            <LivelyUnit seed={index} amplitude={4} style={styles.full}>
+              <AssetImage assetKey="unitFighter" style={styles.full} fallback={<MonkeyFallback fighter />} />
+            </LivelyUnit>
             <HealthBar percent={Math.max(0, Math.round((unit.hp / unit.maxHp) * 100))} />
           </View>
         );
@@ -226,7 +229,9 @@ export function RaidBoard({
             ]}
           >
             {striking ? <View style={[styles.strikeGlow, styles.strikeGlowEnemy]} pointerEvents="none" /> : null}
-            <AssetImage assetKey="unitEnemyFighter" style={styles.full} fallback={<MonkeyFallback fighter enemy />} />
+            <LivelyUnit seed={index + 3} amplitude={4} style={styles.full}>
+              <AssetImage assetKey="unitEnemyFighter" style={styles.full} fallback={<MonkeyFallback fighter enemy />} />
+            </LivelyUnit>
             <HealthBar percent={Math.max(0, Math.round((unit.hp / unit.maxHp) * 100))} enemy />
           </View>
         );

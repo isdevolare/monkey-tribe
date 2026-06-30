@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
+import { LivelyUnit } from "./LivelyUnit";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { BUILDING_NAMES } from "../../game/config/buildings";
 import type { Tile, Unit, VillageBuilding, VillageBuildingType } from "../../game/types/game";
@@ -397,14 +398,14 @@ function UnitArt({ unit }: { unit: Unit }) {
   const player = unit.owner === "player";
 
   return (
-    <View style={styles.unitWrap}>
+    <LivelyUnit seed={stableIndex(unit.id, 6)} style={styles.unitWrap}>
       <AssetImage
         assetKey={unitAssetKey(unit)}
         style={styles.unitAsset}
         imageStyle={styles.unitImage}
         fallback={<UnitFallback player={player} fighter={unit.type === "fighter"} />}
       />
-    </View>
+    </LivelyUnit>
   );
 }
 
