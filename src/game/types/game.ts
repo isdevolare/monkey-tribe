@@ -88,6 +88,12 @@ export type FeedbackMessage = {
   text: string;
 };
 
+export type VillageSave = {
+  buildings: VillageBuilding[];
+  resources: Resources;
+  maxPopulation: number;
+};
+
 export type GameState = {
   currentScreen: ScreenId;
   gameStatus: GameStatus;
@@ -103,6 +109,7 @@ export type GameState = {
   lastProductionAt: number;
   feedback: FeedbackMessage | null;
   startGame: () => void;
+  hydrate: (save: VillageSave) => void;
   createWorker: () => void;
   trainFighter: () => void;
   raidEnemyCamp: () => void;

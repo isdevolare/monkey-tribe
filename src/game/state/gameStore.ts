@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import {
   ATTACK_INTERVAL_MS,
@@ -29,8 +30,11 @@ import type {
   Unit,
   UnitTarget,
   VillageBuilding,
-  VillageBuildingType
+  VillageBuildingType,
+  VillageSave
 } from "../types/game";
+
+export const SAVE_KEY = "monkey-tribe:save";
 
 type MutableGame = {
   units: Unit[];
@@ -504,13 +508,32 @@ const initialState = createFreshState(initialNow);
 export const useGameStore = create<GameState>((set) => ({
   ...initialState,
   startGame: () =>
-    set(() => ({
-      ...createFreshState(Date.now()),
+    set((state) => ({
+      // Keep the persistent village (buildings/resources/population); only
+      // reset the per-session battle state.
       currentScreen: "game",
       gameStatus: "playing",
       gameMode: "village",
-      raidStatus: "idle"
+      raidStatus: "idle",
+      units: createInitialUnits(Date.now()),
+      playerCampHp: CAMP_MAX_HP,
+      enemyCampHp: CAMP_MAX_HP,
+      lastProductionAt: Date.now(),
+      feedback: null
     })),
+  hydrate: (save: VillageSave) =>
+    set(() => {
+      const levels = new Map(save.buildings.map((building) => [building.type, building.level]));
+      return {
+        buildings: DEFAULT_BUILDINGS.map((building) => ({
+          type: building.type,
+          level: levels.get(building.type) ?? building.level
+        })),
+        resources: { ...save.resources },
+        maxPopulation: save.maxPopulation,
+        lastProductionAt: Date.now()
+      };
+    }),
   upgradeBuilding: (type) => set((state) => upgradeVillageBuilding(state, type)),
   raidEnemyCamp: () =>
     set((state) => {
@@ -676,18 +699,43 @@ export const useGameStore = create<GameState>((set) => ({
         feedback
       };
     }),
-  resetGame: () =>
+  resetGame: () => {
+    // Hard reset: wipe the saved village and start a brand new one.
+    void AsyncStorage.removeItem(SAVE_KEY);
     set(() => ({
       ...createFreshState(Date.now()),
       currentScreen: "game",
       gameStatus: "playing",
       gameMode: "village",
       raidStatus: "idle"
-    })),
+    }));
+  },
   goToMenu: () =>
     set(() => ({
-      ...createFreshState(Date.now()),
+      // Keep the village in memory; just return to the menu.
       currentScreen: "menu",
-      gameStatus: "menu"
+      gameStatus: "menu",
+      gameMode: "village",
+      raidStatus: "idle",
+      feedback: null
     }))
 }));
+
+// Persist the village (buildings/resources/population) as it changes, throttled.
+let lastSaveAt = 0;
+useGameStore.subscribe((state) => {
+  if (state.gameStatus !== "playing") {
+    return;
+  }
+  const now = Date.now();
+  if (now - lastSaveAt < 3000) {
+    return;
+  }
+  lastSaveAt = now;
+  const payload: VillageSave = {
+    buildings: state.buildings,
+    resources: state.resources,
+    maxPopulation: state.maxPopulation
+  };
+  void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+});
