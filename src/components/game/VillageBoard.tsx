@@ -312,6 +312,12 @@ function resourceItems(tiles: Tile[]): SceneItem[] {
   });
 }
 
+function prop(key: string, center: Point, size: number, asset: GameAssetKey): SceneItem {
+  return item(key, center, size, Math.round(center.y * 10), (
+    <AssetImage assetKey={asset} style={styles.full} fallback={<View style={styles.assetMissing} />} />
+  ));
+}
+
 function sceneryItems(): SceneItem[] {
   return [
     item("edge-tree-left", { x: 5, y: 34 }, 22, 18, (
@@ -326,7 +332,14 @@ function sceneryItems(): SceneItem[] {
     item("edge-bush-b", { x: 90, y: 70 }, 11, 72, (
       <AssetImage assetKey="terrainBush" style={styles.full} fallback={<BushFallback />} />
     )),
-    item("campfire", CAMPFIRE_SLOT, 13, 70, <Campfire />)
+    // Lived-in village props scattered near the buildings.
+    prop("prop-campfire", CAMPFIRE_SLOT, 12, "propCampfire"),
+    prop("prop-log", { x: 11, y: 61 }, 11, "propLogPile"),
+    prop("prop-dummy", { x: 80, y: 64 }, 10, "propTrainingDummy"),
+    prop("prop-basket", { x: 39, y: 58 }, 8, "propBananaBasket"),
+    prop("prop-crate", { x: 35, y: 49 }, 7, "propCrate"),
+    prop("prop-barrel", { x: 59, y: 50 }, 7, "propBarrel"),
+    prop("prop-rope", { x: 62, y: 70 }, 6, "propRopeCoil")
   ];
 }
 

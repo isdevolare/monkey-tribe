@@ -72,7 +72,15 @@ export type GameAssetKey =
   | "menuChiefMascot"
   | "menuTitlePlaque"
   | "menuTotem"
-  | "menuTorch";
+  | "menuTorch"
+  | "propCampfire"
+  | "propCrate"
+  | "propBarrel"
+  | "propLogPile"
+  | "propBananaBasket"
+  | "propRopeCoil"
+  | "propFenceSegment"
+  | "propTrainingDummy";
 
 export type GameAssetDefinition = {
   key: GameAssetKey;
@@ -307,6 +315,38 @@ export const gameAssets = {
   menuTorch: {
     ...asset("menuTorch", "ui", "menu_jungle_torch.png", "generated jungle torch"),
     source: require("../../../assets/game/generated/menu/menu_jungle_torch.png") as ImageSourcePropType
+  },
+  propCampfire: {
+    ...asset("propCampfire", "fx", "prop_campfire.png", "village prop"),
+    source: require("../../../assets/game/props/prop_campfire.png") as ImageSourcePropType
+  },
+  propCrate: {
+    ...asset("propCrate", "fx", "prop_crate.png", "village prop"),
+    source: require("../../../assets/game/props/prop_crate.png") as ImageSourcePropType
+  },
+  propBarrel: {
+    ...asset("propBarrel", "fx", "prop_barrel.png", "village prop"),
+    source: require("../../../assets/game/props/prop_barrel.png") as ImageSourcePropType
+  },
+  propLogPile: {
+    ...asset("propLogPile", "fx", "prop_log_pile.png", "village prop"),
+    source: require("../../../assets/game/props/prop_log_pile.png") as ImageSourcePropType
+  },
+  propBananaBasket: {
+    ...asset("propBananaBasket", "fx", "prop_banana_basket.png", "village prop"),
+    source: require("../../../assets/game/props/prop_banana_basket.png") as ImageSourcePropType
+  },
+  propRopeCoil: {
+    ...asset("propRopeCoil", "fx", "prop_rope_coil.png", "village prop"),
+    source: require("../../../assets/game/props/prop_rope_coil.png") as ImageSourcePropType
+  },
+  propFenceSegment: {
+    ...asset("propFenceSegment", "fx", "prop_fence_segment.png", "village prop"),
+    source: require("../../../assets/game/props/prop_fence_segment.png") as ImageSourcePropType
+  },
+  propTrainingDummy: {
+    ...asset("propTrainingDummy", "fx", "prop_training_dummy.png", "village prop"),
+    source: require("../../../assets/game/props/prop_training_dummy.png") as ImageSourcePropType
   }
 } satisfies Record<GameAssetKey, GameAssetDefinition>;
 
