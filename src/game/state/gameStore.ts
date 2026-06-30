@@ -420,20 +420,44 @@ function returnPlayerUnitsToVillage(units: Unit[]) {
     });
 }
 
+function nearestEnemyUnit(attacker: Unit, units: Unit[]): Unit | null {
+  let closest: Unit | null = null;
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  for (const unit of units) {
+    if (unit.owner !== "enemy" || unit.state === "dead" || unit.hp <= 0) {
+      continue;
+    }
+
+    const range = distance(attacker, unit);
+    if (range < closestDistance) {
+      closest = unit;
+      closestDistance = range;
+    }
+  }
+
+  return closest;
+}
+
 function assignRaidOrders(units: Unit[]) {
   assignEnemyOrders(units);
 
   for (const unit of units) {
     if (
-      unit.owner === "player" &&
-      unit.type === "fighter" &&
-      unit.state !== "dead" &&
-      unit.hp > 0 &&
-      unit.state === "idle"
+      unit.owner !== "player" ||
+      unit.type !== "fighter" ||
+      unit.state === "dead" ||
+      unit.hp <= 0
     ) {
-      unit.state = "attacking";
-      unit.target = { kind: "camp", owner: "enemy" };
+      continue;
     }
+
+    // Fight the nearest enemy first; once the defenders are gone, hit the camp.
+    const enemyTarget = nearestEnemyUnit(unit, units);
+    unit.state = "attacking";
+    unit.target = enemyTarget
+      ? { kind: "unit", unitId: enemyTarget.id }
+      : { kind: "camp", owner: "enemy" };
   }
 }
 
