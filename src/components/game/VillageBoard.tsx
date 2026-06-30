@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
-import { LivelyUnit } from "./LivelyUnit";
+import { WanderingUnit } from "./LivelyUnit";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { buildingName } from "../../game/config/buildings";
 import { t } from "../../game/i18n";
@@ -406,7 +406,7 @@ function UnitArt({ unit, lang }: { unit: Unit; lang: Lang }) {
   const player = unit.owner === "player";
 
   return (
-    <LivelyUnit seed={stableIndex(unit.id, 6)} style={styles.unitWrap}>
+    <WanderingUnit seed={stableIndex(unit.id, 97)} style={styles.unitWrap}>
       <AssetImage
         assetKey={unitAssetKey(unit)}
         style={styles.unitAsset}
@@ -422,7 +422,7 @@ function UnitArt({ unit, lang }: { unit: Unit; lang: Lang }) {
           </View>
         </View>
       ) : null}
-    </LivelyUnit>
+    </WanderingUnit>
   );
 }
 
