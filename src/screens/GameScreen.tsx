@@ -167,6 +167,7 @@ export function GameScreen() {
         {state.gameMode === "raidMap" ? (
           <RaidMapScreen
             fighterCount={fighterCount}
+            lang={lang}
             onAttack={state.startRaidOn}
             onClose={state.closeRaidMap}
           />
@@ -179,6 +180,7 @@ export function GameScreen() {
               raidStatus={state.raidStatus}
               stars={state.raidStars}
               loot={activeCampLoot}
+              lang={lang}
               maxSize={Math.min(width - theme.spacing.md * 2, 404)}
               feedbackText={state.feedback?.text}
               onReturn={state.returnToVillage}

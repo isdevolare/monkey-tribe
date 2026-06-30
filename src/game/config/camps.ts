@@ -1,4 +1,9 @@
+import { t, type Lang } from "../i18n";
 import type { Resources } from "../types/game";
+
+export function campName(id: string, lang: Lang) {
+  return t(`camp.${id}`, lang);
+}
 
 export type RaidCamp = {
   id: string;

@@ -84,11 +84,16 @@ const dict: Record<string, Entry> = {
 
   // Raid map
   "raidmap.title": { tr: "Baskın Hedefi", en: "Raid Target" },
-  "raidmap.loot": { tr: "Mevcut Ganimet", en: "Available Loot" },
-  "raidmap.attack": { tr: "SALDIRI", en: "ATTACK" },
-  "raidmap.needFighter": { tr: "Önce savaşçı eğit", en: "Train a fighter first" },
+  "raidmap.ready": { tr: "{n} savaşçı hazır", en: "{n} fighters ready" },
+  "raidmap.attack": { tr: "Saldırı", en: "Attack" },
+  "raidmap.needFighter": { tr: "Savaşçı gerek", en: "Need fighter" },
   "raidmap.close": { tr: "Köye Dön", en: "Back to Village" },
-  "raidmap.fighters": { tr: "Savaşçı", en: "Fighters" },
+  "common.levelShort": { tr: "Sv", en: "Lv" },
+
+  // Enemy camps
+  "camp.patrol": { tr: "Korsan Devriyesi", en: "Pirate Patrol" },
+  "camp.camp": { tr: "Korsan Kampı", en: "Pirate Camp" },
+  "camp.fort": { tr: "Korsan Üssü", en: "Pirate Fort" },
 
   // Raid board
   "raid.title": { tr: "Baskın Savaşı", en: "Raid Battle" },
@@ -122,7 +127,47 @@ const dict: Record<string, Entry> = {
     en: "Rebuild faster and don't let the enemy camp snowball."
   },
   "result.retry": { tr: "Tekrar Dene", en: "Retry" },
-  "result.menu": { tr: "Ana Menü", en: "Main Menu" }
+  "result.menu": { tr: "Ana Menü", en: "Main Menu" },
+
+  // Store feedback
+  "fb.needTrainingNest": {
+    tr: "Savaşçı için Eğitim Yuvası gerekli",
+    en: "A Training Nest is needed for fighters"
+  },
+  "fb.capacityFull": {
+    tr: "İşçi Barınağı'nı geliştir, kapasite dolu",
+    en: "Upgrade the Worker Shelter, capacity is full"
+  },
+  "fb.needCost": { tr: "{name} için {cost} gerek", en: "{name} needs {cost}" },
+  "fb.workerJoined": { tr: "İşçi kabileye katıldı", en: "Worker joined the tribe" },
+  "fb.fighterTrained": { tr: "Savaşçı eğitildi", en: "Fighter trained" },
+  "fb.clanHallFirst": {
+    tr: "Önce Klan Salonu'nu geliştir",
+    en: "Upgrade the Clan Hall first"
+  },
+  "fb.upgraded": { tr: "{name} Seviye {level}", en: "{name} Level {level}" },
+  "fb.needFighter": { tr: "Önce savaşçı eğit", en: "Train a fighter first" },
+  "fb.raidStarted": { tr: "{name} baskını başladı!", en: "Raid on {name} started!" },
+  "fb.returned": {
+    tr: "Baskın ekibi köye döndü",
+    en: "Raid party returned to the village"
+  },
+  "fb.victoryLoot": {
+    tr: "Zafer! +{b} muz, +{s} taş, +{w} odun",
+    en: "Victory! +{b} bananas, +{s} stone, +{w} wood"
+  },
+  "fb.raidFailed": {
+    tr: "Baskın başarısız. Daha fazla savaşçı eğit.",
+    en: "Raid failed. Train more fighters."
+  },
+  "fb.hitEnemy": { tr: "Savaşçı düşmana vurdu", en: "Fighter hit the enemy" },
+  "fb.enemyCounter": { tr: "Düşman karşılık verdi", en: "Enemy struck back" },
+  "fb.towerBlocked": {
+    tr: "Gözetleme Kulesi {n} hasar engelledi",
+    en: "Watch Tower blocked {n} damage"
+  },
+  "fb.enemyHitVillage": { tr: "Düşman köyüne saldırdı", en: "Enemy attacked your village" },
+  "fb.hitCamp": { tr: "Savaşçı düşman kampına vurdu", en: "Fighter hit the enemy camp" }
 };
 
 export function t(key: string, lang: Lang, params?: Record<string, string | number>): string {

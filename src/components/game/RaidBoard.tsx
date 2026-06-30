@@ -12,7 +12,8 @@ import Svg, { Circle, Ellipse, Line, Path } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
 import { LivelyUnit } from "./LivelyUnit";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
-import type { RaidStatus, Resources, Unit } from "../../game/types/game";
+import { t } from "../../game/i18n";
+import type { Lang, RaidStatus, Resources, Unit } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type RaidBoardProps = {
@@ -22,6 +23,7 @@ type RaidBoardProps = {
   raidStatus: RaidStatus;
   stars: number;
   loot: Resources;
+  lang: Lang;
   feedbackText?: string;
   maxSize?: number;
   onReturn: () => void;
@@ -60,6 +62,7 @@ export function RaidBoard({
   raidStatus,
   stars,
   loot,
+  lang,
   feedbackText,
   maxSize = 430,
   onReturn
@@ -255,9 +258,9 @@ export function RaidBoard({
       </View>
 
       <View style={styles.raidHud}>
-        <Text style={styles.raidTitle}>Baskın</Text>
-        <Text style={styles.raidStat}>Düşman Kamp HP {Math.max(0, Math.round(enemyCampHp))} / {enemyCampMaxHp}</Text>
-        <Text style={styles.raidStat}>Saldırı Gücü {raidPower}</Text>
+        <Text style={styles.raidTitle}>{t("raid.title", lang)}</Text>
+        <Text style={styles.raidStat}>{t("raid.campHp", lang)} {Math.max(0, Math.round(enemyCampHp))} / {enemyCampMaxHp}</Text>
+        <Text style={styles.raidStat}>{t("raid.power", lang)} {raidPower}</Text>
       </View>
 
       {feedbackText ? (
@@ -278,7 +281,7 @@ export function RaidBoard({
             <View style={[styles.resultEmblem, victory ? styles.resultEmblemWin : styles.resultEmblemLose]}>
               <Text style={styles.resultEmblemText}>{victory ? "★" : "!"}</Text>
             </View>
-            <Text style={styles.resultTitle}>{victory ? "Zafer!" : "Baskın Başarısız"}</Text>
+            <Text style={styles.resultTitle}>{victory ? t("raid.victory", lang) : t("raid.defeat", lang)}</Text>
             {victory ? (
               <View style={styles.starRow}>
                 {[1, 2, 3].map((slot) => (
@@ -289,9 +292,7 @@ export function RaidBoard({
               </View>
             ) : null}
             <Text style={styles.resultText}>
-              {victory
-                ? "Düşman kampı yıkıldı. Ganimet köy depolarına eklendi."
-                : "Baskın ekibin düştü. Daha fazla savaşçı eğit ve tekrar dene."}
+              {victory ? t("raid.victoryText", lang) : t("raid.defeatText", lang)}
             </Text>
             {victory ? (
               <View style={styles.rewardRow}>
@@ -301,13 +302,13 @@ export function RaidBoard({
               </View>
             ) : null}
             <Pressable accessibilityRole="button" onPress={onReturn} style={styles.returnButton}>
-              <Text style={styles.returnText}>Köye Dön</Text>
+              <Text style={styles.returnText}>{t("raid.return", lang)}</Text>
             </Pressable>
           </Animated.View>
         </View>
       ) : (
         <Pressable accessibilityRole="button" onPress={onReturn} style={styles.retreatButton}>
-          <Text style={styles.retreatText}>Geri Çekil</Text>
+          <Text style={styles.retreatText}>{t("raid.retreat", lang)}</Text>
         </Pressable>
       )}
     </View>

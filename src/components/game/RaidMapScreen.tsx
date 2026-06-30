@@ -1,24 +1,26 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AssetImage } from "./AssetImage";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
-import { RAID_CAMPS } from "../../game/config/camps";
-import type { Resources } from "../../game/types/game";
+import { RAID_CAMPS, campName } from "../../game/config/camps";
+import { t } from "../../game/i18n";
+import type { Lang } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type RaidMapScreenProps = {
   fighterCount: number;
+  lang: Lang;
   onAttack: (campId: string) => void;
   onClose: () => void;
 };
 
-export function RaidMapScreen({ fighterCount, onAttack, onClose }: RaidMapScreenProps) {
+export function RaidMapScreen({ fighterCount, lang, onAttack, onClose }: RaidMapScreenProps) {
   const noFighters = fighterCount <= 0;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
-        <Text style={styles.title}>Baskın Hedefi</Text>
-        <Text style={styles.subtitle}>{fighterCount} savaşçı hazır</Text>
+        <Text style={styles.title}>{t("raidmap.title", lang)}</Text>
+        <Text style={styles.subtitle}>{t("raidmap.ready", lang, { n: fighterCount })}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
@@ -31,12 +33,12 @@ export function RaidMapScreen({ fighterCount, onAttack, onClose }: RaidMapScreen
                 fallback={<View style={styles.cardArtFallback} />}
               />
               <View style={styles.levelTag}>
-                <Text style={styles.levelTagText}>Sv {camp.level}</Text>
+                <Text style={styles.levelTagText}>{t("common.levelShort", lang)} {camp.level}</Text>
               </View>
             </View>
 
             <View style={styles.cardBody}>
-              <Text style={styles.campName}>{camp.name}</Text>
+              <Text style={styles.campName}>{campName(camp.id, lang)}</Text>
               <View style={styles.lootRow}>
                 <LootChip assetKey="resourceBanana" amount={camp.loot.bananas} />
                 <LootChip assetKey="resourceWood" amount={camp.loot.wood} />
@@ -54,14 +56,16 @@ export function RaidMapScreen({ fighterCount, onAttack, onClose }: RaidMapScreen
                 pressed && !noFighters ? styles.attackButtonPressed : null
               ]}
             >
-              <Text style={styles.attackText}>{noFighters ? "Savaşçı gerek" : "Saldırı"}</Text>
+              <Text style={styles.attackText}>
+                {noFighters ? t("raidmap.needFighter", lang) : t("raidmap.attack", lang)}
+              </Text>
             </Pressable>
           </View>
         ))}
       </ScrollView>
 
       <Pressable accessibilityRole="button" onPress={onClose} style={styles.backButton}>
-        <Text style={styles.backText}>Köye Dön</Text>
+        <Text style={styles.backText}>{t("raidmap.close", lang)}</Text>
       </Pressable>
     </View>
   );

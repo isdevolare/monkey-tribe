@@ -14,13 +14,14 @@ import {
   WATCH_TOWER_DAMAGE_REDUCTION
 } from "../config/constants";
 import {
-  BUILDING_NAMES,
   BUILDING_PRODUCTION,
   DEFAULT_BUILDINGS,
+  buildingName,
   populationCap,
   upgradeCost
 } from "../config/buildings";
-import { getCamp, type RaidCamp } from "../config/camps";
+import { getCamp, campName, type RaidCamp } from "../config/camps";
+import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import type {
   GameState,
@@ -45,6 +46,7 @@ type MutableGame = {
   maxPopulation: number;
   playerCampHp: number;
   enemyCampHp: number;
+  lang: Lang;
   feedbackText: string | null;
 };
 
@@ -284,8 +286,7 @@ function processAttacking(unit: Unit, game: MutableGame, now: number) {
 
   if (unit.target.kind === "unit") {
     damageUnit(game.units, unit.target.unitId, unit.attack);
-    game.feedbackText =
-      unit.owner === "player" ? "Savaşçı düşmana vurdu" : "Düşman karşılık verdi";
+    game.feedbackText = t(unit.owner === "player" ? "fb.hitEnemy" : "fb.enemyCounter", game.lang);
   } else if (unit.target.kind === "camp") {
     if (unit.target.owner === "player") {
       const blocked =
@@ -293,10 +294,12 @@ function processAttacking(unit: Unit, game: MutableGame, now: number) {
       const damage = Math.max(1, unit.attack - blocked);
       game.playerCampHp = Math.max(0, game.playerCampHp - damage);
       game.feedbackText =
-        blocked > 0 ? `Gözetleme Kulesi ${blocked} hasar engelledi` : "Düşman köyüne saldırdı";
+        blocked > 0
+          ? t("fb.towerBlocked", game.lang, { n: blocked })
+          : t("fb.enemyHitVillage", game.lang);
     } else {
       game.enemyCampHp = Math.max(0, game.enemyCampHp - unit.attack);
-      game.feedbackText = "Savaşçı düşman kampına vurdu";
+      game.feedbackText = t("fb.hitCamp", game.lang);
     }
   }
 
@@ -439,17 +442,19 @@ function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
     return state;
   }
 
+  const unitLabel = t(type === "worker" ? "unit.worker" : "unit.fighter", state.language);
+
   if (type === "fighter" && buildingLevel(state.buildings, "trainingNest") <= 0) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: "Savaşçı için Eğitim Yuvası gerekli" }
+      feedback: { id: Date.now(), text: t("fb.needTrainingNest", state.language) }
     };
   }
 
   if (currentPopulation(state.units) >= state.maxPopulation) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: "İşçi Barınağı'nı geliştir, kapasite dolu" }
+      feedback: { id: Date.now(), text: t("fb.capacityFull", state.language) }
     };
   }
 
@@ -457,7 +462,10 @@ function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
   if (!hasResources(state.resources, cost)) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: `${type === "worker" ? "İşçi" : "Savaşçı"} için ${costText(cost)} gerek` }
+      feedback: {
+        id: Date.now(),
+        text: t("fb.needCost", state.language, { name: unitLabel, cost: costText(cost) })
+      }
     };
   }
 
@@ -473,7 +481,7 @@ function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
     ],
     feedback: {
       id: now,
-      text: type === "worker" ? "İşçi tribe'a katıldı" : "Savaşçı eğitildi"
+      text: t(type === "worker" ? "fb.workerJoined" : "fb.fighterTrained", state.language)
     }
   };
 }
@@ -484,13 +492,13 @@ function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): Ga
   }
 
   const level = buildingLevel(state.buildings, type);
-  const name = BUILDING_NAMES[type];
+  const name = buildingName(type, state.language);
 
   // Other buildings cannot exceed the Clan Hall level (it gates progression).
   if (type !== "clanHall" && level >= buildingLevel(state.buildings, "clanHall")) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: `Önce Klan Salonu'nu geliştir` }
+      feedback: { id: Date.now(), text: t("fb.clanHallFirst", state.language) }
     };
   }
 
@@ -498,7 +506,10 @@ function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): Ga
   if (!hasResources(state.resources, cost)) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: `${name} için ${costText(cost)} gerek` }
+      feedback: {
+        id: Date.now(),
+        text: t("fb.needCost", state.language, { name, cost: costText(cost) })
+      }
     };
   }
 
@@ -513,7 +524,7 @@ function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): Ga
     buildings,
     resources: spendResources(state.resources, cost),
     maxPopulation: populationCap(shelterLevel),
-    feedback: { id: now, text: `${name} Seviye ${level + 1}` }
+    feedback: { id: now, text: t("fb.upgraded", state.language, { name, level: level + 1 }) }
   };
 }
 
@@ -592,7 +603,7 @@ export const useGameStore = create<GameState>((set) => ({
       if (fighters.length <= 0) {
         return {
           ...state,
-          feedback: { id: now, text: "Önce savaşçı eğit" }
+          feedback: { id: now, text: t("fb.needFighter", state.language) }
         };
       }
 
@@ -606,7 +617,10 @@ export const useGameStore = create<GameState>((set) => ({
         raidStars: 0,
         units: deployRaidUnits(state.units, now, camp),
         lastProductionAt: now,
-        feedback: { id: now, text: `${camp.name} baskını başladı!` }
+        feedback: {
+          id: now,
+          text: t("fb.raidStarted", state.language, { name: campName(camp.id, state.language) })
+        }
       };
     }),
   returnToVillage: () =>
@@ -617,7 +631,7 @@ export const useGameStore = create<GameState>((set) => ({
       activeCampId: null,
       units: returnPlayerUnitsToVillage(state.units),
       lastProductionAt: Date.now(),
-      feedback: { id: Date.now(), text: "Baskın ekibi köye döndü" }
+      feedback: { id: Date.now(), text: t("fb.returned", state.language) }
     })),
   createWorker: () => set((state) => createPlayerUnit(state, "worker")),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
@@ -635,6 +649,7 @@ export const useGameStore = create<GameState>((set) => ({
         maxPopulation: state.maxPopulation,
         playerCampHp: state.playerCampHp,
         enemyCampHp: state.enemyCampHp,
+        lang: state.language,
         feedbackText: null
       };
 
@@ -686,7 +701,11 @@ export const useGameStore = create<GameState>((set) => ({
             raidStars: stars,
             feedback: {
               id: now,
-              text: `Zafer! +${loot.bananas} muz, +${loot.stones} taş, +${loot.wood} odun`
+              text: t("fb.victoryLoot", state.language, {
+                b: loot.bananas,
+                s: loot.stones,
+                w: loot.wood
+              })
             },
             raidStatus: "victory"
           };
@@ -697,7 +716,7 @@ export const useGameStore = create<GameState>((set) => ({
             ...state,
             units: game.units,
             enemyCampHp: game.enemyCampHp,
-            feedback: { id: now, text: "Baskın başarısız. Daha fazla savaşçı eğit." },
+            feedback: { id: now, text: t("fb.raidFailed", state.language) },
             raidStatus: "defeat"
           };
         }

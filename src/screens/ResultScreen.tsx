@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Circle, Line, Path, Svg } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
 import { GameButton } from "../components/game/GameButton";
+import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
 
@@ -9,6 +10,7 @@ export function ResultScreen() {
   const gameStatus = useGameStore((state) => state.gameStatus);
   const resetGame = useGameStore((state) => state.resetGame);
   const goToMenu = useGameStore((state) => state.goToMenu);
+  const lang = useGameStore((state) => state.language);
   const victory = gameStatus === "victory";
 
   return (
@@ -18,16 +20,16 @@ export function ResultScreen() {
         style={styles.resultHero}
         fallback={<ResultFallback victory={victory} />}
       />
-      <Text style={styles.kicker}>{victory ? "Enemy camp destroyed" : "The jungle pushed back"}</Text>
-      <Text style={styles.title}>{victory ? "Victory" : "Defeat"}</Text>
+      <Text style={styles.kicker}>
+        {victory ? t("result.victoryKicker", lang) : t("result.defeatKicker", lang)}
+      </Text>
+      <Text style={styles.title}>{victory ? t("result.victory", lang) : t("result.defeat", lang)}</Text>
       <Text style={styles.subtitle}>
-        {victory
-          ? "The tribe holds the clearing. The bananas are safe for now."
-          : "Rebuild faster, add huts, and do not let the enemy camp snowball."}
+        {victory ? t("result.victoryText", lang) : t("result.defeatText", lang)}
       </Text>
       <View style={styles.actions}>
-        <GameButton label="Retry" helperText="Start the fight again" onPress={resetGame} />
-        <GameButton label="Main Menu" tone="secondary" onPress={goToMenu} />
+        <GameButton label={t("result.retry", lang)} onPress={resetGame} />
+        <GameButton label={t("result.menu", lang)} tone="secondary" onPress={goToMenu} />
       </View>
     </View>
   );
