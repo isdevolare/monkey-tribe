@@ -44,6 +44,7 @@ export function GameScreen() {
   const population = state.units.filter(
     (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
   ).length;
+  const clanLevel = levelOf(state.buildings, "clanHall");
   const boardMaxSize = Math.max(260, Math.min(layoutWidth - 20, 404));
 
   useEffect(() => {
@@ -127,18 +128,16 @@ export function GameScreen() {
               />
             </View>
             <View style={styles.clanCopy}>
-              <Text style={styles.clanName}>Monkey Tribe</Text>
-              <Text style={styles.clanSubtitle}>Young Clan</Text>
+              <Text style={styles.clanName} numberOfLines={1}>Monkey Tribe</Text>
+              <Text style={styles.clanSubtitle} numberOfLines={1}>Genç Klan</Text>
             </View>
             <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>1</Text>
+              <Text style={styles.levelText}>{clanLevel}</Text>
             </View>
           </View>
 
           <View style={styles.topButtons}>
-            <TopPill label="Tasks" accent="!" />
-            <TopIcon label="Trophy" glyph="T" />
-            <TopIcon label="Settings" glyph="S" onPress={state.resetGame} />
+            <TopIcon label="Ayarlar" glyph="⚙" onPress={state.resetGame} />
           </View>
         </View>
 
@@ -392,18 +391,6 @@ function IconFrame() {
   );
 }
 
-function TopPill({ label, accent }: { label: string; accent: string }) {
-  return (
-    <View style={styles.topPill}>
-      <PanelTexture dark />
-      <Text style={styles.topPillText}>{label}</Text>
-      <View style={styles.topAccent}>
-        <Text style={styles.topAccentText}>{accent}</Text>
-      </View>
-    </View>
-  );
-}
-
 function TopIcon({ label, glyph, onPress }: { label: string; glyph: string; onPress?: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.topIcon}>
@@ -596,7 +583,7 @@ const styles = StyleSheet.create({
   },
   clanName: {
     color: theme.colors.paper,
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "900"
   },
   clanSubtitle: {
