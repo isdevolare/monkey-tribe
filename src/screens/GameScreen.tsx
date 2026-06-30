@@ -13,6 +13,7 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
 import { RaidBoard } from "../components/game/RaidBoard";
 import { RaidMapScreen } from "../components/game/RaidMapScreen";
+import { SettingsModal } from "../components/game/SettingsModal";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { getGameAsset } from "../game/assets/gameAssets";
@@ -339,53 +340,6 @@ function UpgradePanel({
         <Text style={styles.upgradeCloseText}>×</Text>
       </Pressable>
     </View>
-  );
-}
-
-function SettingsModal({
-  visible,
-  lang,
-  onPickLanguage,
-  onReset,
-  onClose
-}: {
-  visible: boolean;
-  lang: Lang;
-  onPickLanguage: (lang: Lang) => void;
-  onReset: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.modalScrim} onPress={onClose}>
-        <Pressable style={styles.settingsCard} onPress={() => undefined}>
-          <Text style={styles.settingsTitle}>{t("settings.title", lang)}</Text>
-
-          <Text style={styles.settingsLabel}>{t("settings.language", lang)}</Text>
-          <View style={styles.langRow}>
-            {(["tr", "en"] as Lang[]).map((option) => (
-              <Pressable
-                key={option}
-                accessibilityRole="button"
-                onPress={() => onPickLanguage(option)}
-                style={[styles.langButton, lang === option ? styles.langButtonActive : null]}
-              >
-                <Text style={[styles.langText, lang === option ? styles.langTextActive : null]}>
-                  {option === "tr" ? "Türkçe" : "English"}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Pressable accessibilityRole="button" onPress={onReset} style={styles.settingsReset}>
-            <Text style={styles.settingsResetText}>{t("settings.reset", lang)}</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={onClose} style={styles.settingsClose}>
-            <Text style={styles.settingsCloseText}>{t("settings.close", lang)}</Text>
-          </Pressable>
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }
 
@@ -1159,83 +1113,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(10, 23, 15, 0.68)",
     padding: theme.spacing.xl
-  },
-  settingsCard: {
-    width: "100%",
-    maxWidth: 320,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "rgba(255, 224, 151, 0.3)",
-    backgroundColor: "rgba(17, 20, 14, 0.97)",
-    padding: theme.spacing.lg
-  },
-  settingsTitle: {
-    color: theme.colors.paper,
-    fontSize: 20,
-    fontWeight: "900",
-    fontFamily: theme.fonts.heavy,
-    textAlign: "center"
-  },
-  settingsLabel: {
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
-    color: "#d8ccb0",
-    fontSize: 13,
-    fontWeight: "800",
-    fontFamily: theme.fonts.bold
-  },
-  langRow: {
-    flexDirection: "row",
-    gap: theme.spacing.sm
-  },
-  langButton: {
-    flex: 1,
-    minHeight: 46,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "rgba(255, 224, 151, 0.18)",
-    backgroundColor: "rgba(54, 43, 27, 0.6)"
-  },
-  langButtonActive: {
-    borderColor: "rgba(198, 238, 137, 0.7)",
-    backgroundColor: "rgba(68, 101, 45, 0.92)"
-  },
-  langText: {
-    color: "#d8ccb0",
-    fontSize: 15,
-    fontWeight: "900",
-    fontFamily: theme.fonts.heavy
-  },
-  langTextActive: {
-    color: theme.colors.paper
-  },
-  settingsReset: {
-    minHeight: 46,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: theme.spacing.lg,
-    borderRadius: 10,
-    backgroundColor: "#9a3322"
-  },
-  settingsResetText: {
-    color: theme.colors.paper,
-    fontSize: 14,
-    fontWeight: "900",
-    fontFamily: theme.fonts.heavy
-  },
-  settingsClose: {
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: theme.spacing.sm
-  },
-  settingsCloseText: {
-    color: "#d8ccb0",
-    fontSize: 14,
-    fontWeight: "900",
-    fontFamily: theme.fonts.heavy
   },
   tutorialCard: {
     width: "100%",

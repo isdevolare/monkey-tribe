@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
+import { SettingsModal } from "../components/game/SettingsModal";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
 
 export function MainMenuScreen() {
   const startGame = useGameStore((state) => state.startGame);
+  const setLanguage = useGameStore((state) => state.setLanguage);
   const lang = useGameStore((state) => state.language);
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <View style={styles.screen}>
@@ -24,10 +28,16 @@ export function MainMenuScreen() {
 
         <View style={styles.buttonStack}>
           <WoodButton label={t("menu.start", lang)} onPress={startGame} primary />
-          <WoodButton label={t("menu.settings", lang)} onPress={() => undefined} />
-          <WoodButton label={t("menu.credits", lang)} onPress={() => undefined} />
+          <WoodButton label={t("menu.settings", lang)} onPress={() => setShowSettings(true)} />
         </View>
       </View>
+
+      <SettingsModal
+        visible={showSettings}
+        lang={lang}
+        onPickLanguage={setLanguage}
+        onClose={() => setShowSettings(false)}
+      />
     </View>
   );
 }
