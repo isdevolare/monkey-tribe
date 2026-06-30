@@ -405,6 +405,13 @@ function UnitArt({ unit }: { unit: Unit }) {
         imageStyle={styles.unitImage}
         fallback={<UnitFallback player={player} fighter={unit.type === "fighter"} />}
       />
+      {player ? (
+        <View style={styles.unitLabel} pointerEvents="none">
+          <View style={styles.unitLabelPill}>
+            <Text style={styles.unitLabelText}>{unit.type === "fighter" ? "Savaşçı" : "İşçi"}</Text>
+          </View>
+        </View>
+      ) : null}
     </LivelyUnit>
   );
 }
@@ -616,6 +623,27 @@ const styles = StyleSheet.create({
   unitImage: {
     width: "100%",
     height: "100%"
+  },
+  unitLabel: {
+    position: "absolute",
+    bottom: "-8%",
+    left: "-35%",
+    right: "-35%",
+    alignItems: "center",
+    zIndex: 2
+  },
+  unitLabelPill: {
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.3)",
+    backgroundColor: "rgba(17, 20, 14, 0.82)",
+    paddingHorizontal: 5,
+    paddingVertical: 1
+  },
+  unitLabelText: {
+    color: theme.colors.paper,
+    fontSize: 8,
+    fontFamily: theme.fonts.heavy
   },
   unbuiltAsset: {
     opacity: 0.46
