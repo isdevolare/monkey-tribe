@@ -25,6 +25,7 @@ import { createInitialMap, createInitialUnits, createUnit } from "../config/map"
 import type {
   GameState,
   GatherTarget,
+  Lang,
   Owner,
   Position,
   Resources,
@@ -76,6 +77,7 @@ function createFreshState(now: number) {
     activeCampId: null,
     raidStars: 0,
     lastProductionAt: now,
+    language: "tr" as Lang,
     feedback: null
   };
 }
@@ -537,7 +539,7 @@ export const useGameStore = create<GameState>((set) => ({
       feedback: null
     })),
   hydrate: (save: VillageSave) =>
-    set(() => {
+    set((state) => {
       const levels = new Map(save.buildings.map((building) => [building.type, building.level]));
       return {
         buildings: DEFAULT_BUILDINGS.map((building) => ({
@@ -546,8 +548,15 @@ export const useGameStore = create<GameState>((set) => ({
         })),
         resources: { ...save.resources },
         maxPopulation: save.maxPopulation,
+        language: save.language ?? state.language,
         lastProductionAt: Date.now()
       };
+    }),
+  setLanguage: (lang) =>
+    set((state) => {
+      const next = { ...state, language: lang };
+      persistVillage(next);
+      return { language: lang };
     }),
   upgradeBuilding: (type) => set((state) => upgradeVillageBuilding(state, type)),
   openRaidMap: () =>
@@ -775,7 +784,18 @@ export const useGameStore = create<GameState>((set) => ({
     }))
 }));
 
-// Persist the village (buildings/resources/population) as it changes, throttled.
+// Persist the village (buildings/resources/population/language).
+function persistVillage(state: GameState) {
+  const payload: VillageSave = {
+    buildings: state.buildings,
+    resources: state.resources,
+    maxPopulation: state.maxPopulation,
+    language: state.language
+  };
+  void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+}
+
+// Save as the village changes, throttled.
 let lastSaveAt = 0;
 useGameStore.subscribe((state) => {
   if (state.gameStatus !== "playing") {
@@ -786,10 +806,5 @@ useGameStore.subscribe((state) => {
     return;
   }
   lastSaveAt = now;
-  const payload: VillageSave = {
-    buildings: state.buildings,
-    resources: state.resources,
-    maxPopulation: state.maxPopulation
-  };
-  void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+  persistVillage(state);
 });

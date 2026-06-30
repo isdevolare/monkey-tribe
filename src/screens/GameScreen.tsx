@@ -17,20 +17,16 @@ import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { getGameAsset } from "../game/assets/gameAssets";
 import { UNIT_COSTS } from "../game/config/constants";
-import { BUILDING_NAMES, buildingEffect, upgradeCost } from "../game/config/buildings";
+import { buildingName, buildingEffect, upgradeCost } from "../game/config/buildings";
 import { getCamp } from "../game/config/camps";
+import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
-import type { Resources, VillageBuilding, VillageBuildingType } from "../game/types/game";
+import type { Lang, Resources, VillageBuilding, VillageBuildingType } from "../game/types/game";
 import { theme } from "../theme/theme";
 
 const TUTORIAL_KEY = "monkey-tribe:tutorial-seen";
 const PHONE_FRAME_WIDTH = 430;
-const tutorialSteps = [
-  "Binalar zamanla muz, odun ve taş üretir.",
-  "Bir binaya dokun ve Geliştir ile seviyesini yükselt.",
-  "İşçi ve savaşçı üret; Eğitim Yuvası savaşçıları açar.",
-  "Savaşçın hazır olunca BASKIN ile düşman kampına saldır."
-];
+const tutorialKeys = ["tut.0", "tut.1", "tut.2", "tut.3"];
 
 function levelOf(buildings: VillageBuilding[], type: VillageBuildingType) {
   return buildings.find((building) => building.type === type)?.level ?? 0;
@@ -42,7 +38,9 @@ export function GameScreen() {
   const layoutWidth = Math.min(width, PHONE_FRAME_WIDTH);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<VillageBuildingType | null>(null);
+  const lang = state.language;
   const population = state.units.filter(
     (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
   ).length;
@@ -95,7 +93,7 @@ export function GameScreen() {
   }
 
   function nextTutorialStep() {
-    if (tutorialStep >= tutorialSteps.length - 1) {
+    if (tutorialStep >= tutorialKeys.length - 1) {
       closeTutorial();
       return;
     }
@@ -143,7 +141,7 @@ export function GameScreen() {
             </View>
             <View style={styles.clanCopy}>
               <Text style={styles.clanName} numberOfLines={1}>Monkey Tribe</Text>
-              <Text style={styles.clanSubtitle} numberOfLines={1}>Genç Klan</Text>
+              <Text style={styles.clanSubtitle} numberOfLines={1}>{t("clan.subtitle", lang)}</Text>
             </View>
             <View style={styles.levelBadge}>
               <Text style={styles.levelText}>{clanLevel}</Text>
@@ -151,7 +149,7 @@ export function GameScreen() {
           </View>
 
           <View style={styles.topButtons}>
-            <TopIcon label="Ayarlar" glyph="⚙" onPress={state.resetGame} />
+            <TopIcon label="Ayarlar" glyph="⚙" onPress={() => setShowSettings(true)} />
           </View>
         </View>
 
@@ -193,6 +191,7 @@ export function GameScreen() {
                 tiles={state.mapTiles}
                 units={state.units}
                 buildings={state.buildings}
+                lang={lang}
                 maxSize={boardMaxSize}
                 feedbackText={state.feedback?.text}
                 selectedType={selectedBuilding}
@@ -205,13 +204,14 @@ export function GameScreen() {
                 buildings={state.buildings}
                 resources={state.resources}
                 type={selectedBuilding}
+                lang={lang}
                 onUpgrade={() => state.upgradeBuilding(selectedBuilding)}
                 onClose={() => setSelectedBuilding(null)}
               />
             ) : (
               <View style={styles.hintPanel}>
                 <PanelTexture dark />
-                <Text style={styles.hintText}>Geliştirmek için bir binaya dokun</Text>
+                <Text style={styles.hintText}>{t("hint.tapBuilding", lang)}</Text>
               </View>
             )}
 
@@ -219,7 +219,7 @@ export function GameScreen() {
               <PanelTexture dark />
               <View style={styles.actionCards}>
                 <ActionCard
-                  title="İşçi"
+                  title={t("unit.worker", lang)}
                   cost={costText(UNIT_COSTS.worker)}
                   glyph="M"
                   assetKey="unitWorker"
@@ -227,7 +227,7 @@ export function GameScreen() {
                   onPress={state.createWorker}
                 />
                 <ActionCard
-                  title="Savaşçı"
+                  title={t("unit.fighter", lang)}
                   cost={costText(UNIT_COSTS.fighter)}
                   glyph="X"
                   assetKey="unitFighter"
@@ -253,7 +253,7 @@ export function GameScreen() {
                     />
                   }
                 />
-                <Text style={styles.raidText}>BASKIN</Text>
+                <Text style={styles.raidText}>{t("dock.raid", lang)}</Text>
               </Pressable>
             </View>
           </>
@@ -263,8 +263,20 @@ export function GameScreen() {
       <TutorialOverlay
         visible={showTutorial}
         step={tutorialStep}
+        lang={lang}
         onNext={nextTutorialStep}
         onSkip={closeTutorial}
+      />
+
+      <SettingsModal
+        visible={showSettings}
+        lang={lang}
+        onPickLanguage={state.setLanguage}
+        onReset={() => {
+          setShowSettings(false);
+          state.resetGame();
+        }}
+        onClose={() => setShowSettings(false)}
       />
     </View>
   );
@@ -275,12 +287,14 @@ function UpgradePanel({
   buildings,
   resources,
   type,
+  lang,
   onUpgrade,
   onClose
 }: {
   buildings: VillageBuilding[];
   resources: Resources;
   type: VillageBuildingType;
+  lang: Lang;
   onUpgrade: () => void;
   onClose: () => void;
 }) {
@@ -295,13 +309,13 @@ function UpgradePanel({
       <PanelTexture dark />
       <View style={styles.upgradeInfo}>
         <Text style={styles.upgradeName} numberOfLines={1}>
-          {BUILDING_NAMES[type]}
+          {buildingName(type, lang)}
         </Text>
         <Text style={styles.upgradeMeta}>
-          Seviye {level} · {buildingEffect(type, level)}
+          {t("common.level", lang)} {level} · {buildingEffect(type, level, lang)}
         </Text>
         <Text style={styles.upgradeNext}>
-          Sonraki: {buildingEffect(type, level + 1)}
+          {t("upgrade.next", lang)}: {buildingEffect(type, level + 1, lang)}
         </Text>
       </View>
       <Pressable
@@ -314,13 +328,62 @@ function UpgradePanel({
           pressed && !disabled ? styles.upgradeButtonPressed : null
         ]}
       >
-        <Text style={styles.upgradeButtonLabel}>Geliştir</Text>
-        <Text style={styles.upgradeButtonCost}>{gated ? "Klan Salonu gerek" : costText(cost)}</Text>
+        <Text style={styles.upgradeButtonLabel}>{t("upgrade.button", lang)}</Text>
+        <Text style={styles.upgradeButtonCost}>
+          {gated ? t("upgrade.needClanHall", lang) : costText(cost)}
+        </Text>
       </Pressable>
       <Pressable accessibilityRole="button" onPress={onClose} style={styles.upgradeClose}>
         <Text style={styles.upgradeCloseText}>×</Text>
       </Pressable>
     </View>
+  );
+}
+
+function SettingsModal({
+  visible,
+  lang,
+  onPickLanguage,
+  onReset,
+  onClose
+}: {
+  visible: boolean;
+  lang: Lang;
+  onPickLanguage: (lang: Lang) => void;
+  onReset: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalScrim} onPress={onClose}>
+        <Pressable style={styles.settingsCard} onPress={() => undefined}>
+          <Text style={styles.settingsTitle}>{t("settings.title", lang)}</Text>
+
+          <Text style={styles.settingsLabel}>{t("settings.language", lang)}</Text>
+          <View style={styles.langRow}>
+            {(["tr", "en"] as Lang[]).map((option) => (
+              <Pressable
+                key={option}
+                accessibilityRole="button"
+                onPress={() => onPickLanguage(option)}
+                style={[styles.langButton, lang === option ? styles.langButtonActive : null]}
+              >
+                <Text style={[styles.langText, lang === option ? styles.langTextActive : null]}>
+                  {option === "tr" ? "Türkçe" : "English"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Pressable accessibilityRole="button" onPress={onReset} style={styles.settingsReset}>
+            <Text style={styles.settingsResetText}>{t("settings.reset", lang)}</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={onClose} style={styles.settingsClose}>
+            <Text style={styles.settingsCloseText}>{t("settings.close", lang)}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -489,11 +552,13 @@ function AvatarFallback() {
 function TutorialOverlay({
   visible,
   step,
+  lang,
   onNext,
   onSkip
 }: {
   visible: boolean;
   step: number;
+  lang: Lang;
   onNext: () => void;
   onSkip: () => void;
 }) {
@@ -502,12 +567,12 @@ function TutorialOverlay({
       <View style={styles.modalScrim}>
         <View style={styles.tutorialCard}>
           <PanelTexture dark={false} />
-          <Text style={styles.tutorialKicker}>Quick Start</Text>
+          <Text style={styles.tutorialKicker}>{t("tut.quickStart", lang)}</Text>
           <Text style={styles.tutorialStep}>
-            {step + 1}. {tutorialSteps[step]}
+            {step + 1}. {t(tutorialKeys[step] ?? "tut.0", lang)}
           </Text>
           <View style={styles.tutorialDots}>
-            {tutorialSteps.map((_, index) => (
+            {tutorialKeys.map((_, index) => (
               <View
                 key={index}
                 style={[styles.tutorialDot, index === step ? styles.tutorialDotActive : null]}
@@ -516,11 +581,11 @@ function TutorialOverlay({
           </View>
           <View style={styles.tutorialActions}>
             <Pressable style={styles.skipButton} onPress={onSkip}>
-              <Text style={styles.skipText}>Skip</Text>
+              <Text style={styles.skipText}>{t("tut.skip", lang)}</Text>
             </Pressable>
             <Pressable style={styles.nextButton} onPress={onNext}>
               <Text style={styles.nextText}>
-                {step === tutorialSteps.length - 1 ? "Play" : "Next"}
+                {step === tutorialKeys.length - 1 ? t("tut.play", lang) : t("tut.next", lang)}
               </Text>
             </Pressable>
           </View>
@@ -1092,6 +1157,83 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(10, 23, 15, 0.68)",
     padding: theme.spacing.xl
+  },
+  settingsCard: {
+    width: "100%",
+    maxWidth: 320,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "rgba(255, 224, 151, 0.3)",
+    backgroundColor: "rgba(17, 20, 14, 0.97)",
+    padding: theme.spacing.lg
+  },
+  settingsTitle: {
+    color: theme.colors.paper,
+    fontSize: 20,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
+  },
+  settingsLabel: {
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+    color: "#d8ccb0",
+    fontSize: 13,
+    fontWeight: "800",
+    fontFamily: theme.fonts.bold
+  },
+  langRow: {
+    flexDirection: "row",
+    gap: theme.spacing.sm
+  },
+  langButton: {
+    flex: 1,
+    minHeight: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "rgba(255, 224, 151, 0.18)",
+    backgroundColor: "rgba(54, 43, 27, 0.6)"
+  },
+  langButtonActive: {
+    borderColor: "rgba(198, 238, 137, 0.7)",
+    backgroundColor: "rgba(68, 101, 45, 0.92)"
+  },
+  langText: {
+    color: "#d8ccb0",
+    fontSize: 15,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
+  },
+  langTextActive: {
+    color: theme.colors.paper
+  },
+  settingsReset: {
+    minHeight: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: theme.spacing.lg,
+    borderRadius: 10,
+    backgroundColor: "#9a3322"
+  },
+  settingsResetText: {
+    color: theme.colors.paper,
+    fontSize: 14,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
+  },
+  settingsClose: {
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: theme.spacing.sm
+  },
+  settingsCloseText: {
+    color: "#d8ccb0",
+    fontSize: 14,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
   },
   tutorialCard: {
     width: "100%",

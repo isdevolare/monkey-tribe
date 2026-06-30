@@ -1,9 +1,14 @@
+import { t, type Lang } from "../i18n";
 import type {
   ResourceKind,
   Resources,
   VillageBuilding,
   VillageBuildingType
 } from "../types/game";
+
+export function buildingName(type: VillageBuildingType, lang: Lang) {
+  return t(`b.${type}`, lang);
+}
 
 // Display order on the board and in lists.
 export const BUILDING_ORDER: VillageBuildingType[] = [
@@ -67,31 +72,31 @@ export function upgradeCost(type: VillageBuildingType, level: number): Resources
   };
 }
 
-const RESOURCE_LABELS: Record<ResourceKind, string> = {
-  bananas: "muz",
-  wood: "odun",
-  stones: "taş"
+const RESOURCE_KEY: Record<ResourceKind, string> = {
+  bananas: "fx.muz",
+  wood: "fx.odun",
+  stones: "fx.tas"
 };
 
-// Short Turkish description of what the building does at a given level.
-export function buildingEffect(type: VillageBuildingType, level: number): string {
+// Short, localized description of what the building does at a given level.
+export function buildingEffect(type: VillageBuildingType, level: number, lang: Lang): string {
   const production = BUILDING_PRODUCTION[type];
   if (production) {
     const rate = (production.perSecond * level).toFixed(1);
-    return `${rate}/sn ${RESOURCE_LABELS[production.resource]}`;
+    return `${rate}${t("fx.perSec", lang)} ${t(RESOURCE_KEY[production.resource], lang)}`;
   }
 
   if (type === "workerShelter") {
-    return `Kapasite ${populationCap(level)}`;
+    return `${t("fx.capacity", lang)} ${populationCap(level)}`;
   }
 
   if (type === "trainingNest") {
-    return "Savaşçı eğitimi";
+    return t("fx.fighterTraining", lang);
   }
 
   if (type === "watchTower") {
-    return `Savunma +${level * 2}`;
+    return `${t("fx.defense", lang)} +${level * 2}`;
   }
 
-  return `Köy seviyesi ${level}`;
+  return `${t("fx.villageLevel", lang)} ${level}`;
 }

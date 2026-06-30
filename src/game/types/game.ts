@@ -88,10 +88,13 @@ export type FeedbackMessage = {
   text: string;
 };
 
+export type Lang = "tr" | "en";
+
 export type VillageSave = {
   buildings: VillageBuilding[];
   resources: Resources;
   maxPopulation: number;
+  language?: Lang;
 };
 
 export type GameState = {
@@ -110,9 +113,11 @@ export type GameState = {
   activeCampId: string | null;
   raidStars: number;
   lastProductionAt: number;
+  language: Lang;
   feedback: FeedbackMessage | null;
   startGame: () => void;
   hydrate: (save: VillageSave) => void;
+  setLanguage: (lang: Lang) => void;
   createWorker: () => void;
   trainFighter: () => void;
   openRaidMap: () => void;

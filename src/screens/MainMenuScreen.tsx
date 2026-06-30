@@ -1,11 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
+import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
 
 export function MainMenuScreen() {
   const startGame = useGameStore((state) => state.startGame);
+  const lang = useGameStore((state) => state.language);
 
   return (
     <View style={styles.screen}>
@@ -17,13 +19,13 @@ export function MainMenuScreen() {
           <AssetImage assetKey="uiLogo" style={styles.logo} fallback={<HeroFallback />} />
         </View>
 
-        <Text style={styles.kicker}>Survival RTS Prototype</Text>
-        <Text style={styles.subtitle}>Gather the jungle, raise huts, train fighters, and break the rival camp.</Text>
+        <Text style={styles.kicker}>{t("menu.tagline", lang)}</Text>
+        <Text style={styles.subtitle}>{t("menu.subtitle", lang)}</Text>
 
         <View style={styles.buttonStack}>
-          <WoodButton label="Start Game" onPress={startGame} primary />
-          <WoodButton label="Settings" onPress={() => undefined} />
-          <WoodButton label="Credits" onPress={() => undefined} />
+          <WoodButton label={t("menu.start", lang)} onPress={startGame} primary />
+          <WoodButton label={t("menu.settings", lang)} onPress={() => undefined} />
+          <WoodButton label={t("menu.credits", lang)} onPress={() => undefined} />
         </View>
       </View>
     </View>

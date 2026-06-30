@@ -4,14 +4,16 @@ import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-sv
 import { AssetImage } from "./AssetImage";
 import { LivelyUnit } from "./LivelyUnit";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
-import { BUILDING_NAMES } from "../../game/config/buildings";
-import type { Tile, Unit, VillageBuilding, VillageBuildingType } from "../../game/types/game";
+import { buildingName } from "../../game/config/buildings";
+import { t } from "../../game/i18n";
+import type { Lang, Tile, Unit, VillageBuilding, VillageBuildingType } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type VillageBoardProps = {
   tiles: Tile[];
   units: Unit[];
   buildings: VillageBuilding[];
+  lang: Lang;
   maxSize?: number;
   feedbackText?: string;
   selectedType?: VillageBuildingType | null;
@@ -94,6 +96,7 @@ export function VillageBoard({
   tiles,
   units,
   buildings,
+  lang,
   maxSize = 430,
   feedbackText,
   selectedType,
@@ -109,7 +112,7 @@ export function VillageBoard({
     (a, b) => a.zIndex - b.zIndex
   );
   const unitItems = aliveUnits
-    .map((unit) => unitSceneItem(unit))
+    .map((unit) => unitSceneItem(unit, lang))
     .sort((a, b) => a.zIndex - b.zIndex);
   const buildingSprites = buildings
     .map((building) => ({ building, layout: BUILDING_LAYOUT[building.type] }))
@@ -138,6 +141,7 @@ export function VillageBoard({
             key={building.type}
             building={building}
             layout={layout}
+            lang={lang}
             selected={selectedType === building.type}
             onPress={() => onBuildingPress(building.type)}
           />
@@ -156,11 +160,13 @@ export function VillageBoard({
 function BuildingSprite({
   building,
   layout,
+  lang,
   selected,
   onPress
 }: {
   building: VillageBuilding;
   layout: { point: Point; size: number; asset: GameAssetKey };
+  lang: Lang;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -183,9 +189,11 @@ function BuildingSprite({
       <AssetImage assetKey={asset} style={styles.full} fallback={<View style={styles.assetMissing} />} />
       <View style={styles.buildingTag} pointerEvents="none">
         <Text style={styles.buildingTagName} numberOfLines={1}>
-          {BUILDING_NAMES[building.type]}
+          {buildingName(building.type, lang)}
         </Text>
-        <Text style={styles.buildingTagLevel}>Seviye {building.level}</Text>
+        <Text style={styles.buildingTagLevel}>
+          {t("common.level", lang)} {building.level}
+        </Text>
       </View>
     </Pressable>
   );
@@ -321,10 +329,10 @@ function sceneryItems(): SceneItem[] {
   ];
 }
 
-function unitSceneItem(unit: Unit): SceneItem {
+function unitSceneItem(unit: Unit, lang: Lang): SceneItem {
   const center = pointForUnit(unit);
   return item(unit.id, center, unit.type === "fighter" ? 15 : 14, 80 + center.y, (
-    <UnitArt unit={unit} />
+    <UnitArt unit={unit} lang={lang} />
   ));
 }
 
@@ -394,7 +402,7 @@ function stableIndex(value: string, modulo: number) {
 }
 
 
-function UnitArt({ unit }: { unit: Unit }) {
+function UnitArt({ unit, lang }: { unit: Unit; lang: Lang }) {
   const player = unit.owner === "player";
 
   return (
@@ -408,7 +416,9 @@ function UnitArt({ unit }: { unit: Unit }) {
       {player ? (
         <View style={styles.unitLabel} pointerEvents="none">
           <View style={styles.unitLabelPill}>
-            <Text style={styles.unitLabelText}>{unit.type === "fighter" ? "Savaşçı" : "İşçi"}</Text>
+            <Text style={styles.unitLabelText}>
+              {t(unit.type === "fighter" ? "unit.fighter" : "unit.worker", lang)}
+            </Text>
           </View>
         </View>
       ) : null}
