@@ -97,12 +97,12 @@ const styles = StyleSheet.create({
   title: {
     color: theme.colors.paper,
     fontSize: 17,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   subtitle: {
     color: "#e7b9a0",
     fontSize: 12,
-    fontWeight: "800"
+    fontWeight: "800", fontFamily: theme.fonts.bold
   },
   list: {
     gap: theme.spacing.sm,
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   levelTagText: {
     color: "#ffd95a",
     fontSize: 10,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   cardBody: {
     flex: 1,
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   campName: {
     color: theme.colors.paper,
     fontSize: 15,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   lootRow: {
     flexDirection: "row",
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   lootText: {
     color: "#ffe9ad",
     fontSize: 13,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   attackButton: {
     minHeight: 48,
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   attackText: {
     color: theme.colors.paper,
     fontSize: 14,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   backButton: {
     minHeight: 48,
@@ -215,6 +215,6 @@ const styles = StyleSheet.create({
   backText: {
     color: theme.colors.paper,
     fontSize: 15,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   }
 });

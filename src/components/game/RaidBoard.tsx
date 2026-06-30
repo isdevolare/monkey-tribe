@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   },
   markerText: {
     fontSize: 14,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textShadowColor: "rgba(0, 0, 0, 0.85)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3
@@ -540,13 +540,13 @@ const styles = StyleSheet.create({
   raidTitle: {
     color: theme.colors.paper,
     fontSize: 17,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   raidStat: {
     marginTop: 2,
     color: "#d8ccb0",
     fontSize: 12,
-    fontWeight: "800"
+    fontWeight: "800", fontFamily: theme.fonts.bold
   },
   feedbackBanner: {
     position: "absolute",
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
   feedbackText: {
     color: "#ffe28b",
     fontSize: 12,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
   retreatButton: {
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   retreatText: {
     color: theme.colors.paper,
     fontSize: 13,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   resultScrim: {
     ...StyleSheet.absoluteFillObject,
@@ -625,12 +625,12 @@ const styles = StyleSheet.create({
   resultEmblemText: {
     color: theme.colors.paper,
     fontSize: 22,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   resultTitle: {
     color: theme.colors.paper,
     fontSize: 24,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
   starRow: {
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
   },
   star: {
     fontSize: 30,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   starOn: {
     color: "#ffd95a",
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: "#d8ccb0",
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "800", fontFamily: theme.fonts.bold,
     textAlign: "center"
   },
   rewardRow: {
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
   rewardText: {
     color: "#ffe9ad",
     fontSize: 14,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   returnButton: {
     marginTop: 16,
@@ -697,6 +697,6 @@ const styles = StyleSheet.create({
   returnText: {
     color: theme.colors.paper,
     fontSize: 14,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   }
 });

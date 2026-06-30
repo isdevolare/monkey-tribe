@@ -79,14 +79,14 @@ const styles = StyleSheet.create({
   label: {
     color: theme.colors.ink,
     fontSize: 16,
-    fontWeight: "800",
+    fontWeight: "800", fontFamily: theme.fonts.bold,
     textAlign: "center"
   },
   helper: {
     marginTop: 2,
     color: "#4d5837",
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "800", fontFamily: theme.fonts.bold,
     textAlign: "center"
   },
   pressed: {

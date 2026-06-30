@@ -253,8 +253,7 @@ export function GameScreen() {
                     />
                   }
                 />
-                <Text style={styles.raidIcon}>X</Text>
-                <Text style={styles.raidText}>BASKIN!</Text>
+                <Text style={styles.raidText}>BASKIN</Text>
               </Pressable>
             </View>
           </>
@@ -607,13 +606,13 @@ const styles = StyleSheet.create({
   clanName: {
     color: theme.colors.paper,
     fontSize: 15,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   clanSubtitle: {
     marginTop: 2,
     color: "#d7c99d",
     fontSize: 12,
-    fontWeight: "800"
+    fontWeight: "800", fontFamily: theme.fonts.bold
   },
   levelBadge: {
     width: 28,
@@ -626,7 +625,7 @@ const styles = StyleSheet.create({
   levelText: {
     color: theme.colors.paper,
     fontSize: 14,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   topButtons: {
     flexDirection: "row",
@@ -646,7 +645,7 @@ const styles = StyleSheet.create({
   topPillText: {
     color: theme.colors.paper,
     fontSize: 13,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   topAccent: {
     width: 24,
@@ -659,7 +658,7 @@ const styles = StyleSheet.create({
   topAccentText: {
     color: theme.colors.paper,
     fontSize: 14,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   topIcon: {
     width: 44,
@@ -673,7 +672,7 @@ const styles = StyleSheet.create({
   topIconText: {
     color: theme.colors.paper,
     fontSize: 17,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   resourceBar: {
     flexDirection: "row",
@@ -713,7 +712,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     color: theme.colors.ink,
     fontSize: 11,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   resourceCopy: {
     minWidth: 0
@@ -721,7 +720,7 @@ const styles = StyleSheet.create({
   resourceValue: {
     color: theme.colors.paper,
     fontSize: 17,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   hiddenLabel: {
     position: "absolute",
@@ -757,7 +756,7 @@ const styles = StyleSheet.create({
   dockTabLabel: {
     color: "#d8ccb0",
     fontSize: 14,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   dockTabLabelActive: {
     color: theme.colors.paper
@@ -774,7 +773,7 @@ const styles = StyleSheet.create({
   dockTabBadgeText: {
     color: theme.colors.paper,
     fontSize: 11,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   raidStage: {
     alignItems: "center",
@@ -805,7 +804,7 @@ const styles = StyleSheet.create({
   hintText: {
     color: "#d8ccb0",
     fontSize: 13,
-    fontWeight: "800"
+    fontWeight: "800", fontFamily: theme.fonts.bold
   },
   upgradePanel: {
     flexDirection: "row",
@@ -828,19 +827,19 @@ const styles = StyleSheet.create({
   upgradeName: {
     color: theme.colors.paper,
     fontSize: 15,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   upgradeMeta: {
     marginTop: 2,
     color: "#a7df80",
     fontSize: 12,
-    fontWeight: "800"
+    fontWeight: "800", fontFamily: theme.fonts.bold
   },
   upgradeNext: {
     marginTop: 1,
     color: "#d8ccb0",
     fontSize: 11,
-    fontWeight: "700"
+    fontWeight: "700", fontFamily: theme.fonts.regular
   },
   upgradeButton: {
     minHeight: 46,
@@ -861,12 +860,12 @@ const styles = StyleSheet.create({
   upgradeButtonLabel: {
     color: theme.colors.paper,
     fontSize: 14,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   upgradeButtonCost: {
     color: "#ffe9ad",
     fontSize: 11,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   upgradeClose: {
     width: 30,
@@ -879,7 +878,7 @@ const styles = StyleSheet.create({
   upgradeCloseText: {
     color: theme.colors.paper,
     fontSize: 20,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     lineHeight: 22
   },
   objectivePanel: {
@@ -902,13 +901,13 @@ const styles = StyleSheet.create({
   objectiveTitle: {
     color: theme.colors.paper,
     fontSize: 14,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textTransform: "uppercase"
   },
   objectiveCounter: {
     color: "#e2b15a",
     fontSize: 12,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   objectiveRow: {
     minHeight: 24,
@@ -922,12 +921,12 @@ const styles = StyleSheet.create({
     flex: 1,
     color: "#d8ccb0",
     fontSize: 12,
-    fontWeight: "800"
+    fontWeight: "800", fontFamily: theme.fonts.bold
   },
   objectiveValue: {
     color: "#d8ccb0",
     fontSize: 12,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   objectiveTextDone: {
     color: "#a7df80"
@@ -952,24 +951,24 @@ const styles = StyleSheet.create({
     flex: 1,
     color: theme.colors.paper,
     fontSize: 16,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   hpText: {
     color: "#a7df80",
     fontSize: 13,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   panelText: {
     marginTop: 3,
     color: "#d8ccb0",
     fontSize: 13,
-    fontWeight: "700"
+    fontWeight: "700", fontFamily: theme.fonts.regular
   },
   panelHint: {
     marginTop: 5,
     color: "#e3f2cf",
     fontSize: 12,
-    fontWeight: "800"
+    fontWeight: "800", fontFamily: theme.fonts.bold
   },
   bottomDock: {
     flexDirection: "row",
@@ -1028,7 +1027,7 @@ const styles = StyleSheet.create({
   actionGlyph: {
     color: "#e2b15a",
     fontSize: 13,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
   actionTitle: {
@@ -1036,13 +1035,13 @@ const styles = StyleSheet.create({
     minHeight: 25,
     color: theme.colors.paper,
     fontSize: 10,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
   actionCost: {
     color: "#f1cd74",
     fontSize: 10,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
   raidButton: {
@@ -1067,7 +1066,7 @@ const styles = StyleSheet.create({
   raidIcon: {
     color: theme.colors.paper,
     fontSize: 22,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textShadowColor: "rgba(0, 0, 0, 0.55)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 2
@@ -1075,7 +1074,7 @@ const styles = StyleSheet.create({
   raidText: {
     color: theme.colors.paper,
     fontSize: 20,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textShadowColor: "rgba(0, 0, 0, 0.55)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 2
@@ -1107,7 +1106,7 @@ const styles = StyleSheet.create({
   tutorialKicker: {
     color: "#4d5837",
     fontSize: 12,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textTransform: "uppercase"
   },
   tutorialStep: {
@@ -1115,7 +1114,7 @@ const styles = StyleSheet.create({
     minHeight: 70,
     color: theme.colors.ink,
     fontSize: 21,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   tutorialDots: {
     flexDirection: "row",
@@ -1146,7 +1145,7 @@ const styles = StyleSheet.create({
   skipText: {
     color: "#4d5837",
     fontSize: 15,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   nextButton: {
     minHeight: 44,
@@ -1158,7 +1157,7 @@ const styles = StyleSheet.create({
   nextText: {
     color: theme.colors.ink,
     fontSize: 15,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   surfaceTexture: {
     ...StyleSheet.absoluteFillObject

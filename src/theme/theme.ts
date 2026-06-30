@@ -23,5 +23,10 @@ export const theme = {
     md: 12,
     lg: 16,
     xl: 24
+  },
+  fonts: {
+    regular: "Baloo2_500Medium",
+    bold: "Baloo2_700Bold",
+    heavy: "Baloo2_800ExtraBold"
   }
 } as const;

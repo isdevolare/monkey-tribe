@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.lg,
     color: "#dcefc9",
     fontSize: 14,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center",
     textTransform: "uppercase"
   },
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     color: theme.colors.paper,
     fontSize: 46,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
   subtitle: {
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     color: "#e3f2cf",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "700", fontFamily: theme.fonts.regular,
     textAlign: "center"
   },
   actions: {

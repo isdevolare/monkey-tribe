@@ -1,4 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  Baloo2_500Medium,
+  Baloo2_700Bold,
+  Baloo2_800ExtraBold,
+  useFonts
+} from "@expo-google-fonts/baloo-2";
 import { useEffect } from "react";
 import { SafeAreaView, StatusBar, StyleSheet, View } from "react-native";
 import { SAVE_KEY, useGameStore } from "./src/game/state/gameStore";
@@ -10,6 +16,11 @@ import { theme } from "./src/theme/theme";
 
 export default function App() {
   const screen = useGameStore((state) => state.currentScreen);
+  const [fontsLoaded] = useFonts({
+    Baloo2_500Medium,
+    Baloo2_700Bold,
+    Baloo2_800ExtraBold
+  });
 
   // Restore the saved village once on launch so it persists across sessions.
   useEffect(() => {
@@ -25,6 +36,10 @@ export default function App() {
       })
       .catch(() => undefined);
   }, []);
+
+  if (!fontsLoaded) {
+    return <View style={styles.appShell} />;
+  }
 
   return (
     <View style={styles.appShell}>

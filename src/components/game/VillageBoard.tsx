@@ -574,12 +574,12 @@ const styles = StyleSheet.create({
   buildingTagName: {
     color: theme.colors.paper,
     fontSize: 9,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   buildingTagLevel: {
     color: "#e2b15a",
     fontSize: 8,
-    fontWeight: "900"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   sprite: {
     position: "absolute",
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
   feedbackText: {
     color: "#ffe28b",
     fontSize: 12,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
 });

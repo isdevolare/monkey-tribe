@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   kicker: {
     color: theme.colors.banana,
     fontSize: 13,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     letterSpacing: 0,
     textAlign: "center",
     textShadowColor: "rgba(0, 0, 0, 0.7)",
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     color: "#f3f0d7",
     fontSize: 16,
-    fontWeight: "800",
+    fontWeight: "800", fontFamily: theme.fonts.bold,
     textAlign: "center",
     textShadowColor: "rgba(0, 0, 0, 0.75)",
     textShadowOffset: { width: 0, height: 2 },
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   woodButtonText: {
     color: "#ffe9ad",
     fontSize: 16,
-    fontWeight: "900",
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center",
     textShadowColor: "rgba(42, 22, 8, 0.9)",
     textShadowOffset: { width: 0, height: 2 },
