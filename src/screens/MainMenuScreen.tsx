@@ -18,6 +18,13 @@ export function MainMenuScreen() {
       <AssetImage assetKey="bgMainMenu" resizeMode="cover" style={styles.backdrop} fallback={<MenuBackdrop />} />
       <View style={styles.overlay} />
 
+      <View style={styles.decorLayer} pointerEvents="none">
+        <AssetImage assetKey="menuTorch" resizeMode="contain" style={styles.torchLeft} fallback={<View />} />
+        <AssetImage assetKey="menuTorch" resizeMode="contain" style={styles.torchRight} fallback={<View />} />
+        <AssetImage assetKey="menuTotem" resizeMode="contain" style={styles.totem} fallback={<View />} />
+        <AssetImage assetKey="menuChiefMascot" resizeMode="contain" style={styles.mascot} fallback={<View />} />
+      </View>
+
       <View style={styles.content}>
         <View style={styles.logoShadow}>
           <AssetImage assetKey="uiLogo" style={styles.logo} fallback={<HeroFallback />} />
@@ -133,6 +140,41 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     backgroundColor: "rgba(6, 18, 11, 0.42)"
+  },
+  decorLayer: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0
+  },
+  mascot: {
+    position: "absolute",
+    left: -14,
+    bottom: 8,
+    width: 150,
+    height: 200
+  },
+  totem: {
+    position: "absolute",
+    right: 2,
+    bottom: 14,
+    width: 86,
+    height: 150
+  },
+  torchLeft: {
+    position: "absolute",
+    left: 4,
+    top: 150,
+    width: 58,
+    height: 120
+  },
+  torchRight: {
+    position: "absolute",
+    right: 6,
+    top: 150,
+    width: 58,
+    height: 120
   },
   content: {
     flex: 1,
