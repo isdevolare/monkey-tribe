@@ -296,9 +296,9 @@ export function RaidBoard({
             </Text>
             {victory ? (
               <View style={styles.rewardRow}>
-                <RewardChip assetKey="resourceBanana" amount={loot.bananas} />
-                <RewardChip assetKey="resourceWood" amount={loot.wood} />
-                <RewardChip assetKey="resourceStone" amount={loot.stones} />
+                <RewardChip assetKey="resourceBananaPile" amount={loot.bananas} />
+                <RewardChip assetKey="resourceWoodBundle" amount={loot.wood} />
+                <RewardChip assetKey="resourceStonePile" amount={loot.stones} />
               </View>
             ) : null}
             <Pressable accessibilityRole="button" onPress={onReturn} style={styles.returnButton}>
@@ -674,12 +674,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6
   },
   rewardIcon: {
-    width: 22,
-    height: 22
+    width: 30,
+    height: 30
   },
   rewardIconFallback: {
-    width: 22,
-    height: 22,
+    width: 30,
+    height: 30,
     borderRadius: 11,
     backgroundColor: "rgba(255, 224, 151, 0.4)"
   },
