@@ -11,14 +11,16 @@ import {
 import Svg, { Circle, Ellipse, Line, Path } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
-import { CAMP_MAX_HP, RAID_REWARD } from "../../game/config/constants";
-import type { RaidStatus, Unit } from "../../game/types/game";
+import type { RaidStatus, Resources, Unit } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type RaidBoardProps = {
   units: Unit[];
   enemyCampHp: number;
+  enemyCampMaxHp: number;
   raidStatus: RaidStatus;
+  stars: number;
+  loot: Resources;
   feedbackText?: string;
   maxSize?: number;
   onReturn: () => void;
@@ -53,7 +55,10 @@ const STRIKE_WINDOW_MS = 220;
 export function RaidBoard({
   units,
   enemyCampHp,
+  enemyCampMaxHp,
   raidStatus,
+  stars,
+  loot,
   feedbackText,
   maxSize = 430,
   onReturn
@@ -180,7 +185,7 @@ export function RaidBoard({
       <Animated.View style={[styles.enemyCamp, { transform: [{ translateX: campTranslate }] }]}>
         <AssetImage assetKey="buildingEnemyCamp" style={styles.full} fallback={<CampFallback />} />
         <Animated.View style={[styles.campFlash, { opacity: campFlash }]} pointerEvents="none" />
-        <HealthBar percent={Math.max(0, Math.round((enemyCampHp / CAMP_MAX_HP) * 100))} enemy large />
+        <HealthBar percent={Math.max(0, Math.round((enemyCampHp / enemyCampMaxHp) * 100))} enemy large />
       </Animated.View>
 
       {fighters.map((unit, index) => {
@@ -245,9 +250,9 @@ export function RaidBoard({
       </View>
 
       <View style={styles.raidHud}>
-        <Text style={styles.raidTitle}>Raid Battle</Text>
-        <Text style={styles.raidStat}>Enemy Camp HP {Math.max(0, enemyCampHp)} / {CAMP_MAX_HP}</Text>
-        <Text style={styles.raidStat}>Raid Power {raidPower}</Text>
+        <Text style={styles.raidTitle}>Baskın</Text>
+        <Text style={styles.raidStat}>Düşman Kamp HP {Math.max(0, Math.round(enemyCampHp))} / {enemyCampMaxHp}</Text>
+        <Text style={styles.raidStat}>Saldırı Gücü {raidPower}</Text>
       </View>
 
       {feedbackText ? (
@@ -268,27 +273,36 @@ export function RaidBoard({
             <View style={[styles.resultEmblem, victory ? styles.resultEmblemWin : styles.resultEmblemLose]}>
               <Text style={styles.resultEmblemText}>{victory ? "★" : "!"}</Text>
             </View>
-            <Text style={styles.resultTitle}>{victory ? "Raid Victory" : "Raid Failed"}</Text>
+            <Text style={styles.resultTitle}>{victory ? "Zafer!" : "Baskın Başarısız"}</Text>
+            {victory ? (
+              <View style={styles.starRow}>
+                {[1, 2, 3].map((slot) => (
+                  <Text key={slot} style={[styles.star, slot <= stars ? styles.starOn : styles.starOff]}>
+                    ★
+                  </Text>
+                ))}
+              </View>
+            ) : null}
             <Text style={styles.resultText}>
               {victory
-                ? "The enemy camp is broken. Spoils were added to your stores."
-                : "Your raid party fell. Train more fighters and try again."}
+                ? "Düşman kampı yıkıldı. Ganimet köy depolarına eklendi."
+                : "Baskın ekibin düştü. Daha fazla savaşçı eğit ve tekrar dene."}
             </Text>
             {victory ? (
               <View style={styles.rewardRow}>
-                <RewardChip assetKey="resourceBanana" amount={RAID_REWARD.bananas} />
-                <RewardChip assetKey="resourceStone" amount={RAID_REWARD.stones} />
-                <RewardChip assetKey="resourceWood" amount={RAID_REWARD.wood} />
+                <RewardChip assetKey="resourceBanana" amount={loot.bananas} />
+                <RewardChip assetKey="resourceWood" amount={loot.wood} />
+                <RewardChip assetKey="resourceStone" amount={loot.stones} />
               </View>
             ) : null}
             <Pressable accessibilityRole="button" onPress={onReturn} style={styles.returnButton}>
-              <Text style={styles.returnText}>Return to Village</Text>
+              <Text style={styles.returnText}>Köye Dön</Text>
             </Pressable>
           </Animated.View>
         </View>
       ) : (
         <Pressable accessibilityRole="button" onPress={onReturn} style={styles.retreatButton}>
-          <Text style={styles.retreatText}>Retreat</Text>
+          <Text style={styles.retreatText}>Geri Çekil</Text>
         </Pressable>
       )}
     </View>
@@ -613,6 +627,24 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "900",
     textAlign: "center"
+  },
+  starRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 8
+  },
+  star: {
+    fontSize: 30,
+    fontWeight: "900"
+  },
+  starOn: {
+    color: "#ffd95a",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2
+  },
+  starOff: {
+    color: "rgba(255, 255, 255, 0.22)"
   },
   resultText: {
     marginTop: 8,

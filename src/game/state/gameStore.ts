@@ -20,6 +20,7 @@ import {
   populationCap,
   upgradeCost
 } from "../config/buildings";
+import { getCamp, type RaidCamp } from "../config/camps";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import type {
   GameState,
@@ -71,6 +72,9 @@ function createFreshState(now: number) {
     maxPopulation: populationCap(1),
     playerCampHp: CAMP_MAX_HP,
     enemyCampHp: CAMP_MAX_HP,
+    enemyCampMaxHp: CAMP_MAX_HP,
+    activeCampId: null,
+    raidStars: 0,
     lastProductionAt: now,
     feedback: null
   };
@@ -279,9 +283,7 @@ function processAttacking(unit: Unit, game: MutableGame, now: number) {
   if (unit.target.kind === "unit") {
     damageUnit(game.units, unit.target.unitId, unit.attack);
     game.feedbackText =
-      unit.owner === "player"
-        ? `${unit.type === "fighter" ? "Fighter" : "Worker"} attacked enemy`
-        : "Enemy fighter struck back";
+      unit.owner === "player" ? "Savaşçı düşmana vurdu" : "Düşman karşılık verdi";
   } else if (unit.target.kind === "camp") {
     if (unit.target.owner === "player") {
       const blocked =
@@ -292,7 +294,7 @@ function processAttacking(unit: Unit, game: MutableGame, now: number) {
         blocked > 0 ? `Gözetleme Kulesi ${blocked} hasar engelledi` : "Düşman köyüne saldırdı";
     } else {
       game.enemyCampHp = Math.max(0, game.enemyCampHp - unit.attack);
-      game.feedbackText = `${unit.type === "fighter" ? "Fighter" : "Worker"} attacked enemy camp`;
+      game.feedbackText = "Savaşçı düşman kampına vurdu";
     }
   }
 
@@ -337,15 +339,26 @@ function findSpawnPosition(units: Unit[], owner: Owner): Position {
   return camp;
 }
 
-function createRaidEnemies(now: number): Unit[] {
-  return [
-    createUnit(`raid-enemy-fighter-1-${now}`, "fighter", "enemy", 8, 2, now),
-    createUnit(`raid-enemy-fighter-2-${now}`, "fighter", "enemy", 7, 1, now),
-    createUnit(`raid-enemy-fighter-3-${now}`, "fighter", "enemy", 9, 1, now)
-  ];
+const ENEMY_DEPLOY_SPOTS: Position[] = [
+  { x: 8, y: 2 },
+  { x: 7, y: 1 },
+  { x: 9, y: 1 },
+  { x: 8, y: 3 },
+  { x: 9, y: 3 }
+];
+
+function createRaidEnemies(now: number, camp: RaidCamp): Unit[] {
+  return Array.from({ length: camp.enemyCount }, (_, index) => {
+    const spot = ENEMY_DEPLOY_SPOTS[index % ENEMY_DEPLOY_SPOTS.length] ?? { x: 8, y: 2 };
+    const unit = createUnit(`raid-enemy-${index}-${now}`, "fighter", "enemy", spot.x, spot.y, now);
+    unit.hp = camp.enemyHp;
+    unit.maxHp = camp.enemyHp;
+    unit.attack = camp.enemyAttack;
+    return unit;
+  });
 }
 
-function deployRaidUnits(units: Unit[], now: number) {
+function deployRaidUnits(units: Unit[], now: number, camp: RaidCamp) {
   let fighterIndex = 0;
 
   return [
@@ -377,7 +390,7 @@ function deployRaidUnits(units: Unit[], now: number) {
           lastActionAt: now
         };
       }),
-    ...createRaidEnemies(now)
+    ...createRaidEnemies(now, camp)
   ];
 }
 
@@ -518,6 +531,8 @@ export const useGameStore = create<GameState>((set) => ({
       units: createInitialUnits(Date.now()),
       playerCampHp: CAMP_MAX_HP,
       enemyCampHp: CAMP_MAX_HP,
+      activeCampId: null,
+      raidStars: 0,
       lastProductionAt: Date.now(),
       feedback: null
     })),
@@ -535,9 +550,28 @@ export const useGameStore = create<GameState>((set) => ({
       };
     }),
   upgradeBuilding: (type) => set((state) => upgradeVillageBuilding(state, type)),
-  raidEnemyCamp: () =>
+  openRaidMap: () =>
+    set((state) => ({
+      ...state,
+      gameMode: "raidMap",
+      raidStatus: "idle",
+      feedback: null
+    })),
+  closeRaidMap: () =>
+    set((state) => ({
+      ...state,
+      gameMode: "village",
+      lastProductionAt: Date.now(),
+      feedback: null
+    })),
+  startRaidOn: (campId) =>
     set((state) => {
       const now = Date.now();
+      const camp = getCamp(campId);
+      if (!camp) {
+        return state;
+      }
+
       const fighters = state.units.filter(
         (unit) =>
           unit.owner === "player" &&
@@ -557,10 +591,13 @@ export const useGameStore = create<GameState>((set) => ({
         ...state,
         gameMode: "raid",
         raidStatus: "active",
-        enemyCampHp: CAMP_MAX_HP,
-        units: deployRaidUnits(state.units, now),
+        activeCampId: camp.id,
+        enemyCampHp: camp.campHp,
+        enemyCampMaxHp: camp.campHp,
+        raidStars: 0,
+        units: deployRaidUnits(state.units, now, camp),
         lastProductionAt: now,
-        feedback: { id: now, text: "Baskın başladı! Savaşçılar saldırıyor." }
+        feedback: { id: now, text: `${camp.name} baskını başladı!` }
       };
     }),
   returnToVillage: () =>
@@ -568,6 +605,7 @@ export const useGameStore = create<GameState>((set) => ({
       ...state,
       gameMode: "village",
       raidStatus: "idle",
+      activeCampId: null,
       units: returnPlayerUnitsToVillage(state.units),
       lastProductionAt: Date.now(),
       feedback: { id: Date.now(), text: "Baskın ekibi köye döndü" }
@@ -612,18 +650,34 @@ export const useGameStore = create<GameState>((set) => ({
         );
 
         if (game.enemyCampHp <= 0) {
+          const camp = getCamp(state.activeCampId ?? "");
+          const loot = camp ? camp.loot : RAID_REWARD;
+          const fighters = units.filter(
+            (unit) => unit.owner === "player" && unit.type === "fighter"
+          );
+          const aliveCount = fighters.filter(
+            (unit) => unit.state !== "dead" && unit.hp > 0
+          ).length;
+          const stars =
+            fighters.length > 0 && aliveCount === fighters.length
+              ? 3
+              : aliveCount >= Math.ceil(fighters.length / 2)
+                ? 2
+                : 1;
+
           return {
             ...state,
             units: game.units,
             resources: {
-              bananas: game.resources.bananas + RAID_REWARD.bananas,
-              stones: game.resources.stones + RAID_REWARD.stones,
-              wood: game.resources.wood + RAID_REWARD.wood
+              bananas: game.resources.bananas + loot.bananas,
+              stones: game.resources.stones + loot.stones,
+              wood: game.resources.wood + loot.wood
             },
             enemyCampHp: 0,
+            raidStars: stars,
             feedback: {
               id: now,
-              text: `Raid victory! +${RAID_REWARD.bananas} bananas, +${RAID_REWARD.stones} stones, +${RAID_REWARD.wood} wood`
+              text: `Zafer! +${loot.bananas} muz, +${loot.stones} taş, +${loot.wood} odun`
             },
             raidStatus: "victory"
           };
@@ -634,7 +688,7 @@ export const useGameStore = create<GameState>((set) => ({
             ...state,
             units: game.units,
             enemyCampHp: game.enemyCampHp,
-            feedback: { id: now, text: "Raid failed. Return and train more fighters" },
+            feedback: { id: now, text: "Baskın başarısız. Daha fazla savaşçı eğit." },
             raidStatus: "defeat"
           };
         }

@@ -1,6 +1,6 @@
 export type ScreenId = "menu" | "game" | "result";
 export type GameStatus = "menu" | "playing" | "victory" | "defeat";
-export type GameMode = "village" | "raid";
+export type GameMode = "village" | "raidMap" | "raid";
 export type RaidStatus = "idle" | "active" | "victory" | "defeat";
 export type Owner = "player" | "enemy";
 export type ResourceKind = "bananas" | "stones" | "wood";
@@ -106,13 +106,18 @@ export type GameState = {
   maxPopulation: number;
   playerCampHp: number;
   enemyCampHp: number;
+  enemyCampMaxHp: number;
+  activeCampId: string | null;
+  raidStars: number;
   lastProductionAt: number;
   feedback: FeedbackMessage | null;
   startGame: () => void;
   hydrate: (save: VillageSave) => void;
   createWorker: () => void;
   trainFighter: () => void;
-  raidEnemyCamp: () => void;
+  openRaidMap: () => void;
+  closeRaidMap: () => void;
+  startRaidOn: (campId: string) => void;
   returnToVillage: () => void;
   upgradeBuilding: (type: VillageBuildingType) => void;
   tickGame: (now?: number) => void;

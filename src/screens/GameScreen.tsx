@@ -12,11 +12,13 @@ import {
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
 import { RaidBoard } from "../components/game/RaidBoard";
+import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { getGameAsset } from "../game/assets/gameAssets";
 import { UNIT_COSTS } from "../game/config/constants";
 import { BUILDING_NAMES, buildingEffect, upgradeCost } from "../game/config/buildings";
+import { getCamp } from "../game/config/camps";
 import { useGameStore } from "../game/state/gameStore";
 import type { Resources, VillageBuilding, VillageBuildingType } from "../game/types/game";
 import { theme } from "../theme/theme";
@@ -45,6 +47,18 @@ export function GameScreen() {
     (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
   ).length;
   const clanLevel = levelOf(state.buildings, "clanHall");
+  const fighterCount = state.units.filter(
+    (unit) =>
+      unit.owner === "player" &&
+      unit.type === "fighter" &&
+      unit.state !== "dead" &&
+      unit.hp > 0
+  ).length;
+  const activeCampLoot = getCamp(state.activeCampId ?? "")?.loot ?? {
+    bananas: 0,
+    stones: 0,
+    wood: 0
+  };
   const boardMaxSize = Math.max(260, Math.min(layoutWidth - 20, 404));
 
   useEffect(() => {
@@ -152,12 +166,21 @@ export function GameScreen() {
           />
         </View>
 
-        {state.gameMode === "raid" ? (
+        {state.gameMode === "raidMap" ? (
+          <RaidMapScreen
+            fighterCount={fighterCount}
+            onAttack={state.startRaidOn}
+            onClose={state.closeRaidMap}
+          />
+        ) : state.gameMode === "raid" ? (
           <View style={styles.raidStage}>
             <RaidBoard
               units={state.units}
               enemyCampHp={state.enemyCampHp}
+              enemyCampMaxHp={state.enemyCampMaxHp}
               raidStatus={state.raidStatus}
+              stars={state.raidStars}
+              loot={activeCampLoot}
               maxSize={Math.min(width - theme.spacing.md * 2, 404)}
               feedbackText={state.feedback?.text}
               onReturn={state.returnToVillage}
@@ -214,7 +237,7 @@ export function GameScreen() {
               </View>
               <Pressable
                 accessibilityRole="button"
-                onPress={state.raidEnemyCamp}
+                onPress={state.openRaidMap}
                 style={({ pressed }) => [styles.raidButton, pressed ? styles.raidButtonPressed : null]}
               >
                 <AssetImage
