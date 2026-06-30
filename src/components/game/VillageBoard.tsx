@@ -171,6 +171,7 @@ function BuildingSprite({
   onPress: () => void;
 }) {
   const { point, size, asset } = layout;
+  const art = assetForBuilding(building, asset);
   return (
     <Pressable
       onPress={onPress}
@@ -186,7 +187,7 @@ function BuildingSprite({
       ]}
     >
       {selected ? <View style={styles.buildingSelected} pointerEvents="none" /> : null}
-      <AssetImage assetKey={asset} style={styles.full} fallback={<View style={styles.assetMissing} />} />
+      <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
       <View style={styles.buildingTag} pointerEvents="none">
         <Text style={styles.buildingTagName} numberOfLines={1}>
           {buildingName(building.type, lang)}
@@ -426,12 +427,32 @@ function UnitArt({ unit, lang }: { unit: Unit; lang: Lang }) {
   );
 }
 
+// Newer generated art for some buildings; the Clan Hall changes with level.
+function assetForBuilding(building: VillageBuilding, fallback: GameAssetKey): GameAssetKey {
+  if (building.type === "clanHall") {
+    if (building.level >= 3) {
+      return "buildingPlayerCampL3";
+    }
+    if (building.level >= 2) {
+      return "buildingPlayerCampL2";
+    }
+    return "buildingPlayerCamp";
+  }
+  if (building.type === "watchTower") {
+    return "buildingArcherTower";
+  }
+  if (building.type === "trainingNest") {
+    return "buildingWarriorBarracks";
+  }
+  return fallback;
+}
+
 function unitAssetKey(unit: Unit): GameAssetKey {
   if (unit.owner === "enemy") {
-    return "unitEnemyFighter";
+    return "unitEnemyWarrior";
   }
 
-  return unit.type === "fighter" ? "unitFighter" : "unitWorker";
+  return unit.type === "fighter" ? "unitWarrior" : "unitWorker";
 }
 
 function Campfire() {

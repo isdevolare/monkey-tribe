@@ -209,7 +209,7 @@ export function RaidBoard({
           >
             {striking ? <View style={styles.strikeGlow} pointerEvents="none" /> : null}
             <LivelyUnit seed={index} amplitude={4} style={styles.full}>
-              <AssetImage assetKey="unitFighter" style={styles.full} fallback={<MonkeyFallback fighter />} />
+              <AssetImage assetKey="unitWarrior" style={styles.full} fallback={<MonkeyFallback fighter />} />
             </LivelyUnit>
             <HealthBar percent={Math.max(0, Math.round((unit.hp / unit.maxHp) * 100))} />
           </View>
@@ -233,7 +233,7 @@ export function RaidBoard({
           >
             {striking ? <View style={[styles.strikeGlow, styles.strikeGlowEnemy]} pointerEvents="none" /> : null}
             <LivelyUnit seed={index + 3} amplitude={4} style={styles.full}>
-              <AssetImage assetKey="unitEnemyFighter" style={styles.full} fallback={<MonkeyFallback fighter enemy />} />
+              <AssetImage assetKey="unitEnemyWarrior" style={styles.full} fallback={<MonkeyFallback fighter enemy />} />
             </LivelyUnit>
             <HealthBar percent={Math.max(0, Math.round((unit.hp / unit.maxHp) * 100))} enemy />
           </View>

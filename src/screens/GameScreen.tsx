@@ -16,7 +16,7 @@ import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { VillageBoard } from "../components/game/VillageBoard";
-import { getGameAsset } from "../game/assets/gameAssets";
+import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
 import { UNIT_COSTS } from "../game/config/constants";
 import { buildingName, buildingEffect, upgradeCost } from "../game/config/buildings";
 import { getCamp } from "../game/config/camps";
@@ -233,7 +233,7 @@ export function GameScreen() {
                   title={t("unit.fighter", lang)}
                   cost={costText(UNIT_COSTS.fighter)}
                   glyph="X"
-                  assetKey="unitFighter"
+                  assetKey="unitWarrior"
                   disabled={trainFighterDisabled}
                   onPress={state.trainFighter}
                 />
@@ -453,7 +453,7 @@ function ActionCard({
   title: string;
   cost: string;
   glyph: string;
-  assetKey?: "buildingHut" | "buildingTrainingNest" | "buildingWatchPost" | "unitWorker" | "unitFighter";
+  assetKey?: GameAssetKey;
   disabled?: boolean;
   onPress: () => void;
 }) {

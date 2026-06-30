@@ -56,7 +56,23 @@ export type GameAssetKey =
   | "uiPanelDark"
   | "uiPanelLight"
   | "bgMainMenu"
-  | "bgJungleGame";
+  | "bgJungleGame"
+  | "buildingPlayerCampL2"
+  | "buildingPlayerCampL3"
+  | "buildingArcherTower"
+  | "buildingWarriorBarracks"
+  | "unitWarrior"
+  | "unitArcher"
+  | "unitEnemyWarrior"
+  | "unitEnemyArcher"
+  | "resourceBananaPile"
+  | "resourceStonePile"
+  | "resourceWoodBundle"
+  | "resourceJungleGem"
+  | "menuChiefMascot"
+  | "menuTitlePlaque"
+  | "menuTotem"
+  | "menuTorch";
 
 export type GameAssetDefinition = {
   key: GameAssetKey;
@@ -227,6 +243,70 @@ export const gameAssets = {
   bgJungleGame: {
     ...asset("bgJungleGame", "backgrounds", "bg_jungle_game.png", "1440x2560 portrait"),
     source: require("../../../assets/game/backgrounds/bg_jungle_game.png") as ImageSourcePropType
+  },
+  buildingPlayerCampL2: {
+    ...asset("buildingPlayerCampL2", "buildings", "camp_player_level2.png", "generated camp lvl 2"),
+    source: require("../../../assets/game/generated/camps/camp_player_level2.png") as ImageSourcePropType
+  },
+  buildingPlayerCampL3: {
+    ...asset("buildingPlayerCampL3", "buildings", "camp_player_level3.png", "generated camp lvl 3"),
+    source: require("../../../assets/game/generated/camps/camp_player_level3.png") as ImageSourcePropType
+  },
+  buildingArcherTower: {
+    ...asset("buildingArcherTower", "buildings", "camp_archer_tower.png", "generated archer tower"),
+    source: require("../../../assets/game/generated/camps/camp_archer_tower.png") as ImageSourcePropType
+  },
+  buildingWarriorBarracks: {
+    ...asset("buildingWarriorBarracks", "buildings", "camp_warrior_barracks.png", "generated barracks"),
+    source: require("../../../assets/game/generated/camps/camp_warrior_barracks.png") as ImageSourcePropType
+  },
+  unitWarrior: {
+    ...asset("unitWarrior", "units", "unit_warrior_monkey.png", "generated warrior unit"),
+    source: require("../../../assets/game/generated/units/unit_warrior_monkey.png") as ImageSourcePropType
+  },
+  unitArcher: {
+    ...asset("unitArcher", "units", "unit_archer_monkey.png", "generated archer unit"),
+    source: require("../../../assets/game/generated/units/unit_archer_monkey.png") as ImageSourcePropType
+  },
+  unitEnemyWarrior: {
+    ...asset("unitEnemyWarrior", "units", "unit_enemy_warrior_monkey.png", "generated enemy warrior"),
+    source: require("../../../assets/game/generated/units/unit_enemy_warrior_monkey.png") as ImageSourcePropType
+  },
+  unitEnemyArcher: {
+    ...asset("unitEnemyArcher", "units", "unit_enemy_archer_monkey.png", "generated enemy archer"),
+    source: require("../../../assets/game/generated/units/unit_enemy_archer_monkey.png") as ImageSourcePropType
+  },
+  resourceBananaPile: {
+    ...asset("resourceBananaPile", "resources", "resource_banana_pile.png", "generated banana pile"),
+    source: require("../../../assets/game/generated/resources/resource_banana_pile.png") as ImageSourcePropType
+  },
+  resourceStonePile: {
+    ...asset("resourceStonePile", "resources", "resource_stone_pile.png", "generated stone pile"),
+    source: require("../../../assets/game/generated/resources/resource_stone_pile.png") as ImageSourcePropType
+  },
+  resourceWoodBundle: {
+    ...asset("resourceWoodBundle", "resources", "resource_wood_bundle.png", "generated wood bundle"),
+    source: require("../../../assets/game/generated/resources/resource_wood_bundle.png") as ImageSourcePropType
+  },
+  resourceJungleGem: {
+    ...asset("resourceJungleGem", "resources", "resource_jungle_gem.png", "generated jungle gem"),
+    source: require("../../../assets/game/generated/resources/resource_jungle_gem.png") as ImageSourcePropType
+  },
+  menuChiefMascot: {
+    ...asset("menuChiefMascot", "ui", "menu_monkey_chief_mascot.png", "generated menu mascot"),
+    source: require("../../../assets/game/generated/menu/menu_monkey_chief_mascot.png") as ImageSourcePropType
+  },
+  menuTitlePlaque: {
+    ...asset("menuTitlePlaque", "ui", "menu_title_plaque.png", "generated title plaque"),
+    source: require("../../../assets/game/generated/menu/menu_title_plaque.png") as ImageSourcePropType
+  },
+  menuTotem: {
+    ...asset("menuTotem", "ui", "menu_jungle_totem.png", "generated jungle totem"),
+    source: require("../../../assets/game/generated/menu/menu_jungle_totem.png") as ImageSourcePropType
+  },
+  menuTorch: {
+    ...asset("menuTorch", "ui", "menu_jungle_torch.png", "generated jungle torch"),
+    source: require("../../../assets/game/generated/menu/menu_jungle_torch.png") as ImageSourcePropType
   }
 } satisfies Record<GameAssetKey, GameAssetDefinition>;
 
