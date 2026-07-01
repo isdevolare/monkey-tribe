@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   Modal,
   Pressable,
   ScrollView,
@@ -75,6 +77,28 @@ export function GameScreen() {
 
     return () => clearInterval(timer);
   }, [state.tickGame]);
+
+  const raidPulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(raidPulse, {
+          toValue: 1.045,
+          duration: 720,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true
+        }),
+        Animated.timing(raidPulse, {
+          toValue: 1,
+          duration: 720,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true
+        })
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [raidPulse]);
 
   useEffect(() => {
     let mounted = true;
@@ -272,26 +296,28 @@ export function GameScreen() {
                   onPress={state.trainArcher}
                 />
               </View>
-              <Pressable
-                accessibilityRole="button"
-                onPress={state.openRaidMap}
-                style={({ pressed }) => [styles.raidButton, pressed ? styles.raidButtonPressed : null]}
-              >
-                <AssetImage
-                  assetKey="uiButtonRaidLarge"
-                  resizeMode="stretch"
-                  style={styles.raidButtonArt}
-                  fallback={
-                    <AssetImage
-                      assetKey="uiButtonRaid"
-                      resizeMode="stretch"
-                      style={styles.raidButtonArt}
-                      fallback={<View style={styles.raidButtonFallback} />}
-                    />
-                  }
-                />
-                <Text style={styles.raidText}>{t("dock.raid", lang)}</Text>
-              </Pressable>
+              <Animated.View style={{ transform: [{ scale: raidPulse }] }}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={state.openRaidMap}
+                  style={({ pressed }) => [styles.raidButton, pressed ? styles.raidButtonPressed : null]}
+                >
+                  <AssetImage
+                    assetKey="uiButtonRaidLarge"
+                    resizeMode="stretch"
+                    style={styles.raidButtonArt}
+                    fallback={
+                      <AssetImage
+                        assetKey="uiButtonRaid"
+                        resizeMode="stretch"
+                        style={styles.raidButtonArt}
+                        fallback={<View style={styles.raidButtonFallback} />}
+                      />
+                    }
+                  />
+                  <Text style={styles.raidText}>{t("dock.raid", lang)}</Text>
+                </Pressable>
+              </Animated.View>
             </View>
           </>
         )}
