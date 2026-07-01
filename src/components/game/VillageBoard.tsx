@@ -188,13 +188,19 @@ function BuildingSprite({
     >
       {selected ? <View style={styles.buildingSelected} pointerEvents="none" /> : null}
       <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
-      <View style={styles.buildingTag} pointerEvents="none">
-        <Text style={styles.buildingTagName} numberOfLines={1}>
-          {buildingName(building.type, lang)}
-        </Text>
-        <Text style={styles.buildingTagLevel}>
-          {t("common.level", lang)} {building.level}
-        </Text>
+
+      {selected ? (
+        <View style={styles.nameTag} pointerEvents="none">
+          <Text style={styles.nameTagText} numberOfLines={1}>
+            {buildingName(building.type, lang)}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={styles.levelBadgeWrap} pointerEvents="none">
+        <View style={styles.levelBadge}>
+          <Text style={styles.levelBadgeText}>{building.level}</Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -612,26 +618,53 @@ const styles = StyleSheet.create({
     borderColor: "rgba(150, 255, 105, 0.95)",
     backgroundColor: "rgba(49, 198, 67, 0.18)"
   },
-  buildingTag: {
+  nameTag: {
     position: "absolute",
-    top: "-2%",
+    top: "-10%",
+    alignSelf: "center",
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 214, 130, 0.6)",
+    backgroundColor: "rgba(20, 16, 9, 0.9)",
+    shadowColor: "#000",
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 }
+  },
+  nameTagText: {
+    color: "#ffe9ad",
+    fontSize: 10,
+    fontFamily: theme.fonts.heavy
+  },
+  levelBadgeWrap: {
+    position: "absolute",
+    bottom: "-3%",
+    left: 0,
+    right: 0,
+    alignItems: "center"
+  },
+  levelBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 3,
     alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.35)",
-    backgroundColor: "rgba(17, 20, 14, 0.82)"
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#f3d27a",
+    backgroundColor: "#6b3f16",
+    shadowColor: "#000",
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 }
   },
-  buildingTagName: {
-    color: theme.colors.paper,
-    fontSize: 9,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
-  },
-  buildingTagLevel: {
-    color: "#e2b15a",
-    fontSize: 8,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+  levelBadgeText: {
+    color: "#fff4d6",
+    fontSize: 11,
+    lineHeight: 13,
+    fontFamily: theme.fonts.heavy
   },
   sprite: {
     position: "absolute",
