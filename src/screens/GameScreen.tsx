@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
+import { FadeIn } from "../components/game/FadeIn";
 import { RaidBoard } from "../components/game/RaidBoard";
 import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
@@ -181,14 +182,16 @@ export function GameScreen() {
         </View>
 
         {state.gameMode === "raidMap" ? (
-          <RaidMapScreen
-            fighterCount={fighterCount}
-            lang={lang}
-            onAttack={state.startRaidOn}
-            onClose={state.closeRaidMap}
-          />
+          <FadeIn key="raidmap">
+            <RaidMapScreen
+              fighterCount={fighterCount}
+              lang={lang}
+              onAttack={state.startRaidOn}
+              onClose={state.closeRaidMap}
+            />
+          </FadeIn>
         ) : state.gameMode === "raid" ? (
-          <View style={styles.raidStage}>
+          <FadeIn key="raid" style={styles.raidStage}>
             <RaidBoard
               units={state.units}
               enemyCampHp={state.enemyCampHp}
@@ -201,7 +204,7 @@ export function GameScreen() {
               feedbackText={state.feedback?.text}
               onReturn={state.returnToVillage}
             />
-          </View>
+          </FadeIn>
         ) : (
           <>
             <View style={styles.boardShell}>

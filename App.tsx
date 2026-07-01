@@ -7,6 +7,7 @@ import {
 } from "@expo-google-fonts/baloo-2";
 import { useEffect } from "react";
 import { SafeAreaView, StatusBar, StyleSheet, View } from "react-native";
+import { FadeIn } from "./src/components/game/FadeIn";
 import { SAVE_KEY, useGameStore } from "./src/game/state/gameStore";
 import { MainMenuScreen } from "./src/screens/MainMenuScreen";
 import { GameScreen } from "./src/screens/GameScreen";
@@ -45,9 +46,11 @@ export default function App() {
     <View style={styles.appShell}>
       <SafeAreaView style={styles.phoneFrame}>
         <StatusBar barStyle="light-content" />
-        {screen === "menu" ? <MainMenuScreen /> : null}
-        {screen === "game" ? <GameScreen /> : null}
-        {screen === "result" ? <ResultScreen /> : null}
+        <FadeIn key={screen} rise={0} style={styles.screenFill}>
+          {screen === "menu" ? <MainMenuScreen /> : null}
+          {screen === "game" ? <GameScreen /> : null}
+          {screen === "result" ? <ResultScreen /> : null}
+        </FadeIn>
       </SafeAreaView>
     </View>
   );
@@ -65,5 +68,8 @@ const styles = StyleSheet.create({
     maxWidth: 430,
     overflow: "hidden",
     backgroundColor: theme.colors.jungle
+  },
+  screenFill: {
+    flex: 1
   }
 });
