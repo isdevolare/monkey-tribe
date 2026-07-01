@@ -49,7 +49,7 @@ export function GameScreen() {
   const fighterCount = state.units.filter(
     (unit) =>
       unit.owner === "player" &&
-      unit.type === "fighter" &&
+      (unit.type === "fighter" || unit.type === "archer") &&
       unit.state !== "dead" &&
       unit.hp > 0
   ).length;
@@ -108,6 +108,10 @@ export function GameScreen() {
     levelOf(state.buildings, "trainingNest") <= 0 ||
     population >= state.maxPopulation ||
     !hasResources(state.resources, UNIT_COSTS.fighter);
+  const trainArcherDisabled =
+    levelOf(state.buildings, "watchTower") <= 0 ||
+    population >= state.maxPopulation ||
+    !hasResources(state.resources, UNIT_COSTS.archer);
   const sheet = getGameAsset("unitMonkeySheet");
 
   return (
@@ -236,6 +240,14 @@ export function GameScreen() {
                   assetKey="unitWarrior"
                   disabled={trainFighterDisabled}
                   onPress={state.trainFighter}
+                />
+                <ActionCard
+                  title={t("unit.archer", lang)}
+                  cost={costText(UNIT_COSTS.archer)}
+                  glyph="A"
+                  assetKey="unitArcher"
+                  disabled={trainArcherDisabled}
+                  onPress={state.trainArcher}
                 />
               </View>
               <Pressable

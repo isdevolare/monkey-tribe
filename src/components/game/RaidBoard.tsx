@@ -71,7 +71,11 @@ export function RaidBoard({
   const sceneWidth = Math.min(width - theme.spacing.lg * 2, maxSize);
   const sceneHeight = sceneWidth * 1.06;
   const fighters = units.filter(
-    (unit) => unit.owner === "player" && unit.type === "fighter" && unit.state !== "dead" && unit.hp > 0
+    (unit) =>
+      unit.owner === "player" &&
+      (unit.type === "fighter" || unit.type === "archer") &&
+      unit.state !== "dead" &&
+      unit.hp > 0
   );
   const enemies = units.filter(
     (unit) => unit.owner === "enemy" && unit.state !== "dead" && unit.hp > 0
@@ -209,7 +213,11 @@ export function RaidBoard({
           >
             {striking ? <View style={styles.strikeGlow} pointerEvents="none" /> : null}
             <LivelyUnit seed={index} amplitude={4} style={styles.full}>
-              <AssetImage assetKey="unitWarrior" style={styles.full} fallback={<MonkeyFallback fighter />} />
+              <AssetImage
+                assetKey={unit.type === "archer" ? "unitArcher" : "unitWarrior"}
+                style={styles.full}
+                fallback={<MonkeyFallback fighter />}
+              />
             </LivelyUnit>
             <HealthBar percent={Math.max(0, Math.round((unit.hp / unit.maxHp) * 100))} />
           </View>
@@ -233,7 +241,11 @@ export function RaidBoard({
           >
             {striking ? <View style={[styles.strikeGlow, styles.strikeGlowEnemy]} pointerEvents="none" /> : null}
             <LivelyUnit seed={index + 3} amplitude={4} style={styles.full}>
-              <AssetImage assetKey="unitEnemyWarrior" style={styles.full} fallback={<MonkeyFallback fighter enemy />} />
+              <AssetImage
+                assetKey={unit.type === "archer" ? "unitEnemyArcher" : "unitEnemyWarrior"}
+                style={styles.full}
+                fallback={<MonkeyFallback fighter enemy />}
+              />
             </LivelyUnit>
             <HealthBar percent={Math.max(0, Math.round((unit.hp / unit.maxHp) * 100))} enemy />
           </View>

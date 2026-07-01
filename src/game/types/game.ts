@@ -28,7 +28,7 @@ export type TileType =
   | "enemyCamp"
   | "empty";
 
-export type UnitType = "worker" | "fighter";
+export type UnitType = "worker" | "fighter" | "archer";
 export type UnitState =
   | "idle"
   | "moving"
@@ -120,6 +120,7 @@ export type GameState = {
   setLanguage: (lang: Lang) => void;
   createWorker: () => void;
   trainFighter: () => void;
+  trainArcher: () => void;
   openRaidMap: () => void;
   closeRaidMap: () => void;
   startRaidOn: (campId: string) => void;

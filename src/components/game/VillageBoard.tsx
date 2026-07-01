@@ -430,9 +430,7 @@ function UnitArt({ unit, lang }: { unit: Unit; lang: Lang }) {
       {player ? (
         <View style={styles.unitLabel} pointerEvents="none">
           <View style={styles.unitLabelPill}>
-            <Text style={styles.unitLabelText}>
-              {t(unit.type === "fighter" ? "unit.fighter" : "unit.worker", lang)}
-            </Text>
+            <Text style={styles.unitLabelText}>{t(`unit.${unit.type}`, lang)}</Text>
           </View>
         </View>
       ) : null}
@@ -462,9 +460,12 @@ function assetForBuilding(building: VillageBuilding, fallback: GameAssetKey): Ga
 
 function unitAssetKey(unit: Unit): GameAssetKey {
   if (unit.owner === "enemy") {
-    return "unitEnemyWarrior";
+    return unit.type === "archer" ? "unitEnemyArcher" : "unitEnemyWarrior";
   }
 
+  if (unit.type === "archer") {
+    return "unitArcher";
+  }
   return unit.type === "fighter" ? "unitWarrior" : "unitWorker";
 }
 

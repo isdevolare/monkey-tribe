@@ -23,6 +23,7 @@ const dict: Record<string, Entry> = {
   // Units / dock
   "unit.worker": { tr: "İşçi", en: "Worker" },
   "unit.fighter": { tr: "Savaşçı", en: "Fighter" },
+  "unit.archer": { tr: "Okçu", en: "Archer" },
   "dock.raid": { tr: "BASKIN", en: "RAID" },
 
   // Village interaction
@@ -134,13 +135,18 @@ const dict: Record<string, Entry> = {
     tr: "Savaşçı için Eğitim Yuvası gerekli",
     en: "A Training Nest is needed for fighters"
   },
+  "fb.needWatchTower": {
+    tr: "Okçu için Gözetleme Kulesi gerekli",
+    en: "A Watch Tower is needed for archers"
+  },
   "fb.capacityFull": {
     tr: "İşçi Barınağı'nı geliştir, kapasite dolu",
     en: "Upgrade the Worker Shelter, capacity is full"
   },
   "fb.needCost": { tr: "{name} için {cost} gerek", en: "{name} needs {cost}" },
-  "fb.workerJoined": { tr: "İşçi kabileye katıldı", en: "Worker joined the tribe" },
-  "fb.fighterTrained": { tr: "Savaşçı eğitildi", en: "Fighter trained" },
+  "fb.trained.worker": { tr: "İşçi kabileye katıldı", en: "Worker joined the tribe" },
+  "fb.trained.fighter": { tr: "Savaşçı eğitildi", en: "Fighter trained" },
+  "fb.trained.archer": { tr: "Okçu eğitildi", en: "Archer trained" },
   "fb.clanHallFirst": {
     tr: "Önce Klan Salonu'nu geliştir",
     en: "Upgrade the Clan Hall first"

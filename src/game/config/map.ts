@@ -1,4 +1,4 @@
-import type { Tile, TileType, Unit } from "../types/game";
+import type { Tile, TileType, Unit, UnitType } from "../types/game";
 import { BOARD_SIZE, ENEMY_CAMP, PLAYER_CAMP, UNIT_STATS } from "./constants";
 
 const specialTiles: Array<{ x: number; y: number; type: TileType }> = [
@@ -77,7 +77,7 @@ export function createInitialMap(): Tile[] {
 
 export function createUnit(
   id: string,
-  type: "worker" | "fighter",
+  type: UnitType,
   owner: "player" | "enemy",
   x: number,
   y: number,

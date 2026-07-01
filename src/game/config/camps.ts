@@ -11,6 +11,7 @@ export type RaidCamp = {
   level: number;
   campHp: number;
   enemyCount: number;
+  archerCount?: number;
   enemyHp: number;
   enemyAttack: number;
   loot: Resources;
@@ -34,6 +35,7 @@ export const RAID_CAMPS: RaidCamp[] = [
     level: 2,
     campHp: 120,
     enemyCount: 3,
+    archerCount: 1,
     enemyHp: 44,
     enemyAttack: 9,
     loot: { bananas: 120, stones: 45, wood: 50 }
@@ -44,6 +46,7 @@ export const RAID_CAMPS: RaidCamp[] = [
     level: 3,
     campHp: 170,
     enemyCount: 4,
+    archerCount: 2,
     enemyHp: 50,
     enemyAttack: 10,
     loot: { bananas: 220, stones: 80, wood: 90 }

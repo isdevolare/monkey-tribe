@@ -32,6 +32,7 @@ import type {
   Resources,
   Unit,
   UnitTarget,
+  UnitType,
   VillageBuilding,
   VillageBuildingType,
   VillageSave
@@ -52,6 +53,11 @@ type MutableGame = {
 
 function buildingLevel(buildings: VillageBuilding[], type: VillageBuildingType) {
   return buildings.find((building) => building.type === type)?.level ?? 0;
+}
+
+// Units that fight in a raid (as opposed to workers).
+function isCombatant(unit: Unit) {
+  return unit.type === "fighter" || unit.type === "archer";
 }
 
 function cloneBuildings(buildings: VillageBuilding[]): VillageBuilding[] {
@@ -353,12 +359,24 @@ const ENEMY_DEPLOY_SPOTS: Position[] = [
 ];
 
 function createRaidEnemies(now: number, camp: RaidCamp): Unit[] {
-  return Array.from({ length: camp.enemyCount }, (_, index) => {
+  const total = camp.enemyCount + (camp.archerCount ?? 0);
+  return Array.from({ length: total }, (_, index) => {
     const spot = ENEMY_DEPLOY_SPOTS[index % ENEMY_DEPLOY_SPOTS.length] ?? { x: 8, y: 2 };
-    const unit = createUnit(`raid-enemy-${index}-${now}`, "fighter", "enemy", spot.x, spot.y, now);
+    const isArcher = index >= camp.enemyCount;
+    const unit = createUnit(
+      `raid-enemy-${index}-${now}`,
+      isArcher ? "archer" : "fighter",
+      "enemy",
+      spot.x,
+      spot.y,
+      now
+    );
     unit.hp = camp.enemyHp;
     unit.maxHp = camp.enemyHp;
     unit.attack = camp.enemyAttack;
+    if (isArcher) {
+      unit.range = 3;
+    }
     return unit;
   });
 }
@@ -370,7 +388,7 @@ function deployRaidUnits(units: Unit[], now: number, camp: RaidCamp) {
     ...units
       .filter((unit) => unit.owner === "player")
       .map((unit) => {
-        if (unit.type !== "fighter" || unit.state === "dead" || unit.hp <= 0) {
+        if (!isCombatant(unit) || unit.state === "dead" || unit.hp <= 0) {
           return {
             ...unit,
             state: "idle" as const,
@@ -443,12 +461,7 @@ function assignRaidOrders(units: Unit[]) {
   assignEnemyOrders(units);
 
   for (const unit of units) {
-    if (
-      unit.owner !== "player" ||
-      unit.type !== "fighter" ||
-      unit.state === "dead" ||
-      unit.hp <= 0
-    ) {
+    if (unit.owner !== "player" || !isCombatant(unit) || unit.state === "dead" || unit.hp <= 0) {
       continue;
     }
 
@@ -461,17 +474,24 @@ function assignRaidOrders(units: Unit[]) {
   }
 }
 
-function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
+function createPlayerUnit(state: GameState, type: UnitType) {
   if (state.gameStatus !== "playing") {
     return state;
   }
 
-  const unitLabel = t(type === "worker" ? "unit.worker" : "unit.fighter", state.language);
+  const unitLabel = t(`unit.${type}`, state.language);
 
   if (type === "fighter" && buildingLevel(state.buildings, "trainingNest") <= 0) {
     return {
       ...state,
       feedback: { id: Date.now(), text: t("fb.needTrainingNest", state.language) }
+    };
+  }
+
+  if (type === "archer" && buildingLevel(state.buildings, "watchTower") <= 0) {
+    return {
+      ...state,
+      feedback: { id: Date.now(), text: t("fb.needWatchTower", state.language) }
     };
   }
 
@@ -505,7 +525,7 @@ function createPlayerUnit(state: GameState, type: "worker" | "fighter") {
     ],
     feedback: {
       id: now,
-      text: t(type === "worker" ? "fb.workerJoined" : "fb.fighterTrained", state.language)
+      text: t(`fb.trained.${type}`, state.language)
     }
   };
 }
@@ -617,11 +637,7 @@ export const useGameStore = create<GameState>((set) => ({
       }
 
       const fighters = state.units.filter(
-        (unit) =>
-          unit.owner === "player" &&
-          unit.type === "fighter" &&
-          unit.state !== "dead" &&
-          unit.hp > 0
+        (unit) => unit.owner === "player" && isCombatant(unit) && unit.state !== "dead" && unit.hp > 0
       );
 
       if (fighters.length <= 0) {
@@ -659,6 +675,7 @@ export const useGameStore = create<GameState>((set) => ({
     })),
   createWorker: () => set((state) => createPlayerUnit(state, "worker")),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
+  trainArcher: () => set((state) => createPlayerUnit(state, "archer")),
   tickGame: (now = Date.now()) =>
     set((state) => {
       if (state.gameStatus !== "playing") {
@@ -681,27 +698,21 @@ export const useGameStore = create<GameState>((set) => ({
         assignRaidOrders(units);
 
         for (const unit of units) {
-          if (
-            unit.owner === "enemy" ||
-            (unit.owner === "player" && unit.type === "fighter")
-          ) {
+          if (unit.owner === "enemy" || (unit.owner === "player" && isCombatant(unit))) {
             processUnit(unit, game, now);
           }
         }
 
         const raidFightersAlive = units.some(
           (unit) =>
-            unit.owner === "player" &&
-            unit.type === "fighter" &&
-            unit.state !== "dead" &&
-            unit.hp > 0
+            unit.owner === "player" && isCombatant(unit) && unit.state !== "dead" && unit.hp > 0
         );
 
         if (game.enemyCampHp <= 0) {
           const camp = getCamp(state.activeCampId ?? "");
           const loot = camp ? camp.loot : RAID_REWARD;
           const fighters = units.filter(
-            (unit) => unit.owner === "player" && unit.type === "fighter"
+            (unit) => unit.owner === "player" && isCombatant(unit)
           );
           const aliveCount = fighters.filter(
             (unit) => unit.state !== "dead" && unit.hp > 0
