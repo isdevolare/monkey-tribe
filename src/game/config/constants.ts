@@ -29,6 +29,19 @@ export const RAID_REWARD: Resources = {
   wood: 10
 };
 
+// How long each unit takes to train in the production queue.
+export const PRODUCTION_DURATION_MS: Record<UnitType, number> = {
+  worker: 5000,
+  fighter: 9000,
+  archer: 11000
+};
+
+// Gems to instantly finish the whole production queue.
+export const RUSH_GEM_COST = 2;
+
+// Max items that can be queued at once.
+export const PRODUCTION_SLOTS = 5;
+
 export const UNIT_STATS: Record<
   UnitType,
   { hp: number; attack: number; range: number }

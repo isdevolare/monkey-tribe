@@ -8,7 +8,10 @@ import {
   ENEMY_DETECTION_RANGE,
   MOVE_INTERVAL_MS,
   PLAYER_CAMP,
+  PRODUCTION_DURATION_MS,
+  PRODUCTION_SLOTS,
   RAID_REWARD,
+  RUSH_GEM_COST,
   STARTING_RESOURCES,
   UNIT_COSTS,
   WATCH_TOWER_DAMAGE_REDUCTION
@@ -29,6 +32,7 @@ import type {
   Lang,
   Owner,
   Position,
+  ProductionItem,
   Resources,
   Unit,
   UnitTarget,
@@ -80,6 +84,7 @@ function createFreshState(now: number) {
     buildings: cloneBuildings(DEFAULT_BUILDINGS),
     maxPopulation: populationCap(1),
     gems: 0,
+    productionQueue: [] as ProductionItem[],
     playerCampHp: CAMP_MAX_HP,
     enemyCampHp: CAMP_MAX_HP,
     enemyCampMaxHp: CAMP_MAX_HP,
@@ -496,7 +501,14 @@ function createPlayerUnit(state: GameState, type: UnitType) {
     };
   }
 
-  if (currentPopulation(state.units) >= state.maxPopulation) {
+  if (state.productionQueue.length >= PRODUCTION_SLOTS) {
+    return {
+      ...state,
+      feedback: { id: Date.now(), text: t("fb.queueFull", state.language) }
+    };
+  }
+
+  if (currentPopulation(state.units) + state.productionQueue.length >= state.maxPopulation) {
     return {
       ...state,
       feedback: { id: Date.now(), text: t("fb.capacityFull", state.language) }
@@ -516,18 +528,17 @@ function createPlayerUnit(state: GameState, type: UnitType) {
 
   const now = Date.now();
   unitSerial += 1;
-  const spawn = findSpawnPosition(state.units, "player");
+  const queueItem: ProductionItem = {
+    id: `prod-${type}-${now}-${unitSerial}`,
+    type,
+    finishAt: now + PRODUCTION_DURATION_MS[type]
+  };
+
   return {
     ...state,
     resources: spendResources(state.resources, cost),
-    units: [
-      ...state.units,
-      createUnit(`player-${type}-${now}-${unitSerial}`, type, "player", spawn.x, spawn.y, now)
-    ],
-    feedback: {
-      id: now,
-      text: t(`fb.trained.${type}`, state.language)
-    }
+    productionQueue: [...state.productionQueue, queueItem],
+    feedback: { id: now, text: t(`fb.queued.${type}`, state.language) }
   };
 }
 
@@ -605,6 +616,7 @@ export const useGameStore = create<GameState>((set) => ({
         resources: { ...save.resources },
         maxPopulation: save.maxPopulation,
         gems: save.gems ?? state.gems,
+        productionQueue: save.productionQueue ?? [],
         language: save.language ?? state.language,
         lastProductionAt: Date.now()
       };
@@ -678,6 +690,22 @@ export const useGameStore = create<GameState>((set) => ({
   createWorker: () => set((state) => createPlayerUnit(state, "worker")),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
   trainArcher: () => set((state) => createPlayerUnit(state, "archer")),
+  rushProduction: () =>
+    set((state) => {
+      if (state.productionQueue.length === 0) {
+        return state;
+      }
+      if (state.gems < RUSH_GEM_COST) {
+        return { ...state, feedback: { id: Date.now(), text: t("fb.needGems", state.language) } };
+      }
+      const now = Date.now();
+      return {
+        ...state,
+        gems: state.gems - RUSH_GEM_COST,
+        productionQueue: state.productionQueue.map((item) => ({ ...item, finishAt: now })),
+        feedback: { id: now, text: t("fb.rushed", state.language) }
+      };
+    }),
   tickGame: (now = Date.now()) =>
     set((state) => {
       if (state.gameStatus !== "playing") {
@@ -783,6 +811,22 @@ export const useGameStore = create<GameState>((set) => ({
         }
       }
 
+      // Complete finished production-queue items into the village.
+      let productionQueue = state.productionQueue;
+      const ready = productionQueue.filter((item) => item.finishAt <= now);
+      if (ready.length > 0) {
+        for (const item of ready) {
+          unitSerial += 1;
+          const spawn = findSpawnPosition(game.units, "player");
+          game.units.push(
+            createUnit(`player-${item.type}-${now}-${unitSerial}`, item.type, "player", spawn.x, spawn.y, now)
+          );
+        }
+        productionQueue = productionQueue.filter((item) => item.finishAt > now);
+        const lastType = ready[ready.length - 1]?.type ?? "worker";
+        game.feedbackText = t(`fb.trained.${lastType}`, state.language);
+      }
+
       const playerUnitsAlive = units.some(
         (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
       );
@@ -800,6 +844,7 @@ export const useGameStore = create<GameState>((set) => ({
         maxPopulation: game.maxPopulation,
         playerCampHp: game.playerCampHp,
         enemyCampHp: game.enemyCampHp,
+        productionQueue,
         lastProductionAt: now
       };
 
@@ -848,6 +893,7 @@ function persistVillage(state: GameState) {
     resources: state.resources,
     maxPopulation: state.maxPopulation,
     gems: state.gems,
+    productionQueue: state.productionQueue,
     language: state.language
   };
   void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));

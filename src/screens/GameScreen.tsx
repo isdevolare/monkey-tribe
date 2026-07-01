@@ -17,12 +17,19 @@ import { SettingsModal } from "../components/game/SettingsModal";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
-import { UNIT_COSTS } from "../game/config/constants";
+import { RUSH_GEM_COST, UNIT_COSTS } from "../game/config/constants";
 import { buildingName, buildingEffect, upgradeCost } from "../game/config/buildings";
 import { getCamp } from "../game/config/camps";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
-import type { Lang, Resources, VillageBuilding, VillageBuildingType } from "../game/types/game";
+import type {
+  Lang,
+  ProductionItem,
+  Resources,
+  UnitType,
+  VillageBuilding,
+  VillageBuildingType
+} from "../game/types/game";
 import { theme } from "../theme/theme";
 
 const TUTORIAL_KEY = "monkey-tribe:tutorial-seen";
@@ -226,6 +233,14 @@ export function GameScreen() {
               </View>
             )}
 
+            {state.productionQueue.length > 0 ? (
+              <ProductionQueue
+                queue={state.productionQueue}
+                lang={lang}
+                onRush={state.rushProduction}
+              />
+            ) : null}
+
             <View style={styles.bottomDock}>
               <PanelTexture dark />
               <View style={styles.actionCards}>
@@ -355,6 +370,57 @@ function UpgradePanel({
       <Pressable accessibilityRole="button" onPress={onClose} style={styles.upgradeClose}>
         <Text style={styles.upgradeCloseText}>×</Text>
       </Pressable>
+    </View>
+  );
+}
+
+function queueUnitAsset(type: UnitType): GameAssetKey {
+  if (type === "archer") {
+    return "unitArcher";
+  }
+  if (type === "fighter") {
+    return "unitWarrior";
+  }
+  return "unitWorker";
+}
+
+function ProductionQueue({
+  queue,
+  lang,
+  onRush
+}: {
+  queue: ProductionItem[];
+  lang: Lang;
+  onRush: () => void;
+}) {
+  const now = Date.now();
+  return (
+    <View style={styles.queuePanel}>
+      <PanelTexture dark />
+      <View style={styles.queueHeader}>
+        <Text style={styles.queueTitle}>{t("production.title", lang)}</Text>
+        <Pressable accessibilityRole="button" onPress={onRush} style={styles.rushButton}>
+          <AssetImage assetKey="resourceJungleGem" style={styles.rushGem} fallback={<View />} />
+          <Text style={styles.rushText}>
+            {t("production.rush", lang)} {RUSH_GEM_COST}
+          </Text>
+        </Pressable>
+      </View>
+      <View style={styles.queueSlots}>
+        {queue.map((item) => {
+          const remain = Math.max(0, Math.ceil((item.finishAt - now) / 1000));
+          return (
+            <View key={item.id} style={styles.queueSlot}>
+              <AssetImage
+                assetKey={queueUnitAsset(item.type)}
+                style={styles.queueIcon}
+                fallback={<View style={styles.queueIconFallback} />}
+              />
+              <Text style={styles.queueTimer}>{remain}s</Text>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -863,6 +929,80 @@ const styles = StyleSheet.create({
     color: "#d8ccb0",
     fontSize: 13,
     fontWeight: "800", fontFamily: theme.fonts.bold
+  },
+  queuePanel: {
+    marginTop: theme.spacing.xs,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.18)",
+    backgroundColor: glass,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    overflow: "hidden"
+  },
+  queueHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6
+  },
+  queueTitle: {
+    color: theme.colors.paper,
+    fontSize: 13,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy,
+    textTransform: "uppercase"
+  },
+  rushButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(120, 200, 255, 0.4)",
+    backgroundColor: "rgba(40, 70, 95, 0.7)",
+    paddingHorizontal: 8,
+    paddingVertical: 4
+  },
+  rushGem: {
+    width: 16,
+    height: 16
+  },
+  rushText: {
+    color: "#bfe6ff",
+    fontSize: 12,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
+  },
+  queueSlots: {
+    flexDirection: "row",
+    gap: 6
+  },
+  queueSlot: {
+    width: 46,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255, 224, 151, 0.16)",
+    backgroundColor: "rgba(28, 32, 20, 0.85)"
+  },
+  queueIcon: {
+    width: 30,
+    height: 30
+  },
+  queueIconFallback: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 224, 151, 0.2)"
+  },
+  queueTimer: {
+    color: "#f1cd74",
+    fontSize: 11,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
   },
   upgradePanel: {
     flexDirection: "row",

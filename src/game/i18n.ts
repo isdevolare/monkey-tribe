@@ -147,6 +147,14 @@ const dict: Record<string, Entry> = {
   "fb.trained.worker": { tr: "İşçi kabileye katıldı", en: "Worker joined the tribe" },
   "fb.trained.fighter": { tr: "Savaşçı eğitildi", en: "Fighter trained" },
   "fb.trained.archer": { tr: "Okçu eğitildi", en: "Archer trained" },
+  "fb.queued.worker": { tr: "İşçi kuyruğa alındı", en: "Worker queued" },
+  "fb.queued.fighter": { tr: "Savaşçı kuyruğa alındı", en: "Fighter queued" },
+  "fb.queued.archer": { tr: "Okçu kuyruğa alındı", en: "Archer queued" },
+  "fb.queueFull": { tr: "Üretim kuyruğu dolu", en: "Production queue is full" },
+  "fb.needGems": { tr: "Yeterli gem yok", en: "Not enough gems" },
+  "fb.rushed": { tr: "Üretim hızlandırıldı", en: "Production rushed" },
+  "production.title": { tr: "Üretim Kuyruğu", en: "Production Queue" },
+  "production.rush": { tr: "Hızlandır", en: "Rush" },
   "fb.clanHallFirst": {
     tr: "Önce Klan Salonu'nu geliştir",
     en: "Upgrade the Clan Hall first"

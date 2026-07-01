@@ -90,11 +90,18 @@ export type FeedbackMessage = {
 
 export type Lang = "tr" | "en";
 
+export type ProductionItem = {
+  id: string;
+  type: UnitType;
+  finishAt: number;
+};
+
 export type VillageSave = {
   buildings: VillageBuilding[];
   resources: Resources;
   maxPopulation: number;
   gems?: number;
+  productionQueue?: ProductionItem[];
   language?: Lang;
 };
 
@@ -109,6 +116,7 @@ export type GameState = {
   buildings: VillageBuilding[];
   maxPopulation: number;
   gems: number;
+  productionQueue: ProductionItem[];
   playerCampHp: number;
   enemyCampHp: number;
   enemyCampMaxHp: number;
@@ -123,6 +131,7 @@ export type GameState = {
   createWorker: () => void;
   trainFighter: () => void;
   trainArcher: () => void;
+  rushProduction: () => void;
   openRaidMap: () => void;
   closeRaidMap: () => void;
   startRaidOn: (campId: string) => void;
