@@ -1,5 +1,13 @@
-import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { type ReactNode, useEffect, useRef } from "react";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions
+} from "react-native";
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
 import { WanderingUnit } from "./LivelyUnit";
@@ -122,6 +130,7 @@ export function VillageBoard({
     <View style={[styles.scene, { width: sceneWidth, height: sceneHeight }]}>
       <SceneBackground />
       <VillageGround />
+      <CampfireGlow />
 
       <View style={styles.decorLayer} pointerEvents="none">
         {decorativeItems.map((item) => (
@@ -148,12 +157,111 @@ export function VillageBoard({
         ))}
       </View>
 
+      <Fireflies />
+
       {feedbackText ? (
         <View style={styles.feedbackBanner} pointerEvents="none">
           <Text style={styles.feedbackText}>{feedbackText}</Text>
         </View>
       ) : null}
     </View>
+  );
+}
+
+function CampfireGlow() {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 850,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1150,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true
+        })
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.5] });
+  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1.12] });
+
+  return (
+    <View style={styles.campGlowWrap} pointerEvents="none">
+      <Animated.View style={[styles.campGlowOuter, { opacity, transform: [{ scale }] }]} />
+      <Animated.View style={[styles.campGlowInner, { opacity, transform: [{ scale }] }]} />
+    </View>
+  );
+}
+
+const FIREFLY_SPOTS: Array<Point & { seed: number }> = [
+  { x: 20, y: 34, seed: 1 },
+  { x: 71, y: 32, seed: 2 },
+  { x: 33, y: 68, seed: 3 },
+  { x: 63, y: 64, seed: 4 },
+  { x: 84, y: 52, seed: 5 },
+  { x: 12, y: 55, seed: 6 }
+];
+
+function Fireflies() {
+  return (
+    <View style={styles.ambientLayer} pointerEvents="none">
+      {FIREFLY_SPOTS.map((spot) => (
+        <Firefly key={spot.seed} x={spot.x} y={spot.y} seed={spot.seed} />
+      ))}
+    </View>
+  );
+}
+
+function Firefly({ x, y, seed }: { x: number; y: number; seed: number }) {
+  const t = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const duration = 2400 + (seed % 5) * 520;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(t, {
+          toValue: 1,
+          duration,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true
+        }),
+        Animated.timing(t, {
+          toValue: 0,
+          duration,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true
+        })
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [t, seed]);
+
+  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [0, -16 - (seed % 3) * 6] });
+  const translateX = t.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 7 + (seed % 4) * 2, 0] });
+  const opacity = t.interpolate({
+    inputRange: [0, 0.2, 0.5, 0.8, 1],
+    outputRange: [0.12, 0.9, 0.35, 0.85, 0.12]
+  });
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.firefly,
+        { left: `${x}%`, top: `${y}%`, opacity, transform: [{ translateX }, { translateY }] }
+      ]}
+    />
   );
 }
 
@@ -589,6 +697,44 @@ const styles = StyleSheet.create({
   },
   decorLayer: {
     ...StyleSheet.absoluteFillObject
+  },
+  campGlowWrap: {
+    position: "absolute",
+    left: "33%",
+    top: "40%",
+    width: "28%",
+    height: "24%"
+  },
+  campGlowOuter: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 150, 48, 0.30)"
+  },
+  campGlowInner: {
+    position: "absolute",
+    top: "22%",
+    left: "22%",
+    right: "22%",
+    bottom: "22%",
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 198, 96, 0.55)"
+  },
+  ambientLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 400
+  },
+  firefly: {
+    position: "absolute",
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#f6ffbe",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 220, 0.9)",
+    shadowColor: "#d6ff6a",
+    shadowOpacity: 1,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 0 }
   },
   hitLayer: {
     ...StyleSheet.absoluteFillObject,
