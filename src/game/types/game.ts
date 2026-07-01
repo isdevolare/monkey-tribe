@@ -94,6 +94,7 @@ export type VillageSave = {
   buildings: VillageBuilding[];
   resources: Resources;
   maxPopulation: number;
+  gems?: number;
   language?: Lang;
 };
 
@@ -107,6 +108,7 @@ export type GameState = {
   resources: Resources;
   buildings: VillageBuilding[];
   maxPopulation: number;
+  gems: number;
   playerCampHp: number;
   enemyCampHp: number;
   enemyCampMaxHp: number;

@@ -154,6 +154,10 @@ export function GameScreen() {
           </View>
 
           <View style={styles.topButtons}>
+            <View style={styles.gemPill}>
+              <AssetImage assetKey="resourceJungleGem" style={styles.gemIcon} fallback={<View />} />
+              <Text style={styles.gemText}>{state.gems}</Text>
+            </View>
             <TopIcon label="Ayarlar" glyph="⚙" onPress={() => setShowSettings(true)} />
           </View>
         </View>
@@ -664,6 +668,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.xs
+  },
+  gemPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: glass,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "rgba(120, 200, 255, 0.35)"
+  },
+  gemIcon: {
+    width: 22,
+    height: 22
+  },
+  gemText: {
+    color: "#bfe6ff",
+    fontSize: 15,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
   },
   topPill: {
     minHeight: 50,

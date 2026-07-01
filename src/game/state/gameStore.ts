@@ -79,6 +79,7 @@ function createFreshState(now: number) {
     resources: { ...STARTING_RESOURCES },
     buildings: cloneBuildings(DEFAULT_BUILDINGS),
     maxPopulation: populationCap(1),
+    gems: 0,
     playerCampHp: CAMP_MAX_HP,
     enemyCampHp: CAMP_MAX_HP,
     enemyCampMaxHp: CAMP_MAX_HP,
@@ -603,6 +604,7 @@ export const useGameStore = create<GameState>((set) => ({
         })),
         resources: { ...save.resources },
         maxPopulation: save.maxPopulation,
+        gems: save.gems ?? state.gems,
         language: save.language ?? state.language,
         lastProductionAt: Date.now()
       };
@@ -734,6 +736,7 @@ export const useGameStore = create<GameState>((set) => ({
             },
             enemyCampHp: 0,
             raidStars: stars,
+            gems: state.gems + stars,
             feedback: {
               id: now,
               text: t("fb.victoryLoot", state.language, {
@@ -844,6 +847,7 @@ function persistVillage(state: GameState) {
     buildings: state.buildings,
     resources: state.resources,
     maxPopulation: state.maxPopulation,
+    gems: state.gems,
     language: state.language
   };
   void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
