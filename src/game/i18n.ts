@@ -39,6 +39,9 @@ const dict: Record<string, Entry> = {
   // Settings
   "settings.title": { tr: "Ayarlar", en: "Settings" },
   "settings.language": { tr: "Dil", en: "Language" },
+  "settings.sound": { tr: "Ses Efektleri", en: "Sound Effects" },
+  "settings.soundOn": { tr: "Açık", en: "On" },
+  "settings.soundOff": { tr: "Kapalı", en: "Off" },
   "settings.reset": { tr: "Köyü Sıfırla", en: "Reset Village" },
   "settings.close": { tr: "Kapat", en: "Close" },
 

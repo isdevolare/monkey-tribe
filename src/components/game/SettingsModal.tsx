@@ -1,4 +1,5 @@
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { playSound, useSoundStore } from "../../game/audio/soundManager";
 import { t } from "../../game/i18n";
 import type { Lang } from "../../game/types/game";
 import { theme } from "../../theme/theme";
@@ -13,6 +14,9 @@ type SettingsModalProps = {
 };
 
 export function SettingsModal({ visible, lang, onPickLanguage, onClose, onReset }: SettingsModalProps) {
+  const soundEnabled = useSoundStore((state) => state.enabled);
+  const setSoundEnabled = useSoundStore((state) => state.setEnabled);
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose}>
@@ -25,11 +29,38 @@ export function SettingsModal({ visible, lang, onPickLanguage, onClose, onReset 
               <Pressable
                 key={option}
                 accessibilityRole="button"
-                onPress={() => onPickLanguage(option)}
+                onPress={() => {
+                  playSound("tap");
+                  onPickLanguage(option);
+                }}
                 style={[styles.langButton, lang === option ? styles.langButtonActive : null]}
               >
                 <Text style={[styles.langText, lang === option ? styles.langTextActive : null]}>
                   {option === "tr" ? "Türkçe" : "English"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={styles.label}>{t("settings.sound", lang)}</Text>
+          <View style={styles.langRow}>
+            {([true, false] as const).map((option) => (
+              <Pressable
+                key={String(option)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: soundEnabled === option }}
+                onPress={() => {
+                  setSoundEnabled(option);
+                  if (option) {
+                    playSound("confirm");
+                  }
+                }}
+                style={[styles.langButton, soundEnabled === option ? styles.langButtonActive : null]}
+              >
+                <Text
+                  style={[styles.langText, soundEnabled === option ? styles.langTextActive : null]}
+                >
+                  {t(option ? "settings.soundOn" : "settings.soundOff", lang)}
                 </Text>
               </Pressable>
             ))}
@@ -40,7 +71,14 @@ export function SettingsModal({ visible, lang, onPickLanguage, onClose, onReset 
               <Text style={styles.resetText}>{t("settings.reset", lang)}</Text>
             </Pressable>
           ) : null}
-          <Pressable accessibilityRole="button" onPress={onClose} style={styles.close}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              playSound("close");
+              onClose();
+            }}
+            style={styles.close}
+          >
             <Text style={styles.closeText}>{t("settings.close", lang)}</Text>
           </Pressable>
         </Pressable>

@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { playSound } from "../../game/audio/soundManager";
 import { AssetImage } from "./AssetImage";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { RAID_CAMPS, campName } from "../../game/config/camps";
@@ -50,6 +51,7 @@ export function RaidMapScreen({ fighterCount, lang, onAttack, onClose }: RaidMap
               accessibilityRole="button"
               disabled={noFighters}
               onPress={() => onAttack(camp.id)}
+              onPressIn={() => playSound("tap")}
               style={({ pressed }) => [
                 styles.attackButton,
                 noFighters ? styles.attackButtonDisabled : null,
@@ -64,7 +66,7 @@ export function RaidMapScreen({ fighterCount, lang, onAttack, onClose }: RaidMap
         ))}
       </ScrollView>
 
-      <Pressable accessibilityRole="button" onPress={onClose} style={styles.backButton}>
+      <Pressable accessibilityRole="button" onPress={onClose} onPressIn={() => playSound("close")} style={styles.backButton}>
         <Text style={styles.backText}>{t("raidmap.close", lang)}</Text>
       </Pressable>
     </View>

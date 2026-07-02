@@ -8,6 +8,7 @@ import {
 import { useEffect } from "react";
 import { SafeAreaView, StatusBar, StyleSheet, View } from "react-native";
 import { FadeIn } from "./src/components/game/FadeIn";
+import { initGameSounds } from "./src/game/audio/soundBridge";
 import { SAVE_KEY, useGameStore } from "./src/game/state/gameStore";
 import { MainMenuScreen } from "./src/screens/MainMenuScreen";
 import { GameScreen } from "./src/screens/GameScreen";
@@ -22,6 +23,10 @@ export default function App() {
     Baloo2_700Bold,
     Baloo2_800ExtraBold
   });
+
+  useEffect(() => {
+    initGameSounds();
+  }, []);
 
   // Restore the saved village once on launch so it persists across sessions.
   useEffect(() => {

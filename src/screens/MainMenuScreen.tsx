@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
 import { SettingsModal } from "../components/game/SettingsModal";
+import { playSound } from "../game/audio/soundManager";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
@@ -34,8 +35,21 @@ export function MainMenuScreen() {
         <Text style={styles.subtitle}>{t("menu.subtitle", lang)}</Text>
 
         <View style={styles.buttonStack}>
-          <WoodButton label={t("menu.start", lang)} onPress={startGame} primary />
-          <WoodButton label={t("menu.settings", lang)} onPress={() => setShowSettings(true)} />
+          <WoodButton
+            label={t("menu.start", lang)}
+            onPress={() => {
+              playSound("confirm");
+              startGame();
+            }}
+            primary
+          />
+          <WoodButton
+            label={t("menu.settings", lang)}
+            onPress={() => {
+              playSound("open");
+              setShowSettings(true);
+            }}
+          />
         </View>
       </View>
 
@@ -62,6 +76,7 @@ function WoodButton({
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
+      onPressIn={() => playSound("tap")}
       style={({ pressed }) => [
         styles.woodButton,
         primary ? styles.woodButtonPrimary : styles.woodButtonSecondary,

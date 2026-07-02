@@ -19,6 +19,7 @@ import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { VillageBoard } from "../components/game/VillageBoard";
+import { playSound } from "../game/audio/soundManager";
 import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
 import { RUSH_GEM_COST, UNIT_COSTS } from "../game/config/constants";
 import { buildingName, buildingEffect, upgradeCost } from "../game/config/buildings";
@@ -45,6 +46,7 @@ function usePressSpring() {
   const scale = useRef(new Animated.Value(1)).current;
 
   function pressIn() {
+    playSound("tap");
     Animated.spring(scale, {
       toValue: 0.92,
       speed: 50,
@@ -218,7 +220,14 @@ export function GameScreen() {
               <AssetImage assetKey="resourceJungleGem" style={styles.gemIcon} fallback={<View />} />
               <Text style={styles.gemText}>{state.gems}</Text>
             </View>
-            <TopIcon label="Ayarlar" glyph="⚙" onPress={() => setShowSettings(true)} />
+            <TopIcon
+              label="Ayarlar"
+              glyph="⚙"
+              onPress={() => {
+                playSound("open");
+                setShowSettings(true);
+              }}
+            />
           </View>
         </View>
 
@@ -268,7 +277,10 @@ export function GameScreen() {
                 maxSize={boardMaxSize}
                 feedbackText={state.feedback?.text}
                 selectedType={selectedBuilding}
-                onBuildingPress={setSelectedBuilding}
+                onBuildingPress={(type) => {
+                  playSound("tap");
+                  setSelectedBuilding(type);
+                }}
               />
             </View>
 
@@ -418,6 +430,7 @@ function UpgradePanel({
         accessibilityRole="button"
         disabled={disabled}
         onPress={onUpgrade}
+        onPressIn={() => playSound("tap")}
         style={({ pressed }) => [
           styles.upgradeButton,
           disabled ? styles.upgradeButtonDisabled : null,
@@ -429,7 +442,14 @@ function UpgradePanel({
           {gated ? t("upgrade.needClanHall", lang) : costText(cost)}
         </Text>
       </Pressable>
-      <Pressable accessibilityRole="button" onPress={onClose} style={styles.upgradeClose}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => {
+          playSound("close");
+          onClose();
+        }}
+        style={styles.upgradeClose}
+      >
         <Text style={styles.upgradeCloseText}>×</Text>
       </Pressable>
     </View>
@@ -461,7 +481,12 @@ function ProductionQueue({
       <PanelTexture dark />
       <View style={styles.queueHeader}>
         <Text style={styles.queueTitle}>{t("production.title", lang)}</Text>
-        <Pressable accessibilityRole="button" onPress={onRush} style={styles.rushButton}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onRush}
+          onPressIn={() => playSound("tap")}
+          style={styles.rushButton}
+        >
           <AssetImage assetKey="resourceJungleGem" style={styles.rushGem} fallback={<View />} />
           <Text style={styles.rushText}>
             {t("production.rush", lang)} {RUSH_GEM_COST}
@@ -692,10 +717,10 @@ function TutorialOverlay({
             ))}
           </View>
           <View style={styles.tutorialActions}>
-            <Pressable style={styles.skipButton} onPress={onSkip}>
+            <Pressable style={styles.skipButton} onPress={onSkip} onPressIn={() => playSound("tap")}>
               <Text style={styles.skipText}>{t("tut.skip", lang)}</Text>
             </Pressable>
-            <Pressable style={styles.nextButton} onPress={onNext}>
+            <Pressable style={styles.nextButton} onPress={onNext} onPressIn={() => playSound("tap")}>
               <Text style={styles.nextText}>
                 {step === tutorialKeys.length - 1 ? t("tut.play", lang) : t("tut.next", lang)}
               </Text>

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { playSound } from "../../game/audio/soundManager";
 import { theme } from "../../theme/theme";
 
 type GameButtonProps = {
@@ -25,6 +26,7 @@ export function GameButton({
       accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
+      onPressIn={() => playSound("tap")}
       style={({ pressed }) => [
         styles.button,
         tone === "secondary" ? styles.secondary : null,

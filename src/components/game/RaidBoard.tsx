@@ -9,6 +9,7 @@ import {
   useWindowDimensions
 } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path } from "react-native-svg";
+import { playSound } from "../../game/audio/soundManager";
 import { AssetImage } from "./AssetImage";
 import { LivelyUnit } from "./LivelyUnit";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
@@ -313,13 +314,13 @@ export function RaidBoard({
                 <RewardChip assetKey="resourceStonePile" amount={loot.stones} />
               </View>
             ) : null}
-            <Pressable accessibilityRole="button" onPress={onReturn} style={styles.returnButton}>
+            <Pressable accessibilityRole="button" onPress={onReturn} onPressIn={() => playSound("tap")} style={styles.returnButton}>
               <Text style={styles.returnText}>{t("raid.return", lang)}</Text>
             </Pressable>
           </Animated.View>
         </View>
       ) : (
-        <Pressable accessibilityRole="button" onPress={onReturn} style={styles.retreatButton}>
+        <Pressable accessibilityRole="button" onPress={onReturn} onPressIn={() => playSound("close")} style={styles.retreatButton}>
           <Text style={styles.retreatText}>{t("raid.retreat", lang)}</Text>
         </Pressable>
       )}
