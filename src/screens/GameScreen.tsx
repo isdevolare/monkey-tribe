@@ -285,7 +285,16 @@ export function GameScreen() {
             ) : (
               <View style={styles.hintPanel}>
                 <PanelTexture dark />
-                <Text style={styles.hintText}>{t("hint.tapBuilding", lang)}</Text>
+                <View style={styles.hintAvatar}>
+                  <AssetImage
+                    assetKey="menuChiefMascot"
+                    style={styles.hintAvatarArt}
+                    fallback={<AvatarFallback />}
+                  />
+                </View>
+                <Text style={styles.hintText} numberOfLines={2}>
+                  {t("hint.tapBuilding", lang)}
+                </Text>
               </View>
             )}
 
@@ -302,7 +311,7 @@ export function GameScreen() {
               <View style={styles.actionCards}>
                 <ActionCard
                   title={t("unit.worker", lang)}
-                  cost={costText(UNIT_COSTS.worker)}
+                  cost={UNIT_COSTS.worker}
                   glyph="M"
                   assetKey="unitWorker"
                   disabled={createWorkerDisabled}
@@ -311,7 +320,7 @@ export function GameScreen() {
                 />
                 <ActionCard
                   title={t("unit.fighter", lang)}
-                  cost={costText(UNIT_COSTS.fighter)}
+                  cost={UNIT_COSTS.fighter}
                   glyph="X"
                   assetKey="unitWarrior"
                   disabled={trainFighterDisabled}
@@ -320,7 +329,7 @@ export function GameScreen() {
                 />
                 <ActionCard
                   title={t("unit.archer", lang)}
-                  cost={costText(UNIT_COSTS.archer)}
+                  cost={UNIT_COSTS.archer}
                   glyph="A"
                   assetKey="unitArcher"
                   disabled={trainArcherDisabled}
@@ -335,17 +344,10 @@ export function GameScreen() {
                   style={styles.raidButton}
                 >
                   <AssetImage
-                    assetKey="uiButtonRaidLarge"
-                    resizeMode="stretch"
+                    assetKey="uiButtonRaid"
+                    resizeMode="contain"
                     style={styles.raidButtonArt}
-                    fallback={
-                      <AssetImage
-                        assetKey="uiButtonRaid"
-                        resizeMode="stretch"
-                        style={styles.raidButtonArt}
-                        fallback={<View style={styles.raidButtonFallback} />}
-                      />
-                    }
+                    fallback={<View style={styles.raidButtonFallback} />}
                   />
                   <Text style={styles.raidText}>{t("dock.raid", lang)}</Text>
                 </SpringPressable>
@@ -605,6 +607,29 @@ function TopIcon({ label, glyph, onPress }: { label: string; glyph: string; onPr
   );
 }
 
+function CostChips({ cost }: { cost: Resources }) {
+  const entries = [
+    { key: "b", asset: "resourceBanana" as const, amount: cost.bananas },
+    { key: "s", asset: "resourceStone" as const, amount: cost.stones },
+    { key: "w", asset: "resourceWood" as const, amount: cost.wood }
+  ].filter((entry) => entry.amount > 0);
+
+  return (
+    <View style={styles.costRow}>
+      {entries.map((entry) => (
+        <View key={entry.key} style={styles.costChip}>
+          <AssetImage
+            assetKey={entry.asset}
+            style={styles.costIcon}
+            fallback={<View style={styles.costIconFallback} />}
+          />
+          <Text style={styles.costAmount}>{entry.amount}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function ActionCard({
   title,
   cost,
@@ -615,7 +640,7 @@ function ActionCard({
   onPress
 }: {
   title: string;
-  cost: string;
+  cost: Resources;
   glyph: string;
   assetKey?: GameAssetKey;
   disabled?: boolean;
@@ -640,25 +665,20 @@ function ActionCard({
         style={styles.cardTexture}
         fallback={<View style={styles.cardTextureFallback} />}
       />
-      {disabled ? <View style={styles.actionCardScrim} /> : null}
-      <View style={[styles.actionIcon, disabled ? styles.actionIconDisabled : null]}>
-        {assetKey ? (
-          <AssetImage
-            assetKey={assetKey}
-            style={styles.actionAsset}
-            fallback={<Text style={styles.actionGlyph}>{glyph}</Text>}
-          />
-        ) : (
-          <Text style={styles.actionGlyph}>{glyph}</Text>
-        )}
-      </View>
-      <Text
-        style={[styles.actionTitle, disabled ? styles.actionTitleDisabled : null]}
-        numberOfLines={2}
-      >
+      {assetKey ? (
+        <AssetImage
+          assetKey={assetKey}
+          style={styles.actionAsset}
+          fallback={<Text style={styles.actionGlyph}>{glyph}</Text>}
+        />
+      ) : (
+        <Text style={styles.actionGlyph}>{glyph}</Text>
+      )}
+      <Text style={styles.actionTitle} numberOfLines={1}>
         {title}
       </Text>
-      <Text style={[styles.actionCost, disabled ? styles.actionCostDisabled : null]}>{cost}</Text>
+      <CostChips cost={cost} />
+      {disabled ? <View style={styles.actionCardScrim} /> : null}
     </SpringPressable>
   );
 }
@@ -1073,18 +1093,38 @@ const styles = StyleSheet.create({
     overflow: "hidden"
   },
   hintPanel: {
-    minHeight: 44,
+    minHeight: 46,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 10,
     marginTop: theme.spacing.xs,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: "rgba(226, 177, 90, 0.3)",
     backgroundColor: glass,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     overflow: "hidden"
   },
+  hintAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.55)",
+    backgroundColor: "rgba(74, 56, 28, 0.85)",
+    overflow: "hidden",
+    alignItems: "center"
+  },
+  hintAvatarArt: {
+    position: "absolute",
+    top: -3,
+    width: 56,
+    height: 84
+  },
   hintText: {
-    color: "#d8ccb0",
+    flex: 1,
+    color: "#e8dcbb",
     fontSize: 13,
     fontWeight: "800", fontFamily: theme.fonts.bold
   },
@@ -1344,90 +1384,107 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     flex: 1,
-    minHeight: 76,
+    minHeight: 104,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 2,
-    borderColor: "rgba(255, 224, 151, 0.12)",
-    backgroundColor: "rgba(28, 32, 20, 0.92)",
-    padding: 6,
-    overflow: "hidden"
+    borderColor: "rgba(90, 62, 26, 0.9)",
+    backgroundColor: "#231b0e",
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    paddingBottom: 13,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5
   },
   actionCardDisabled: {
-    borderColor: "rgba(255, 224, 151, 0.05)"
+    borderColor: "rgba(60, 44, 22, 0.9)"
   },
   actionCardActive: {
-    borderColor: "rgba(255, 210, 106, 0.85)",
+    borderColor: "rgba(255, 210, 106, 0.9)",
     shadowColor: "#ffd66e",
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.5,
     shadowRadius: 9,
     shadowOffset: { width: 0, height: 0 },
     elevation: 7
   },
   actionCardScrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(10, 12, 8, 0.42)"
-  },
-  actionIcon: {
-    width: 34,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-    backgroundColor: "rgba(255, 224, 151, 0.12)",
-    overflow: "hidden"
-  },
-  actionIconDisabled: {
-    opacity: 0.55,
-    backgroundColor: "rgba(255, 224, 151, 0.06)"
+    backgroundColor: "rgba(14, 13, 8, 0.52)"
   },
   actionAsset: {
-    width: "100%",
-    height: "100%"
+    width: 46,
+    height: 46,
+    marginTop: 2
   },
+  // The card art has baked-in dark margins; oversize it so the gold frame
+  // reaches the card edges instead of showing the muddy border.
   cardTexture: {
-    ...StyleSheet.absoluteFillObject
+    position: "absolute",
+    top: "-7%",
+    left: "-9%",
+    width: "118%",
+    height: "122%"
   },
   cardTextureFallback: {
     flex: 1,
-    backgroundColor: "rgba(28, 32, 20, 0.92)"
+    backgroundColor: "#efe3bb"
   },
   actionGlyph: {
-    color: "#e2b15a",
-    fontSize: 13,
+    color: "#6b4a17",
+    fontSize: 26,
     fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
   actionTitle: {
-    marginTop: 4,
-    minHeight: 25,
-    color: theme.colors.paper,
-    fontSize: 10,
+    marginTop: 2,
+    color: "#4a3314",
+    fontSize: 12,
     fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
-  actionTitleDisabled: {
-    color: "#9a927c"
+  costRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "center",
+    columnGap: 4,
+    marginTop: 1,
+    paddingHorizontal: 6
   },
-  actionCost: {
-    color: "#f1cd74",
+  costChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 1
+  },
+  costIcon: {
+    width: 11,
+    height: 11
+  },
+  costIconFallback: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: "rgba(107, 74, 23, 0.4)"
+  },
+  costAmount: {
+    color: "#6b4a17",
     fontSize: 10,
-    fontWeight: "900", fontFamily: theme.fonts.heavy,
-    textAlign: "center"
-  },
-  actionCostDisabled: {
-    color: "#8f8368"
+    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   raidButton: {
-    width: 92,
-    minHeight: 86,
+    width: 96,
+    minHeight: 104,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: "#7b330e",
-    backgroundColor: "#d96516",
+    borderColor: "rgba(226, 177, 90, 0.4)",
+    backgroundColor: "#31200f",
     overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.48,
@@ -1451,12 +1508,18 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 2
   },
+  // Slightly oversized so the plaque art spans the full button width and the
+  // rope ends sit at the edges instead of floating inside.
   raidButtonArt: {
-    ...StyleSheet.absoluteFillObject
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: "-9%",
+    width: "118%"
   },
   raidButtonFallback: {
     flex: 1,
-    backgroundColor: "#d96516"
+    backgroundColor: "transparent"
   },
   modalScrim: {
     flex: 1,
