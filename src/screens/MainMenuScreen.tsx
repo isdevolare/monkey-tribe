@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
 import { SettingsModal } from "../components/game/SettingsModal";
+import { WoodButton } from "../components/game/WoodButton";
 import { playSound } from "../game/audio/soundManager";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
@@ -60,39 +61,6 @@ export function MainMenuScreen() {
         onClose={() => setShowSettings(false)}
       />
     </View>
-  );
-}
-
-function WoodButton({
-  label,
-  onPress,
-  primary
-}: {
-  label: string;
-  onPress: () => void;
-  primary?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      onPressIn={() => playSound("tap")}
-      style={({ pressed }) => [
-        styles.woodButton,
-        primary ? styles.woodButtonPrimary : styles.woodButtonSecondary,
-        pressed ? styles.woodButtonPressed : null
-      ]}
-    >
-      <AssetImage
-        assetKey="uiButtonWoodLarge"
-        resizeMode="stretch"
-        style={styles.woodButtonArt}
-        fallback={<View style={primary ? styles.woodButtonPrimaryFill : styles.woodButtonSecondaryFill} />}
-      />
-      <View style={styles.woodGrainTop} />
-      <Text style={[styles.woodButtonText, primary ? styles.woodButtonTextPrimary : null]}>{label}</Text>
-      <View style={styles.woodGrainBottom} />
-    </Pressable>
   );
 }
 
@@ -241,73 +209,5 @@ const styles = StyleSheet.create({
     maxWidth: 310,
     gap: theme.spacing.sm,
     marginTop: theme.spacing.xl
-  },
-  woodButton: {
-    minHeight: 54,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    borderRadius: 8,
-    borderWidth: 3,
-    borderColor: "rgba(42, 22, 8, 0.65)",
-    paddingHorizontal: theme.spacing.lg,
-    shadowColor: "#000",
-    shadowOpacity: 0.32,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6
-  },
-  woodButtonPrimary: {
-    backgroundColor: "#9a5a22"
-  },
-  woodButtonSecondary: {
-    minHeight: 48,
-    backgroundColor: "#6f421f"
-  },
-  woodButtonPrimaryFill: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#9a5a22"
-  },
-  woodButtonSecondaryFill: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#6f421f"
-  },
-  woodButtonArt: {
-    ...StyleSheet.absoluteFillObject
-  },
-  woodButtonPressed: {
-    transform: [{ translateY: 2 }, { scale: 0.985 }],
-    opacity: 0.92
-  },
-  woodButtonText: {
-    color: "#ffe9ad",
-    fontSize: 16,
-    fontWeight: "900", fontFamily: theme.fonts.heavy,
-    textAlign: "center",
-    textShadowColor: "rgba(42, 22, 8, 0.9)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 2
-  },
-  woodButtonTextPrimary: {
-    color: "#fff2bf",
-    fontSize: 19
-  },
-  woodGrainTop: {
-    position: "absolute",
-    top: 10,
-    left: 18,
-    right: 18,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: "rgba(255, 215, 136, 0.28)"
-  },
-  woodGrainBottom: {
-    position: "absolute",
-    bottom: 11,
-    left: 32,
-    right: 28,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: "rgba(59, 28, 10, 0.34)"
   }
 });

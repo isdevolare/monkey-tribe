@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Circle, Line, Path, Svg } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
-import { GameButton } from "../components/game/GameButton";
+import { WoodButton } from "../components/game/WoodButton";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
@@ -16,20 +16,43 @@ export function ResultScreen() {
   return (
     <View style={styles.screen}>
       <AssetImage
-        assetKey={victory ? "unitFighter" : "unitWorker"}
-        style={styles.resultHero}
-        fallback={<ResultFallback victory={victory} />}
+        assetKey="bgJungleGame"
+        resizeMode="cover"
+        style={styles.backdrop}
+        fallback={<View style={styles.backdropFallback} />}
       />
-      <Text style={styles.kicker}>
-        {victory ? t("result.victoryKicker", lang) : t("result.defeatKicker", lang)}
-      </Text>
-      <Text style={styles.title}>{victory ? t("result.victory", lang) : t("result.defeat", lang)}</Text>
-      <Text style={styles.subtitle}>
-        {victory ? t("result.victoryText", lang) : t("result.defeatText", lang)}
-      </Text>
-      <View style={styles.actions}>
-        <GameButton label={t("result.retry", lang)} onPress={resetGame} />
-        <GameButton label={t("result.menu", lang)} tone="secondary" onPress={goToMenu} />
+      <View style={[styles.overlay, victory ? styles.overlayVictory : styles.overlayDefeat]} />
+
+      <View style={styles.card}>
+        <AssetImage
+          assetKey="uiPanelDark"
+          resizeMode="stretch"
+          style={styles.cardTexture}
+          fallback={<View style={styles.cardTextureFallback} />}
+        />
+
+        <View style={[styles.heroRing, victory ? styles.heroRingVictory : styles.heroRingDefeat]}>
+          <AssetImage
+            assetKey={victory ? "unitFighter" : "unitWorker"}
+            style={styles.resultHero}
+            fallback={<ResultFallback victory={victory} />}
+          />
+        </View>
+
+        <Text style={[styles.kicker, victory ? styles.kickerVictory : styles.kickerDefeat]}>
+          {victory ? t("result.victoryKicker", lang) : t("result.defeatKicker", lang)}
+        </Text>
+        <Text style={styles.title}>
+          {victory ? t("result.victory", lang) : t("result.defeat", lang)}
+        </Text>
+        <Text style={styles.subtitle}>
+          {victory ? t("result.victoryText", lang) : t("result.defeatText", lang)}
+        </Text>
+
+        <View style={styles.actions}>
+          <WoodButton label={t("result.retry", lang)} onPress={resetGame} primary />
+          <WoodButton label={t("result.menu", lang)} onPress={goToMenu} />
+        </View>
       </View>
     </View>
   );
@@ -67,37 +90,102 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xl,
     backgroundColor: theme.colors.jungle
   },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject
+  },
+  backdropFallback: {
+    flex: 1,
+    backgroundColor: "#0f281c"
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject
+  },
+  overlayVictory: {
+    backgroundColor: "rgba(9, 26, 12, 0.6)"
+  },
+  overlayDefeat: {
+    backgroundColor: "rgba(24, 8, 6, 0.66)"
+  },
+  card: {
+    width: "100%",
+    maxWidth: 360,
+    alignItems: "center",
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "rgba(226, 177, 90, 0.45)",
+    backgroundColor: "rgba(17, 20, 14, 0.92)",
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.lg,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 14
+  },
+  cardTexture: {
+    ...StyleSheet.absoluteFillObject
+  },
+  cardTextureFallback: {
+    flex: 1,
+    backgroundColor: "rgba(17, 20, 14, 0.92)"
+  },
+  heroRing: {
+    width: 132,
+    height: 132,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 66,
+    borderWidth: 3,
+    backgroundColor: "rgba(10, 14, 8, 0.55)",
+    overflow: "hidden"
+  },
+  heroRingVictory: {
+    borderColor: "#e2b15a"
+  },
+  heroRingDefeat: {
+    borderColor: "#8a4a3c"
+  },
   resultHero: {
-    width: 170,
-    height: 170
+    width: 112,
+    height: 112
   },
   kicker: {
     marginTop: theme.spacing.lg,
-    color: "#dcefc9",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center",
     textTransform: "uppercase"
   },
+  kickerVictory: {
+    color: "#c6ee89"
+  },
+  kickerDefeat: {
+    color: "#f0b9a4"
+  },
   title: {
-    marginTop: theme.spacing.sm,
+    marginTop: 2,
     color: theme.colors.paper,
-    fontSize: 46,
+    fontSize: 42,
     fontWeight: "900", fontFamily: theme.fonts.heavy,
-    textAlign: "center"
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.6)",
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 4
   },
   subtitle: {
-    maxWidth: 310,
-    marginTop: theme.spacing.sm,
-    color: "#e3f2cf",
-    fontSize: 16,
+    maxWidth: 300,
+    marginTop: theme.spacing.xs,
+    color: "#d8ccb0",
+    fontSize: 15,
     fontWeight: "700", fontFamily: theme.fonts.regular,
     textAlign: "center"
   },
   actions: {
     width: "100%",
-    maxWidth: 300,
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.xl
+    maxWidth: 280,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.lg
   }
 });

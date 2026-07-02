@@ -17,6 +17,7 @@ import { FadeIn } from "../components/game/FadeIn";
 import { RaidBoard } from "../components/game/RaidBoard";
 import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
+import { SpringPressable } from "../components/game/SpringPressable";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { playSound } from "../game/audio/soundManager";
@@ -39,33 +40,6 @@ import { theme } from "../theme/theme";
 const TUTORIAL_KEY = "monkey-tribe:tutorial-seen";
 const PHONE_FRAME_WIDTH = 430;
 const tutorialKeys = ["tut.0", "tut.1", "tut.2", "tut.3"];
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-function usePressSpring() {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  function pressIn() {
-    playSound("tap");
-    Animated.spring(scale, {
-      toValue: 0.92,
-      speed: 50,
-      bounciness: 4,
-      useNativeDriver: true
-    }).start();
-  }
-
-  function pressOut() {
-    Animated.spring(scale, {
-      toValue: 1,
-      speed: 20,
-      bounciness: 14,
-      useNativeDriver: true
-    }).start();
-  }
-
-  return { scale, pressIn, pressOut };
-}
 
 function levelOf(buildings: VillageBuilding[], type: VillageBuildingType) {
   return buildings.find((building) => building.type === type)?.level ?? 0;
@@ -117,7 +91,6 @@ export function GameScreen() {
     return () => clearInterval(timer);
   }, [state.tickGame]);
 
-  const raidPress = usePressSpring();
   const raidPulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -356,12 +329,10 @@ export function GameScreen() {
                 />
               </View>
               <Animated.View style={{ transform: [{ scale: raidPulse }] }}>
-                <AnimatedPressable
+                <SpringPressable
                   accessibilityRole="button"
                   onPress={state.openRaidMap}
-                  onPressIn={raidPress.pressIn}
-                  onPressOut={raidPress.pressOut}
-                  style={[styles.raidButton, { transform: [{ scale: raidPress.scale }] }]}
+                  style={styles.raidButton}
                 >
                   <AssetImage
                     assetKey="uiButtonRaidLarge"
@@ -377,7 +348,7 @@ export function GameScreen() {
                     }
                   />
                   <Text style={styles.raidText}>{t("dock.raid", lang)}</Text>
-                </AnimatedPressable>
+                </SpringPressable>
               </Animated.View>
             </View>
           </>
@@ -651,21 +622,16 @@ function ActionCard({
   active?: boolean;
   onPress: () => void;
 }) {
-  const press = usePressSpring();
-
   return (
-    <AnimatedPressable
+    <SpringPressable
       accessibilityRole="button"
       accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
-      onPressIn={press.pressIn}
-      onPressOut={press.pressOut}
       style={[
         styles.actionCard,
         active && !disabled ? styles.actionCardActive : null,
-        disabled ? styles.actionCardDisabled : null,
-        { transform: [{ scale: press.scale }] }
+        disabled ? styles.actionCardDisabled : null
       ]}
     >
       <AssetImage
@@ -693,7 +659,7 @@ function ActionCard({
         {title}
       </Text>
       <Text style={[styles.actionCost, disabled ? styles.actionCostDisabled : null]}>{cost}</Text>
-    </AnimatedPressable>
+    </SpringPressable>
   );
 }
 
