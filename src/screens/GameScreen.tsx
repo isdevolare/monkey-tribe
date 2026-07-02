@@ -39,6 +39,32 @@ const TUTORIAL_KEY = "monkey-tribe:tutorial-seen";
 const PHONE_FRAME_WIDTH = 430;
 const tutorialKeys = ["tut.0", "tut.1", "tut.2", "tut.3"];
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function usePressSpring() {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function pressIn() {
+    Animated.spring(scale, {
+      toValue: 0.92,
+      speed: 50,
+      bounciness: 4,
+      useNativeDriver: true
+    }).start();
+  }
+
+  function pressOut() {
+    Animated.spring(scale, {
+      toValue: 1,
+      speed: 20,
+      bounciness: 14,
+      useNativeDriver: true
+    }).start();
+  }
+
+  return { scale, pressIn, pressOut };
+}
+
 function levelOf(buildings: VillageBuilding[], type: VillageBuildingType) {
   return buildings.find((building) => building.type === type)?.level ?? 0;
 }
@@ -78,6 +104,7 @@ export function GameScreen() {
     return () => clearInterval(timer);
   }, [state.tickGame]);
 
+  const raidPress = usePressSpring();
   const raidPulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -145,6 +172,7 @@ export function GameScreen() {
     population >= state.maxPopulation ||
     !hasResources(state.resources, UNIT_COSTS.archer);
   const sheet = getGameAsset("unitMonkeySheet");
+  const queuedTypes = new Set(state.productionQueue.map((item) => item.type));
 
   return (
     <View style={styles.safeScreen}>
@@ -277,6 +305,7 @@ export function GameScreen() {
                   glyph="M"
                   assetKey="unitWorker"
                   disabled={createWorkerDisabled}
+                  active={queuedTypes.has("worker")}
                   onPress={state.createWorker}
                 />
                 <ActionCard
@@ -285,6 +314,7 @@ export function GameScreen() {
                   glyph="X"
                   assetKey="unitWarrior"
                   disabled={trainFighterDisabled}
+                  active={queuedTypes.has("fighter")}
                   onPress={state.trainFighter}
                 />
                 <ActionCard
@@ -293,14 +323,17 @@ export function GameScreen() {
                   glyph="A"
                   assetKey="unitArcher"
                   disabled={trainArcherDisabled}
+                  active={queuedTypes.has("archer")}
                   onPress={state.trainArcher}
                 />
               </View>
               <Animated.View style={{ transform: [{ scale: raidPulse }] }}>
-                <Pressable
+                <AnimatedPressable
                   accessibilityRole="button"
                   onPress={state.openRaidMap}
-                  style={({ pressed }) => [styles.raidButton, pressed ? styles.raidButtonPressed : null]}
+                  onPressIn={raidPress.pressIn}
+                  onPressOut={raidPress.pressOut}
+                  style={[styles.raidButton, { transform: [{ scale: raidPress.scale }] }]}
                 >
                   <AssetImage
                     assetKey="uiButtonRaidLarge"
@@ -316,7 +349,7 @@ export function GameScreen() {
                     }
                   />
                   <Text style={styles.raidText}>{t("dock.raid", lang)}</Text>
-                </Pressable>
+                </AnimatedPressable>
               </Animated.View>
             </View>
           </>
@@ -559,6 +592,7 @@ function ActionCard({
   glyph,
   assetKey,
   disabled,
+  active,
   onPress
 }: {
   title: string;
@@ -566,17 +600,24 @@ function ActionCard({
   glyph: string;
   assetKey?: GameAssetKey;
   disabled?: boolean;
+  active?: boolean;
   onPress: () => void;
 }) {
+  const press = usePressSpring();
+
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      onPressIn={press.pressIn}
+      onPressOut={press.pressOut}
+      style={[
         styles.actionCard,
+        active && !disabled ? styles.actionCardActive : null,
         disabled ? styles.actionCardDisabled : null,
-        pressed && !disabled ? styles.actionCardPressed : null
+        { transform: [{ scale: press.scale }] }
       ]}
     >
       <AssetImage
@@ -585,7 +626,8 @@ function ActionCard({
         style={styles.cardTexture}
         fallback={<View style={styles.cardTextureFallback} />}
       />
-      <View style={styles.actionIcon}>
+      {disabled ? <View style={styles.actionCardScrim} /> : null}
+      <View style={[styles.actionIcon, disabled ? styles.actionIconDisabled : null]}>
         {assetKey ? (
           <AssetImage
             assetKey={assetKey}
@@ -596,11 +638,14 @@ function ActionCard({
           <Text style={styles.actionGlyph}>{glyph}</Text>
         )}
       </View>
-      <Text style={styles.actionTitle} numberOfLines={2}>
+      <Text
+        style={[styles.actionTitle, disabled ? styles.actionTitleDisabled : null]}
+        numberOfLines={2}
+      >
         {title}
       </Text>
-      <Text style={styles.actionCost}>{cost}</Text>
-    </Pressable>
+      <Text style={[styles.actionCost, disabled ? styles.actionCostDisabled : null]}>{cost}</Text>
+    </AnimatedPressable>
   );
 }
 
@@ -1226,10 +1271,19 @@ const styles = StyleSheet.create({
     overflow: "hidden"
   },
   actionCardDisabled: {
-    opacity: 0.48
+    borderColor: "rgba(255, 224, 151, 0.05)"
   },
-  actionCardPressed: {
-    transform: [{ translateY: 2 }, { scale: 0.98 }]
+  actionCardActive: {
+    borderColor: "rgba(255, 210, 106, 0.85)",
+    shadowColor: "#ffd66e",
+    shadowOpacity: 0.45,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 7
+  },
+  actionCardScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10, 12, 8, 0.42)"
   },
   actionIcon: {
     width: 34,
@@ -1239,6 +1293,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "rgba(255, 224, 151, 0.12)",
     overflow: "hidden"
+  },
+  actionIconDisabled: {
+    opacity: 0.55,
+    backgroundColor: "rgba(255, 224, 151, 0.06)"
   },
   actionAsset: {
     width: "100%",
@@ -1265,11 +1323,17 @@ const styles = StyleSheet.create({
     fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
+  actionTitleDisabled: {
+    color: "#9a927c"
+  },
   actionCost: {
     color: "#f1cd74",
     fontSize: 10,
     fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
+  },
+  actionCostDisabled: {
+    color: "#8f8368"
   },
   raidButton: {
     width: 92,
@@ -1286,9 +1350,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 7 },
     elevation: 12
-  },
-  raidButtonPressed: {
-    transform: [{ translateY: 2 }, { scale: 0.98 }]
   },
   raidIcon: {
     color: theme.colors.paper,
