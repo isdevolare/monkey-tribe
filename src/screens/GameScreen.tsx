@@ -71,6 +71,17 @@ function levelOf(buildings: VillageBuilding[], type: VillageBuildingType) {
   return buildings.find((building) => building.type === type)?.level ?? 0;
 }
 
+// Compact display so 4+ digit stockpiles fit the HUD pills on small screens.
+function formatAmount(value: number) {
+  if (value >= 100000) {
+    return `${Math.floor(value / 1000)}K`;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+  }
+  return String(value);
+}
+
 export function GameScreen() {
   const state = useGameStore();
   const { width } = useWindowDimensions();
@@ -175,6 +186,7 @@ export function GameScreen() {
     !hasResources(state.resources, UNIT_COSTS.archer);
   const sheet = getGameAsset("unitMonkeySheet");
   const queuedTypes = new Set(state.productionQueue.map((item) => item.type));
+  const compactHud = layoutWidth < 370;
 
   return (
     <View style={styles.safeScreen}>
@@ -193,25 +205,26 @@ export function GameScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>
-          <View style={styles.clanCard}>
-            <PanelTexture dark />
-            <View style={styles.avatarRing}>
-              <IconFrame />
-              <SpriteSheetImage
-                source={sheet.source}
-                sheetWidth={1341}
-                sheetHeight={1173}
-                frame={{ x: 1084, y: 18, width: 230, height: 256 }}
-                style={styles.avatar}
-                fallback={<AvatarFallback />}
-              />
+          <View style={styles.heroBadge}>
+            <View style={styles.avatarMedallion}>
+              <View style={styles.avatarClip}>
+                <SpriteSheetImage
+                  source={sheet.source}
+                  sheetWidth={1341}
+                  sheetHeight={1173}
+                  frame={{ x: 1084, y: 18, width: 230, height: 256 }}
+                  style={styles.avatar}
+                  fallback={<AvatarFallback />}
+                />
+              </View>
+              <View style={styles.levelSeal}>
+                <Text style={styles.levelSealText}>{clanLevel}</Text>
+              </View>
             </View>
-            <View style={styles.clanCopy}>
+            <View style={styles.namePlate}>
+              <PanelTexture dark />
               <Text style={styles.clanName} numberOfLines={1}>Monkey Tribe</Text>
               <Text style={styles.clanSubtitle} numberOfLines={1}>{t("clan.subtitle", lang)}</Text>
-            </View>
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>{clanLevel}</Text>
             </View>
           </View>
 
@@ -232,13 +245,14 @@ export function GameScreen() {
         </View>
 
         <View style={styles.resourceBar}>
-          <ResourceChip label="Muz" value={Math.floor(state.resources.bananas)} assetKey="resourceBanana" />
-          <ResourceChip label="Taş" value={Math.floor(state.resources.stones)} assetKey="resourceStone" />
-          <ResourceChip label="Odun" value={Math.floor(state.resources.wood)} assetKey="resourceWood" />
+          <ResourceChip label="Muz" value={formatAmount(Math.floor(state.resources.bananas))} assetKey="resourceBanana" compact={compactHud} />
+          <ResourceChip label="Taş" value={formatAmount(Math.floor(state.resources.stones))} assetKey="resourceStone" compact={compactHud} />
+          <ResourceChip label="Odun" value={formatAmount(Math.floor(state.resources.wood))} assetKey="resourceWood" compact={compactHud} />
           <ResourceChip
             label="Nüfus"
             value={`${population}/${state.maxPopulation}`}
             assetKey="resourcePopulation"
+            compact={compactHud}
           />
         </View>
 
@@ -269,19 +283,21 @@ export function GameScreen() {
         ) : (
           <>
             <View style={styles.boardShell}>
-              <VillageBoard
-                tiles={state.mapTiles}
-                units={state.units}
-                buildings={state.buildings}
-                lang={lang}
-                maxSize={boardMaxSize}
-                feedbackText={state.feedback?.text}
-                selectedType={selectedBuilding}
-                onBuildingPress={(type) => {
-                  playSound("tap");
-                  setSelectedBuilding(type);
-                }}
-              />
+              <View style={styles.boardShellInner}>
+                <VillageBoard
+                  tiles={state.mapTiles}
+                  units={state.units}
+                  buildings={state.buildings}
+                  lang={lang}
+                  maxSize={boardMaxSize}
+                  feedbackText={state.feedback?.text}
+                  selectedType={selectedBuilding}
+                  onBuildingPress={(type) => {
+                    playSound("tap");
+                    setSelectedBuilding(type);
+                  }}
+                />
+              </View>
             </View>
 
             {selectedBuilding ? (
@@ -532,22 +548,29 @@ function costText(cost: Resources) {
 function ResourceChip({
   label,
   value,
-  assetKey
+  assetKey,
+  compact
 }: {
   label: string;
   value: number | string;
   assetKey: "resourceBanana" | "resourceStone" | "resourceWood" | "resourcePopulation";
+  compact?: boolean;
 }) {
   return (
-    <View style={styles.resourceChip}>
-      <PanelTexture dark />
-      <View style={styles.resourceIcon}>
-        <IconFrame />
-        <AssetImage assetKey={assetKey} style={styles.resourceIconArt} fallback={<ResourceFallback assetKey={assetKey} />} />
+    <View style={[styles.resourceChip, compact ? styles.resourceChipCompact : null]}>
+      <View style={[styles.resourceIcon, compact ? styles.resourceIconCompact : null]}>
+        <AssetImage
+          assetKey={assetKey}
+          style={compact ? styles.resourceIconArtCompact : styles.resourceIconArt}
+          fallback={<ResourceFallback assetKey={assetKey} />}
+        />
       </View>
-      <View style={styles.resourceCopy}>
-        <Text style={styles.resourceValue}>{value}</Text>
-      </View>
+      <Text
+        style={[styles.resourceValue, compact ? styles.resourceValueCompact : null]}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
       <Text style={styles.hiddenLabel}>{label}</Text>
     </View>
   );
@@ -774,60 +797,80 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: theme.spacing.sm
   },
-  clanCard: {
+  heroBadge: {
     flex: 1,
-    minHeight: 62,
     flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.sm,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.16)",
-    backgroundColor: glass,
-    padding: theme.spacing.sm,
-    overflow: "hidden"
+    alignItems: "center"
   },
-  avatarRing: {
-    width: 46,
-    height: 46,
-    overflow: "hidden",
-    borderRadius: 23,
-    borderWidth: 2,
-    borderColor: "#6aa04f",
+  avatarMedallion: {
+    width: 54,
+    height: 54,
+    zIndex: 2,
+    borderRadius: 27,
+    borderWidth: 2.5,
+    borderColor: "#e2b15a",
     backgroundColor: "#1b2b19",
+    shadowColor: "#000",
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6
+  },
+  avatarClip: {
+    flex: 1,
+    borderRadius: 25,
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center"
   },
   avatar: {
-    width: 46,
-    height: 46
+    width: 50,
+    height: 50
   },
-  clanCopy: {
-    flex: 1
+  levelSeal: {
+    position: "absolute",
+    right: -5,
+    bottom: -5,
+    minWidth: 23,
+    height: 23,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#e2b15a",
+    backgroundColor: "#4f8f3a",
+    paddingHorizontal: 4
+  },
+  levelSealText: {
+    color: theme.colors.paper,
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: "900", fontFamily: theme.fonts.heavy
+  },
+  namePlate: {
+    flexShrink: 1,
+    minHeight: 44,
+    justifyContent: "center",
+    marginLeft: -12,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: "rgba(226, 177, 90, 0.32)",
+    backgroundColor: glass,
+    paddingLeft: 20,
+    paddingRight: 14,
+    paddingVertical: 4,
+    overflow: "hidden"
   },
   clanName: {
     color: theme.colors.paper,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   clanSubtitle: {
-    marginTop: 2,
+    marginTop: 1,
     color: "#d7c99d",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800", fontFamily: theme.fonts.bold
-  },
-  levelBadge: {
-    width: 28,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-    backgroundColor: "#5b8f3d"
-  },
-  levelText: {
-    color: theme.colors.paper,
-    fontSize: 14,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   topButtons: {
     flexDirection: "row",
@@ -838,12 +881,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    minHeight: 44,
-    borderRadius: 12,
-    backgroundColor: glass,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: "rgba(120, 200, 255, 0.35)"
+    minHeight: 40,
+    borderRadius: 999,
+    backgroundColor: "rgba(14, 12, 7, 0.85)",
+    paddingHorizontal: 11,
+    borderWidth: 1.5,
+    borderColor: "rgba(120, 200, 255, 0.45)",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4
   },
   gemIcon: {
     width: 22,
@@ -885,12 +933,19 @@ const styles = StyleSheet.create({
   },
   topIcon: {
     width: 44,
-    height: 50,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 12,
-    backgroundColor: glass,
-    overflow: "hidden"
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.4)",
+    backgroundColor: "rgba(14, 12, 7, 0.85)",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4
   },
   topIconText: {
     color: theme.colors.paper,
@@ -899,32 +954,60 @@ const styles = StyleSheet.create({
   },
   resourceBar: {
     flexDirection: "row",
-    gap: 5
+    gap: 6,
+    marginTop: 2
   },
   resourceChip: {
     flex: 1,
-    minHeight: 48,
+    minWidth: 0,
+    height: 38,
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
-    borderRadius: 11,
-    backgroundColor: glass,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    overflow: "hidden"
+    gap: 5,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.42)",
+    backgroundColor: "rgba(14, 12, 7, 0.85)",
+    paddingLeft: 3,
+    paddingRight: 9,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4
   },
   resourceIcon: {
-    width: 31,
-    height: 31,
+    width: 30,
+    height: 30,
     borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.55)",
     overflow: "hidden",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(74, 56, 28, 0.85)",
     alignItems: "center",
     justifyContent: "center"
   },
   resourceIconArt: {
-    width: 26,
-    height: 26
+    width: 24,
+    height: 24
+  },
+  resourceChipCompact: {
+    height: 32,
+    gap: 3,
+    paddingRight: 6,
+    paddingLeft: 2
+  },
+  resourceIconCompact: {
+    width: 25,
+    height: 25,
+    borderRadius: 13
+  },
+  resourceIconArtCompact: {
+    width: 19,
+    height: 19
+  },
+  resourceValueCompact: {
+    fontSize: 12.5
   },
   resourceFallback: {
     flex: 1,
@@ -937,13 +1020,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
-  resourceCopy: {
-    minWidth: 0
-  },
   resourceValue: {
-    color: theme.colors.paper,
-    fontSize: 17,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+    flex: 1,
+    color: "#ffe9ad",
+    fontSize: 15,
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
+    textAlign: "right"
   },
   hiddenLabel: {
     position: "absolute",
@@ -1007,11 +1089,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: theme.spacing.xs,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.2)",
-    backgroundColor: "rgba(20, 27, 15, 0.24)",
-    padding: 2
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: "rgba(122, 84, 40, 0.9)",
+    backgroundColor: "rgba(20, 27, 15, 0.3)",
+    padding: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 8
+  },
+  boardShellInner: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.4)",
+    overflow: "hidden"
   },
   hintPanel: {
     minHeight: 44,
@@ -1019,8 +1112,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: theme.spacing.xs,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.14)",
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.3)",
     backgroundColor: glass,
     overflow: "hidden"
   },
@@ -1032,8 +1125,8 @@ const styles = StyleSheet.create({
   queuePanel: {
     marginTop: theme.spacing.xs,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.18)",
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.32)",
     backgroundColor: glass,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.sm,
@@ -1110,8 +1203,8 @@ const styles = StyleSheet.create({
     minHeight: 64,
     marginTop: theme.spacing.xs,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.2)",
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.35)",
     backgroundColor: glass,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
@@ -1271,9 +1364,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "stretch",
     gap: 7,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.14)",
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.32)",
     backgroundColor: "rgba(42, 38, 29, 0.9)",
     padding: 6,
     overflow: "hidden"
