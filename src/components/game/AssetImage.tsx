@@ -8,6 +8,11 @@ type AssetImageProps = {
   imageStyle?: StyleProp<ImageStyle>;
   resizeMode?: "cover" | "contain" | "stretch" | "repeat" | "center";
   fallback: ReactNode;
+  /**
+   * Unmount the fallback once the image has loaded. Use when the art has
+   * transparent regions the fallback would otherwise bleed through.
+   */
+  hideFallbackOnLoad?: boolean;
 };
 
 export function AssetImage({
@@ -15,20 +20,24 @@ export function AssetImage({
   style,
   imageStyle,
   resizeMode = "contain",
-  fallback
+  fallback,
+  hideFallbackOnLoad = false
 }: AssetImageProps) {
   const asset = getGameAsset(assetKey);
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const useImage = VISUAL_MODE === "assets" && !failed;
+  const showFallback = !(hideFallbackOnLoad && useImage && loaded);
 
   return (
     <View style={[styles.wrap, style]}>
-      {fallback}
+      {showFallback ? fallback : null}
       {useImage ? (
         <Image
           source={asset.source ?? { uri: asset.uri }}
           resizeMode={resizeMode}
           onError={() => setFailed(true)}
+          onLoad={() => setLoaded(true)}
           style={[styles.image, imageStyle]}
         />
       ) : null}

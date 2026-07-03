@@ -25,11 +25,9 @@ export function WoodButton({ label, onPress, primary }: WoodButtonProps) {
           <View style={primary ? styles.woodButtonPrimaryFill : styles.woodButtonSecondaryFill} />
         }
       />
-      <View style={styles.woodGrainTop} />
       <Text style={[styles.woodButtonText, primary ? styles.woodButtonTextPrimary : null]}>
         {label}
       </Text>
-      <View style={styles.woodGrainBottom} />
     </SpringPressable>
   );
 }
@@ -40,33 +38,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    borderRadius: 10,
-    borderWidth: 3,
-    borderColor: "rgba(42, 22, 8, 0.65)",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "rgba(58, 30, 10, 0.85)",
     paddingHorizontal: theme.spacing.lg,
     shadowColor: "#000",
-    shadowOpacity: 0.32,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6
   },
   woodButtonPrimary: {
-    backgroundColor: "#9a5a22"
+    backgroundColor: "#8a4d1c"
   },
   woodButtonSecondary: {
     minHeight: 48,
-    backgroundColor: "#6f421f"
+    backgroundColor: "#66401e"
   },
   woodButtonPrimaryFill: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#9a5a22"
+    backgroundColor: "#8a4d1c"
   },
   woodButtonSecondaryFill: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#6f421f"
+    backgroundColor: "#66401e"
   },
+  // The plaque art carries transparent top/bottom margins; oversize it so
+  // the carved wood fills the button instead of floating in a flat box.
   woodButtonArt: {
-    ...StyleSheet.absoluteFillObject
+    position: "absolute",
+    top: "-31%",
+    bottom: "-46%",
+    left: "-2%",
+    width: "104%"
   },
   woodButtonText: {
     color: "#ffe9ad",
@@ -80,23 +84,5 @@ const styles = StyleSheet.create({
   woodButtonTextPrimary: {
     color: "#fff2bf",
     fontSize: 19
-  },
-  woodGrainTop: {
-    position: "absolute",
-    top: 10,
-    left: 18,
-    right: 18,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: "rgba(255, 215, 136, 0.28)"
-  },
-  woodGrainBottom: {
-    position: "absolute",
-    bottom: 11,
-    left: 32,
-    right: 28,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: "rgba(59, 28, 10, 0.34)"
   }
 });

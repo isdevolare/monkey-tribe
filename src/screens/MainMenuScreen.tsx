@@ -29,7 +29,12 @@ export function MainMenuScreen() {
 
       <View style={styles.content}>
         <View style={styles.logoShadow}>
-          <AssetImage assetKey="uiLogo" style={styles.logo} fallback={<HeroFallback />} />
+          <AssetImage
+            assetKey="uiLogo"
+            style={styles.logo}
+            fallback={<HeroFallback />}
+            hideFallbackOnLoad
+          />
         </View>
 
         <Text style={styles.kicker}>{t("menu.tagline", lang)}</Text>

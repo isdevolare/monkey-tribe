@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
-import { WanderingUnit } from "./LivelyUnit";
+import { LivelyUnit } from "./LivelyUnit";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { buildingName } from "../../game/config/buildings";
 import type { Lang, Tile, Unit, VillageBuilding, VillageBuildingType } from "../../game/types/game";
@@ -535,14 +535,14 @@ function UnitArt({ unit }: { unit: Unit }) {
   const player = unit.owner === "player";
 
   return (
-    <WanderingUnit seed={stableIndex(unit.id, 97)} style={styles.unitWrap}>
+    <LivelyUnit seed={stableIndex(unit.id, 97)} amplitude={4} style={styles.unitWrap}>
       <AssetImage
         assetKey={unitAssetKey(unit)}
         style={styles.unitAsset}
         imageStyle={styles.unitImage}
         fallback={<UnitFallback player={player} fighter={unit.type === "fighter"} />}
       />
-    </WanderingUnit>
+    </LivelyUnit>
   );
 }
 
