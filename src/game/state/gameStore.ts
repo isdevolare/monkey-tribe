@@ -14,6 +14,7 @@ import {
   RUSH_GEM_COST,
   STARTING_RESOURCES,
   UNIT_COSTS,
+  VILLAGE_REGEN_PER_SEC,
   WATCH_TOWER_DAMAGE_REDUCTION
 } from "../config/constants";
 import {
@@ -808,6 +809,13 @@ export const useGameStore = create<GameState>((set) => ({
         if (production) {
           game.resources[production.resource] +=
             production.perSecond * building.level * elapsedSeconds;
+        }
+      }
+
+      // Units wounded in raids slowly heal while home in the village.
+      for (const unit of game.units) {
+        if (unit.owner === "player" && unit.state !== "dead" && unit.hp > 0 && unit.hp < unit.maxHp) {
+          unit.hp = Math.min(unit.maxHp, unit.hp + VILLAGE_REGEN_PER_SEC * elapsedSeconds);
         }
       }
 

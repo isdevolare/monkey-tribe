@@ -47,6 +47,9 @@ export const UNIT_STATS: Record<
   { hp: number; attack: number; range: number }
 > = {
   worker: { hp: 24, attack: 2, range: 1 },
-  fighter: { hp: 48, attack: 10, range: 1 },
-  archer: { hp: 30, attack: 7, range: 3 }
+  fighter: { hp: 56, attack: 10, range: 1 },
+  archer: { hp: 34, attack: 7, range: 3 }
 };
+
+// Wounded units slowly recover while back home in the village.
+export const VILLAGE_REGEN_PER_SEC = 2;
