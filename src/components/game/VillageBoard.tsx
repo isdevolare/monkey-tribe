@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -144,8 +144,9 @@ export function VillageBoard({
           unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
       )
     : [];
-  const decorativeItems = [...resourceItems(tiles), ...sceneryItems()].sort(
-    (a, b) => a.zIndex - b.zIndex
+  const decorativeItems = useMemo(
+    () => [...resourceItems(tiles), ...sceneryItems()].sort((a, b) => a.zIndex - b.zIndex),
+    [tiles]
   );
   const unitItems = workingUnits
     .map((unit) => unitSceneItem(unit))
@@ -174,7 +175,7 @@ export function VillageBoard({
 
       <View style={styles.buildingLayer}>
         {buildingSprites.map(({ building, layout }) => (
-          <BuildingSprite
+          <MemoBuildingSprite
             key={building.type}
             building={building}
             layout={layout}
@@ -310,6 +311,17 @@ function Firefly({ x, y, seed }: { x: number; y: number; seed: number }) {
     />
   );
 }
+
+// The tick clones building objects every 150ms; compare by content so the
+// sprites only re-render on real changes.
+const MemoBuildingSprite = memo(
+  BuildingSprite,
+  (a, b) =>
+    a.building.type === b.building.type &&
+    a.building.level === b.building.level &&
+    a.selected === b.selected &&
+    a.lang === b.lang
+);
 
 function BuildingSprite({
   building,

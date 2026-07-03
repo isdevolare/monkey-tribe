@@ -236,6 +236,79 @@ export function Sparkle({ seed = 0 }: { seed?: number }) {
   );
 }
 
+// Pulsing tap indicator for tutorials: expanding ring + a dipping "finger" dot.
+export function TapHint({ size = 56 }: { size?: number }) {
+  const ring = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const ringLoop = Animated.loop(
+      Animated.timing(ring, {
+        toValue: 1,
+        duration: 1100,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true
+      })
+    );
+    const pressLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(press, {
+          toValue: 1,
+          duration: 380,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true
+        }),
+        Animated.timing(press, {
+          toValue: 0,
+          duration: 380,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true
+        }),
+        Animated.delay(340)
+      ])
+    );
+    ringLoop.start();
+    pressLoop.start();
+    return () => {
+      ringLoop.stop();
+      pressLoop.stop();
+    };
+  }, [ring, press]);
+
+  const ringScale = ring.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] });
+  const ringOpacity = ring.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.9, 0] });
+  const dotScale = press.interpolate({ inputRange: [0, 1], outputRange: [1, 0.72] });
+  const dotDip = press.interpolate({ inputRange: [0, 1], outputRange: [0, 3] });
+
+  return (
+    <View pointerEvents="none" style={[styles.tapHintWrap, { width: size, height: size }]}>
+      <Animated.View
+        style={[
+          styles.tapHintRing,
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            opacity: ringOpacity,
+            transform: [{ scale: ringScale }]
+          }
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.tapHintDot,
+          {
+            width: size * 0.42,
+            height: size * 0.42,
+            borderRadius: size * 0.21,
+            transform: [{ translateY: dotDip }, { scale: dotScale }]
+          }
+        ]}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   burstWrap: {
     alignItems: "center",
@@ -263,6 +336,24 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     borderRadius: 2
+  },
+  tapHintWrap: {
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  tapHintRing: {
+    position: "absolute",
+    borderWidth: 2.5,
+    borderColor: "#ffd95a"
+  },
+  tapHintDot: {
+    backgroundColor: "rgba(255, 217, 90, 0.95)",
+    borderWidth: 2,
+    borderColor: "rgba(120, 78, 20, 0.9)",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 }
   },
   sparkle: {
     position: "absolute",

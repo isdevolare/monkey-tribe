@@ -19,7 +19,7 @@ import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { SpringPressable } from "../components/game/SpringPressable";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
-import { PopIn } from "../components/game/Vfx";
+import { PopIn, TapHint } from "../components/game/Vfx";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { playSound } from "../game/audio/soundManager";
 import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
@@ -895,9 +895,12 @@ function TutorialOverlay({
         <View style={styles.tutorialCard}>
           <PanelTexture dark={false} />
           <Text style={styles.tutorialKicker}>{t("tut.quickStart", lang)}</Text>
-          <Text style={styles.tutorialStep}>
-            {step + 1}. {t(tutorialKeys[step] ?? "tut.0", lang)}
-          </Text>
+          <View style={styles.tutorialRow}>
+            <TapHint size={52} />
+            <Text style={styles.tutorialStep}>
+              {step + 1}. {t(tutorialKeys[step] ?? "tut.0", lang)}
+            </Text>
+          </View>
           <View style={styles.tutorialDots}>
             {tutorialKeys.map((_, index) => (
               <View
@@ -1850,11 +1853,17 @@ const styles = StyleSheet.create({
     fontWeight: "900", fontFamily: theme.fonts.heavy,
     textTransform: "uppercase"
   },
+  tutorialRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.sm
+  },
   tutorialStep: {
-    marginTop: theme.spacing.sm,
+    flex: 1,
     minHeight: 70,
     color: theme.colors.ink,
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   tutorialDots: {
