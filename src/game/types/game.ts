@@ -104,6 +104,7 @@ export type VillageSave = {
   productionQueue?: ProductionItem[];
   language?: Lang;
   raidLevel?: number;
+  workShiftUntil?: number | null;
 };
 
 export type GameState = {
@@ -124,6 +125,7 @@ export type GameState = {
   activeCampId: string | null;
   raidStars: number;
   raidLevel: number;
+  workShiftUntil: number | null;
   lastProductionAt: number;
   language: Lang;
   feedback: FeedbackMessage | null;
@@ -131,6 +133,7 @@ export type GameState = {
   hydrate: (save: VillageSave) => void;
   setLanguage: (lang: Lang) => void;
   createWorker: () => void;
+  sendWorkersToWork: () => void;
   trainFighter: () => void;
   trainArcher: () => void;
   rushProduction: () => void;

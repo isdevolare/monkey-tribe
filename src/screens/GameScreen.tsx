@@ -31,6 +31,7 @@ import type {
   Lang,
   ProductionItem,
   Resources,
+  Unit,
   UnitType,
   VillageBuilding,
   VillageBuildingType
@@ -160,6 +161,11 @@ export function GameScreen() {
   const sheet = getGameAsset("unitMonkeySheet");
   const queuedTypes = new Set(state.productionQueue.map((item) => item.type));
   const compactHud = layoutWidth < 370;
+  const workShiftActive = state.workShiftUntil != null && state.workShiftUntil > Date.now();
+  const workerCount = state.units.filter(
+    (unit) =>
+      unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
+  ).length;
 
   return (
     <View style={styles.safeScreen}>
@@ -272,6 +278,7 @@ export function GameScreen() {
                   maxSize={boardMaxSize}
                   feedbackText={state.feedback?.text}
                   selectedType={selectedBuilding}
+                  workShiftActive={workShiftActive}
                   onBuildingPress={(type) => {
                     playSound("tap");
                     setSelectedBuilding(type);
@@ -286,6 +293,10 @@ export function GameScreen() {
                 resources={state.resources}
                 type={selectedBuilding}
                 lang={lang}
+                units={state.units}
+                workShiftUntil={state.workShiftUntil}
+                workerCount={workerCount}
+                onSendWorkers={state.sendWorkersToWork}
                 onUpgrade={() => state.upgradeBuilding(selectedBuilding)}
                 onClose={() => setSelectedBuilding(null)}
               />
@@ -387,11 +398,22 @@ export function GameScreen() {
 
 }
 
+function formatCountdown(ms: number) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 function UpgradePanel({
   buildings,
   resources,
   type,
   lang,
+  units,
+  workShiftUntil,
+  workerCount,
+  onSendWorkers,
   onUpgrade,
   onClose
 }: {
@@ -399,6 +421,10 @@ function UpgradePanel({
   resources: Resources;
   type: VillageBuildingType;
   lang: Lang;
+  units: Unit[];
+  workShiftUntil: number | null;
+  workerCount: number;
+  onSendWorkers: () => void;
   onUpgrade: () => void;
   onClose: () => void;
 }) {
@@ -407,10 +433,24 @@ function UpgradePanel({
   const cost = upgradeCost(type, level);
   const gated = type !== "clanHall" && level >= clanLevel;
   const disabled = gated || !hasResources(resources, cost);
+  const now = Date.now();
+  const shiftRemaining = workShiftUntil != null ? workShiftUntil - now : 0;
+  const shiftActive = shiftRemaining > 0;
+  const armyCounts = units.reduce(
+    (acc, unit) => {
+      if (unit.owner === "player" && unit.state !== "dead" && unit.hp > 0) {
+        if (unit.type === "fighter") acc.fighters += 1;
+        if (unit.type === "archer") acc.archers += 1;
+      }
+      return acc;
+    },
+    { fighters: 0, archers: 0 }
+  );
 
   return (
     <View style={styles.upgradePanel}>
       <PanelTexture dark />
+      <View style={styles.upgradeMain}>
       <View style={styles.upgradeInfo}>
         <Text style={styles.upgradeName} numberOfLines={1}>
           {buildingName(type, lang)}
@@ -454,6 +494,69 @@ function UpgradePanel({
       >
         <Text style={styles.upgradeCloseText}>×</Text>
       </Pressable>
+      </View>
+
+      {type === "workerShelter" ? (
+        <View style={styles.panelFooter}>
+          {shiftActive ? (
+            <View style={styles.workStatusChip}>
+              <AssetImage
+                assetKey="unitWorker"
+                style={styles.footerUnitIcon}
+                fallback={<View style={styles.footerUnitIconFallback} />}
+              />
+              <Text style={styles.workStatusText}>
+                {t("shelter.working", lang, { time: formatCountdown(shiftRemaining) })}
+              </Text>
+            </View>
+          ) : (
+            <SpringPressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: workerCount <= 0 }}
+              disabled={workerCount <= 0}
+              onPress={onSendWorkers}
+              style={[styles.workButton, workerCount <= 0 ? styles.workButtonDisabled : null]}
+            >
+              <AssetImage
+                assetKey="unitWorker"
+                style={styles.footerUnitIcon}
+                fallback={<View style={styles.footerUnitIconFallback} />}
+              />
+              <Text style={styles.workButtonText}>
+                {t("shelter.send", lang)} ({workerCount})
+              </Text>
+            </SpringPressable>
+          )}
+        </View>
+      ) : null}
+
+      {type === "trainingNest" ? (
+        <View style={styles.panelFooter}>
+          <Text style={styles.rosterTitle}>{t("barracks.title", lang)}</Text>
+          {armyCounts.fighters + armyCounts.archers > 0 ? (
+            <View style={styles.rosterChips}>
+              <View style={styles.rosterChip}>
+                <AssetImage
+                  assetKey="unitWarrior"
+                  style={styles.footerUnitIcon}
+                  fallback={<View style={styles.footerUnitIconFallback} />}
+                />
+                <Text style={styles.rosterCount}>×{armyCounts.fighters}</Text>
+              </View>
+              <View style={styles.rosterChip}>
+                <AssetImage
+                  assetKey="unitArcher"
+                  style={styles.footerUnitIcon}
+                  fallback={<View style={styles.footerUnitIconFallback} />}
+                />
+                <Text style={styles.rosterCount}>×{armyCounts.archers}</Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.rosterEmpty}>{t("barracks.empty", lang)}</Text>
+          )}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1209,10 +1312,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.heavy
   },
   upgradePanel: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.sm,
-    minHeight: 64,
     marginTop: theme.spacing.xs,
     borderRadius: 12,
     borderWidth: 1.5,
@@ -1221,6 +1320,98 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     overflow: "hidden"
+  },
+  upgradeMain: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+    minHeight: 56
+  },
+  panelFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 248, 217, 0.12)"
+  },
+  footerUnitIcon: {
+    width: 22,
+    height: 22
+  },
+  footerUnitIconFallback: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(255, 224, 151, 0.25)"
+  },
+  workButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    minHeight: 42,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "rgba(198, 238, 137, 0.5)",
+    backgroundColor: "rgba(68, 101, 45, 0.92)",
+    paddingHorizontal: theme.spacing.md
+  },
+  workButtonDisabled: {
+    opacity: 0.55
+  },
+  workButtonText: {
+    color: theme.colors.paper,
+    fontSize: 13,
+    fontWeight: "900", fontFamily: theme.fonts.heavy
+  },
+  workStatusChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    minHeight: 36,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.4)",
+    backgroundColor: "rgba(74, 56, 28, 0.6)",
+    paddingHorizontal: theme.spacing.sm
+  },
+  workStatusText: {
+    color: "#ffe9ad",
+    fontSize: 12.5,
+    fontWeight: "900", fontFamily: theme.fonts.heavy
+  },
+  rosterTitle: {
+    color: "#e2b15a",
+    fontSize: 12.5,
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
+    textTransform: "uppercase"
+  },
+  rosterChips: {
+    flexDirection: "row",
+    gap: theme.spacing.sm
+  },
+  rosterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.4)",
+    backgroundColor: "rgba(28, 32, 20, 0.85)",
+    paddingHorizontal: 9,
+    paddingVertical: 4
+  },
+  rosterCount: {
+    color: theme.colors.paper,
+    fontSize: 13,
+    fontWeight: "900", fontFamily: theme.fonts.heavy
+  },
+  rosterEmpty: {
+    flex: 1,
+    color: "#d8ccb0",
+    fontSize: 12,
+    fontWeight: "800", fontFamily: theme.fonts.bold
   },
   upgradeInfo: {
     flex: 1,

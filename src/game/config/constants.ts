@@ -53,3 +53,8 @@ export const UNIT_STATS: Record<
 
 // Wounded units slowly recover while back home in the village.
 export const VILLAGE_REGEN_PER_SEC = 2;
+
+// Work shifts: idle workers can be sent out to gather for a while,
+// boosting passive production per working monkey.
+export const WORK_SHIFT_MS = 3 * 60 * 1000;
+export const WORKER_BOOST = 0.2;

@@ -24,6 +24,8 @@ type VillageBoardProps = {
   maxSize?: number;
   feedbackText?: string;
   selectedType?: VillageBuildingType | null;
+  /** While a work shift runs, workers show up at the resource posts. */
+  workShiftActive?: boolean;
   onBuildingPress: (type: VillageBuildingType) => void;
 };
 
@@ -107,18 +109,22 @@ export function VillageBoard({
   maxSize = 430,
   feedbackText,
   selectedType,
+  workShiftActive = false,
   onBuildingPress
 }: VillageBoardProps) {
   const { width } = useWindowDimensions();
   const sceneWidth = Math.min(width - theme.spacing.lg * 2, maxSize);
   const sceneHeight = sceneWidth * 0.94;
-  const aliveUnits = units.filter(
-    (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
-  );
+  const workingUnits = workShiftActive
+    ? units.filter(
+        (unit) =>
+          unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
+      )
+    : [];
   const decorativeItems = [...resourceItems(tiles), ...sceneryItems()].sort(
     (a, b) => a.zIndex - b.zIndex
   );
-  const unitItems = aliveUnits
+  const unitItems = workingUnits
     .map((unit) => unitSceneItem(unit))
     .sort((a, b) => a.zIndex - b.zIndex);
   const buildingSprites = buildings
@@ -458,31 +464,19 @@ function sceneryItems(): SceneItem[] {
   ];
 }
 
+// Gathering posts next to the lumber trees, quarry rocks and banana grove.
+const WORK_POSTS: Point[] = [
+  { x: 21, y: 53 },
+  { x: 75, y: 51 },
+  { x: 28, y: 30 },
+  { x: 14, y: 45 },
+  { x: 82, y: 44 },
+  { x: 34, y: 26 }
+];
+
 function unitSceneItem(unit: Unit): SceneItem {
-  const center = pointForUnit(unit);
-  return item(unit.id, center, unit.type === "fighter" ? 15 : 14, 80 + center.y, (
-    <UnitArt unit={unit} />
-  ));
-}
-
-function pointForUnit(unit: Unit): Point {
-  if (unit.owner === "player" && unit.state === "idle") {
-    const spots =
-      unit.type === "fighter"
-        ? [
-            { x: 64, y: 62 },
-            { x: 70, y: 57 },
-            { x: 58, y: 58 }
-          ]
-        : [
-            { x: 33, y: 62 },
-            { x: 39, y: 58 },
-            { x: 43, y: 66 }
-          ];
-    return spots[stableIndex(unit.id, spots.length)] ?? pointForTile(unit);
-  }
-
-  return pointForTile(unit);
+  const center = WORK_POSTS[stableIndex(unit.id, WORK_POSTS.length)] ?? WORK_POSTS[0]!;
+  return item(unit.id, center, 14, 80 + center.y, <UnitArt unit={unit} />);
 }
 
 function pointForTile(position: { x: number; y: number }): Point {

@@ -15,7 +15,9 @@ import {
   STARTING_RESOURCES,
   UNIT_COSTS,
   VILLAGE_REGEN_PER_SEC,
-  WATCH_TOWER_DAMAGE_REDUCTION
+  WATCH_TOWER_DAMAGE_REDUCTION,
+  WORKER_BOOST,
+  WORK_SHIFT_MS
 } from "../config/constants";
 import {
   BUILDING_PRODUCTION,
@@ -92,6 +94,7 @@ function createFreshState(now: number) {
     activeCampId: null,
     raidStars: 0,
     raidLevel: STRONGHOLD_BASE_LEVEL,
+    workShiftUntil: null as number | null,
     lastProductionAt: now,
     language: "tr" as Lang,
     feedback: null
@@ -621,6 +624,7 @@ export const useGameStore = create<GameState>((set) => ({
         productionQueue: save.productionQueue ?? [],
         language: save.language ?? state.language,
         raidLevel: save.raidLevel ?? STRONGHOLD_BASE_LEVEL,
+        workShiftUntil: save.workShiftUntil ?? null,
         lastProductionAt: Date.now()
       };
     }),
@@ -691,6 +695,31 @@ export const useGameStore = create<GameState>((set) => ({
       feedback: { id: Date.now(), text: t("fb.returned", state.language) }
     })),
   createWorker: () => set((state) => createPlayerUnit(state, "worker")),
+  sendWorkersToWork: () =>
+    set((state) => {
+      if (state.gameStatus !== "playing") {
+        return state;
+      }
+      const now = Date.now();
+      if (state.workShiftUntil != null && now < state.workShiftUntil) {
+        return state;
+      }
+      const workers = state.units.filter(
+        (unit) =>
+          unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
+      ).length;
+      if (workers <= 0) {
+        return { ...state, feedback: { id: now, text: t("fb.noWorkers", state.language) } };
+      }
+      return {
+        ...state,
+        workShiftUntil: now + WORK_SHIFT_MS,
+        feedback: {
+          id: now,
+          text: t("fb.workersSent", state.language, { n: Math.round(WORKER_BOOST * 100 * workers) })
+        }
+      };
+    }),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
   trainArcher: () => set((state) => createPlayerUnit(state, "archer")),
   rushProduction: () =>
@@ -809,12 +838,24 @@ export const useGameStore = create<GameState>((set) => ({
       }
 
       // Passive resource production from leveled buildings (time-based).
+      // Workers on a shift boost the whole village's output.
       const elapsedSeconds = Math.max(0, (now - state.lastProductionAt) / 1000);
+      const workerCount = units.filter(
+        (unit) =>
+          unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
+      ).length;
+      let workShiftUntil = state.workShiftUntil;
+      const shiftActive = workShiftUntil != null && now < workShiftUntil;
+      const productionBoost = shiftActive ? 1 + WORKER_BOOST * workerCount : 1;
+      if (workShiftUntil != null && now >= workShiftUntil) {
+        workShiftUntil = null;
+        game.feedbackText = t("fb.workersReturned", state.language);
+      }
       for (const building of game.buildings) {
         const production = BUILDING_PRODUCTION[building.type];
         if (production) {
           game.resources[production.resource] +=
-            production.perSecond * building.level * elapsedSeconds;
+            production.perSecond * building.level * elapsedSeconds * productionBoost;
         }
       }
 
@@ -859,6 +900,7 @@ export const useGameStore = create<GameState>((set) => ({
         playerCampHp: game.playerCampHp,
         enemyCampHp: game.enemyCampHp,
         productionQueue,
+        workShiftUntil,
         lastProductionAt: now
       };
 
@@ -909,7 +951,8 @@ function persistVillage(state: GameState) {
     gems: state.gems,
     productionQueue: state.productionQueue,
     language: state.language,
-    raidLevel: state.raidLevel
+    raidLevel: state.raidLevel,
+    workShiftUntil: state.workShiftUntil
   };
   void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 }

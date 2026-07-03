@@ -166,6 +166,19 @@ const dict: Record<string, Entry> = {
   "fb.queueFull": { tr: "Üretim kuyruğu dolu", en: "Production queue is full" },
   "fb.needGems": { tr: "Yeterli gem yok", en: "Not enough gems" },
   "fb.rushed": { tr: "Üretim hızlandırıldı", en: "Production rushed" },
+  "fb.workersSent": {
+    tr: "İşçiler işe koyuldu! Üretim +%{n}",
+    en: "Workers set off! Production +{n}%"
+  },
+  "fb.workersReturned": { tr: "İşçiler işten döndü", en: "The workers are back home" },
+  "fb.noWorkers": { tr: "Çalışacak işçi yok", en: "No workers to send" },
+  "shelter.send": { tr: "İşçileri İşe Gönder", en: "Send Workers to Work" },
+  "shelter.working": { tr: "İşçiler çalışıyor · {time}", en: "Workers on the job · {time}" },
+  "barracks.title": { tr: "Karargâh", en: "Barracks" },
+  "barracks.empty": {
+    tr: "Ordu boş — savaşçı eğit",
+    en: "No army yet — train fighters"
+  },
   "production.title": { tr: "Üretim Kuyruğu", en: "Production Queue" },
   "production.rush": { tr: "Hızlandır", en: "Rush" },
   "fb.clanHallFirst": {
