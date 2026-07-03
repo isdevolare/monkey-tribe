@@ -415,22 +415,28 @@ function UpgradePanel({
           {t("upgrade.next", lang)}: {buildingEffect(type, level + 1, lang)}
         </Text>
       </View>
-      <Pressable
+      <SpringPressable
         accessibilityRole="button"
+        accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={onUpgrade}
-        onPressIn={() => playSound("tap")}
-        style={({ pressed }) => [
-          styles.upgradeButton,
-          disabled ? styles.upgradeButtonDisabled : null,
-          pressed && !disabled ? styles.upgradeButtonPressed : null
-        ]}
+        style={[styles.upgradeButton, disabled ? styles.upgradeButtonDisabled : null]}
       >
+        <AssetImage
+          assetKey="uiButtonAttack"
+          resizeMode="stretch"
+          style={styles.upgradeButtonArt}
+          fallback={<View style={styles.upgradeButtonArtFallback} />}
+        />
         <Text style={styles.upgradeButtonLabel}>{t("upgrade.button", lang)}</Text>
-        <Text style={styles.upgradeButtonCost}>
-          {gated ? t("upgrade.needClanHall", lang) : costText(cost)}
-        </Text>
-      </Pressable>
+        {gated ? (
+          <Text style={styles.upgradeButtonCost} numberOfLines={1}>
+            {t("upgrade.needClanHall", lang)}
+          </Text>
+        ) : (
+          <CostChips cost={cost} light />
+        )}
+      </SpringPressable>
       <Pressable
         accessibilityRole="button"
         onPress={() => {
@@ -507,15 +513,6 @@ function hasResources(resources: Resources, cost: Resources) {
     resources.stones >= cost.stones &&
     resources.wood >= cost.wood
   );
-}
-
-function costText(cost: Resources) {
-  const parts = [
-    cost.bananas > 0 ? `${cost.bananas}B` : null,
-    cost.stones > 0 ? `${cost.stones}S` : null,
-    cost.wood > 0 ? `${cost.wood}W` : null
-  ].filter(Boolean);
-  return parts.join(" + ");
 }
 
 function ResourceChip({
@@ -607,7 +604,7 @@ function TopIcon({ label, glyph, onPress }: { label: string; glyph: string; onPr
   );
 }
 
-function CostChips({ cost }: { cost: Resources }) {
+function CostChips({ cost, light }: { cost: Resources; light?: boolean }) {
   const entries = [
     { key: "b", asset: "resourceBanana" as const, amount: cost.bananas },
     { key: "s", asset: "resourceStone" as const, amount: cost.stones },
@@ -623,7 +620,9 @@ function CostChips({ cost }: { cost: Resources }) {
             style={styles.costIcon}
             fallback={<View style={styles.costIconFallback} />}
           />
-          <Text style={styles.costAmount}>{entry.amount}</Text>
+          <Text style={[styles.costAmount, light ? styles.costAmountLight : null]}>
+            {entry.amount}
+          </Text>
         </View>
       ))}
     </View>
@@ -1238,30 +1237,53 @@ const styles = StyleSheet.create({
     fontWeight: "700", fontFamily: theme.fonts.regular
   },
   upgradeButton: {
-    minHeight: 46,
+    minWidth: 108,
+    minHeight: 50,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#7b330e",
-    backgroundColor: "#d96516",
-    paddingHorizontal: theme.spacing.md
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: "rgba(122, 52, 14, 0.95)",
+    backgroundColor: "#a34a10",
+    overflow: "hidden",
+    paddingHorizontal: theme.spacing.sm,
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5
   },
   upgradeButtonDisabled: {
-    opacity: 0.5
+    opacity: 0.55
   },
-  upgradeButtonPressed: {
-    transform: [{ translateY: 1 }, { scale: 0.98 }]
+  // Same crop trick as the raid map's attack plaque: skip the art's baked-in
+  // backdrop and totem crest, keep the stone body.
+  upgradeButtonArt: {
+    position: "absolute",
+    top: "-62%",
+    left: "-11%",
+    width: "122%",
+    height: "196%"
+  },
+  upgradeButtonArtFallback: {
+    flex: 1,
+    backgroundColor: "transparent"
   },
   upgradeButtonLabel: {
     color: theme.colors.paper,
     fontSize: 14,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
+    textShadowColor: "rgba(60, 20, 4, 0.9)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 2
   },
   upgradeButtonCost: {
     color: "#ffe9ad",
     fontSize: 11,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
+    textShadowColor: "rgba(60, 20, 4, 0.9)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2
   },
   upgradeClose: {
     width: 30,
@@ -1475,6 +1497,12 @@ const styles = StyleSheet.create({
     color: "#6b4a17",
     fontSize: 10,
     fontWeight: "900", fontFamily: theme.fonts.heavy
+  },
+  costAmountLight: {
+    color: "#ffe9ad",
+    textShadowColor: "rgba(60, 20, 4, 0.9)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2
   },
   raidButton: {
     width: 96,

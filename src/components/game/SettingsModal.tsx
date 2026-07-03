@@ -100,9 +100,14 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: "rgba(255, 224, 151, 0.3)",
+    borderColor: "rgba(226, 177, 90, 0.5)",
     backgroundColor: "rgba(17, 20, 14, 0.97)",
-    padding: theme.spacing.lg
+    padding: theme.spacing.lg,
+    shadowColor: "#000",
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12
   },
   title: {
     color: theme.colors.paper,
