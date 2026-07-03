@@ -233,6 +233,7 @@ export function GameScreen() {
           <FadeIn key="raidmap">
             <RaidMapScreen
               fighterCount={fighterCount}
+              raidLevel={state.raidLevel}
               lang={lang}
               onAttack={state.startRaidOn}
               onClose={state.closeRaidMap}

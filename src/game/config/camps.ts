@@ -2,6 +2,9 @@ import { t, type Lang } from "../i18n";
 import type { Resources } from "../types/game";
 
 export function campName(id: string, lang: Lang) {
+  if (id.startsWith("stronghold-")) {
+    return t("camp.stronghold", lang);
+  }
   return t(`camp.${id}`, lang);
 }
 
@@ -54,6 +57,38 @@ export const RAID_CAMPS: RaidCamp[] = [
   }
 ];
 
+// The endless late-game ladder starts one level above the handcrafted camps.
+export const STRONGHOLD_BASE_LEVEL = 4;
+
+/**
+ * Procedural "Korsan Kalesi": one stronghold that comes back one level
+ * stronger every time it falls, so raids never run out of targets.
+ */
+export function strongholdCamp(level: number): RaidCamp {
+  const tier = Math.max(0, level - STRONGHOLD_BASE_LEVEL);
+  return {
+    id: `stronghold-${level}`,
+    name: "Korsan Kalesi",
+    level,
+    campHp: 200 + tier * 55,
+    enemyCount: Math.min(3 + Math.ceil(tier / 2), 6),
+    archerCount: Math.min(2 + Math.floor(tier / 2), 4),
+    enemyHp: 52 + tier * 7,
+    enemyAttack: 11 + tier * 2,
+    loot: {
+      bananas: 300 + tier * 130,
+      stones: 110 + tier * 50,
+      wood: 120 + tier * 55
+    }
+  };
+}
+
 export function getCamp(id: string): RaidCamp | undefined {
+  if (id.startsWith("stronghold-")) {
+    const level = Number(id.slice("stronghold-".length));
+    return Number.isInteger(level) && level >= STRONGHOLD_BASE_LEVEL
+      ? strongholdCamp(level)
+      : undefined;
+  }
   return RAID_CAMPS.find((camp) => camp.id === id);
 }

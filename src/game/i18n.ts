@@ -98,6 +98,11 @@ const dict: Record<string, Entry> = {
   "camp.patrol": { tr: "Korsan Devriyesi", en: "Pirate Patrol" },
   "camp.camp": { tr: "Korsan Kampı", en: "Pirate Camp" },
   "camp.fort": { tr: "Korsan Üssü", en: "Pirate Fort" },
+  "camp.stronghold": { tr: "Korsan Kalesi", en: "Pirate Stronghold" },
+  "raidmap.endless": {
+    tr: "Her zaferden sonra güçlenerek geri döner",
+    en: "Returns stronger after every victory"
+  },
 
   // Raid board
   "raid.title": { tr: "Baskın Savaşı", en: "Raid Battle" },

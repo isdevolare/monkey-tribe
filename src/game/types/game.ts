@@ -103,6 +103,7 @@ export type VillageSave = {
   gems?: number;
   productionQueue?: ProductionItem[];
   language?: Lang;
+  raidLevel?: number;
 };
 
 export type GameState = {
@@ -122,6 +123,7 @@ export type GameState = {
   enemyCampMaxHp: number;
   activeCampId: string | null;
   raidStars: number;
+  raidLevel: number;
   lastProductionAt: number;
   language: Lang;
   feedback: FeedbackMessage | null;

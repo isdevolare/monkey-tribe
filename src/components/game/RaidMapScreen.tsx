@@ -3,20 +3,24 @@ import { AssetImage } from "./AssetImage";
 import { SpringPressable } from "./SpringPressable";
 import { WoodButton } from "./WoodButton";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
-import { RAID_CAMPS, campName } from "../../game/config/camps";
+import { RAID_CAMPS, campName, strongholdCamp } from "../../game/config/camps";
 import { t } from "../../game/i18n";
 import type { Lang } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type RaidMapScreenProps = {
   fighterCount: number;
+  raidLevel: number;
   lang: Lang;
   onAttack: (campId: string) => void;
   onClose: () => void;
 };
 
-export function RaidMapScreen({ fighterCount, lang, onAttack, onClose }: RaidMapScreenProps) {
+export function RaidMapScreen({ fighterCount, raidLevel, lang, onAttack, onClose }: RaidMapScreenProps) {
   const noFighters = fighterCount <= 0;
+  // The endless stronghold sits after the handcrafted camps and levels up
+  // every time the player razes it.
+  const camps = [...RAID_CAMPS, strongholdCamp(raidLevel)];
 
   return (
     <View style={styles.wrap}>
@@ -26,8 +30,10 @@ export function RaidMapScreen({ fighterCount, lang, onAttack, onClose }: RaidMap
       </View>
 
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {RAID_CAMPS.map((camp) => (
-          <View key={camp.id} style={styles.card}>
+        {camps.map((camp) => {
+          const endless = camp.id.startsWith("stronghold-");
+          return (
+          <View key={camp.id} style={[styles.card, endless ? styles.cardEndless : null]}>
             <View style={styles.cardArt}>
               <AssetImage
                 assetKey="buildingEnemyCamp"
@@ -41,6 +47,11 @@ export function RaidMapScreen({ fighterCount, lang, onAttack, onClose }: RaidMap
 
             <View style={styles.cardBody}>
               <Text style={styles.campName} numberOfLines={1}>{campName(camp.id, lang)}</Text>
+              {endless ? (
+                <Text style={styles.endlessNote} numberOfLines={1}>
+                  {t("raidmap.endless", lang)}
+                </Text>
+              ) : null}
               <View style={styles.lootRow}>
                 <LootChip assetKey="resourceBanana" amount={camp.loot.bananas} />
                 <LootChip assetKey="resourceWood" amount={camp.loot.wood} />
@@ -66,7 +77,8 @@ export function RaidMapScreen({ fighterCount, lang, onAttack, onClose }: RaidMap
               </Text>
             </SpringPressable>
           </View>
-        ))}
+          );
+        })}
       </ScrollView>
 
       <WoodButton label={t("raidmap.close", lang)} onPress={onClose} />
@@ -137,6 +149,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4
+  },
+  cardEndless: {
+    borderColor: "rgba(216, 106, 84, 0.6)",
+    backgroundColor: "rgba(46, 18, 13, 0.86)"
+  },
+  endlessNote: {
+    marginTop: 1,
+    color: "#e7b9a0",
+    fontSize: 10.5,
+    fontWeight: "800", fontFamily: theme.fonts.bold
   },
   cardArt: {
     width: 64,

@@ -24,7 +24,7 @@ import {
   populationCap,
   upgradeCost
 } from "../config/buildings";
-import { getCamp, campName, type RaidCamp } from "../config/camps";
+import { STRONGHOLD_BASE_LEVEL, getCamp, campName, type RaidCamp } from "../config/camps";
 import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import type {
@@ -91,6 +91,7 @@ function createFreshState(now: number) {
     enemyCampMaxHp: CAMP_MAX_HP,
     activeCampId: null,
     raidStars: 0,
+    raidLevel: STRONGHOLD_BASE_LEVEL,
     lastProductionAt: now,
     language: "tr" as Lang,
     feedback: null
@@ -619,6 +620,7 @@ export const useGameStore = create<GameState>((set) => ({
         gems: save.gems ?? state.gems,
         productionQueue: save.productionQueue ?? [],
         language: save.language ?? state.language,
+        raidLevel: save.raidLevel ?? STRONGHOLD_BASE_LEVEL,
         lastProductionAt: Date.now()
       };
     }),
@@ -774,7 +776,11 @@ export const useGameStore = create<GameState>((set) => ({
                 w: loot.wood
               })
             },
-            raidStatus: "victory"
+            raidStatus: "victory",
+            raidLevel:
+              state.activeCampId === `stronghold-${state.raidLevel}`
+                ? state.raidLevel + 1
+                : state.raidLevel
           };
         }
 
@@ -902,7 +908,8 @@ function persistVillage(state: GameState) {
     maxPopulation: state.maxPopulation,
     gems: state.gems,
     productionQueue: state.productionQueue,
-    language: state.language
+    language: state.language,
+    raidLevel: state.raidLevel
   };
   void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 }
