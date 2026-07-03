@@ -17,6 +17,7 @@ import { FadeIn } from "../components/game/FadeIn";
 import { RaidBoard } from "../components/game/RaidBoard";
 import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
+import { NineSliceFrame } from "../components/game/NineSliceFrame";
 import { SpringPressable } from "../components/game/SpringPressable";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { PopIn, TapHint } from "../components/game/Vfx";
@@ -834,12 +835,7 @@ function ActionCard({
         disabled ? styles.actionCardDisabled : null
       ]}
     >
-      <AssetImage
-        assetKey="uiCardBuilding"
-        resizeMode="stretch"
-        style={styles.cardTexture}
-        fallback={<View style={styles.cardTextureFallback} />}
-      />
+      <NineSliceFrame preset="card" cornerSize={20} style={StyleSheet.absoluteFill} />
       <Animated.View style={[styles.actionCardBody, { transform: [{ translateX: shakeX }] }]}>
         {assetKey ? (
           <AssetImage
@@ -1683,9 +1679,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "rgba(90, 62, 26, 0.9)",
-    backgroundColor: "#231b0e",
+    backgroundColor: "#e9dcb1",
     paddingHorizontal: 4,
     paddingTop: 8,
     paddingBottom: 13,
@@ -1724,19 +1718,7 @@ const styles = StyleSheet.create({
     height: 46,
     marginTop: 2
   },
-  // The card art has baked-in dark margins; oversize it so the gold frame
-  // reaches the card edges instead of showing the muddy border.
-  cardTexture: {
-    position: "absolute",
-    top: "-7%",
-    left: "-9%",
-    width: "118%",
-    height: "122%"
-  },
-  cardTextureFallback: {
-    flex: 1,
-    backgroundColor: "#efe3bb"
-  },
+
   actionGlyph: {
     color: "#6b4a17",
     fontSize: 26,
