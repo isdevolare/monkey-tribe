@@ -13,7 +13,6 @@ import { AssetImage } from "./AssetImage";
 import { WanderingUnit } from "./LivelyUnit";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { buildingName } from "../../game/config/buildings";
-import { t } from "../../game/i18n";
 import type { Lang, Tile, Unit, VillageBuilding, VillageBuildingType } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
@@ -120,7 +119,7 @@ export function VillageBoard({
     (a, b) => a.zIndex - b.zIndex
   );
   const unitItems = aliveUnits
-    .map((unit) => unitSceneItem(unit, lang))
+    .map((unit) => unitSceneItem(unit))
     .sort((a, b) => a.zIndex - b.zIndex);
   const buildingSprites = buildings
     .map((building) => ({ building, layout: BUILDING_LAYOUT[building.type] }))
@@ -305,11 +304,13 @@ function BuildingSprite({
         </View>
       ) : null}
 
-      <View style={styles.levelBadgeWrap} pointerEvents="none">
-        <View style={styles.levelBadge}>
-          <Text style={styles.levelBadgeText}>{building.level}</Text>
+      {selected || building.level >= 2 ? (
+        <View style={styles.levelBadgeWrap} pointerEvents="none">
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelBadgeText}>{building.level}</Text>
+          </View>
         </View>
-      </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -457,10 +458,10 @@ function sceneryItems(): SceneItem[] {
   ];
 }
 
-function unitSceneItem(unit: Unit, lang: Lang): SceneItem {
+function unitSceneItem(unit: Unit): SceneItem {
   const center = pointForUnit(unit);
   return item(unit.id, center, unit.type === "fighter" ? 15 : 14, 80 + center.y, (
-    <UnitArt unit={unit} lang={lang} />
+    <UnitArt unit={unit} />
   ));
 }
 
@@ -530,7 +531,7 @@ function stableIndex(value: string, modulo: number) {
 }
 
 
-function UnitArt({ unit, lang }: { unit: Unit; lang: Lang }) {
+function UnitArt({ unit }: { unit: Unit }) {
   const player = unit.owner === "player";
 
   return (
@@ -541,13 +542,6 @@ function UnitArt({ unit, lang }: { unit: Unit; lang: Lang }) {
         imageStyle={styles.unitImage}
         fallback={<UnitFallback player={player} fighter={unit.type === "fighter"} />}
       />
-      {player ? (
-        <View style={styles.unitLabel} pointerEvents="none">
-          <View style={styles.unitLabelPill}>
-            <Text style={styles.unitLabelText}>{t(`unit.${unit.type}`, lang)}</Text>
-          </View>
-        </View>
-      ) : null}
     </WanderingUnit>
   );
 }
@@ -792,13 +786,13 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   levelBadge: {
-    minWidth: 20,
-    height: 20,
+    minWidth: 17,
+    height: 17,
     paddingHorizontal: 3,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
-    borderWidth: 2,
+    borderRadius: 9,
+    borderWidth: 1.5,
     borderColor: "#f3d27a",
     backgroundColor: "#6b3f16",
     shadowColor: "#000",
@@ -808,8 +802,8 @@ const styles = StyleSheet.create({
   },
   levelBadgeText: {
     color: "#fff4d6",
-    fontSize: 11,
-    lineHeight: 13,
+    fontSize: 10,
+    lineHeight: 12,
     fontFamily: theme.fonts.heavy
   },
   sprite: {
@@ -847,27 +841,6 @@ const styles = StyleSheet.create({
   unitImage: {
     width: "100%",
     height: "100%"
-  },
-  unitLabel: {
-    position: "absolute",
-    bottom: "-8%",
-    left: "-35%",
-    right: "-35%",
-    alignItems: "center",
-    zIndex: 2
-  },
-  unitLabelPill: {
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.3)",
-    backgroundColor: "rgba(17, 20, 14, 0.82)",
-    paddingHorizontal: 5,
-    paddingVertical: 1
-  },
-  unitLabelText: {
-    color: theme.colors.paper,
-    fontSize: 8,
-    fontFamily: theme.fonts.heavy
   },
   unbuiltAsset: {
     opacity: 0.46

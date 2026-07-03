@@ -1,6 +1,7 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { playSound } from "../../game/audio/soundManager";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { AssetImage } from "./AssetImage";
+import { SpringPressable } from "./SpringPressable";
+import { WoodButton } from "./WoodButton";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { RAID_CAMPS, campName } from "../../game/config/camps";
 import { t } from "../../game/i18n";
@@ -39,7 +40,7 @@ export function RaidMapScreen({ fighterCount, lang, onAttack, onClose }: RaidMap
             </View>
 
             <View style={styles.cardBody}>
-              <Text style={styles.campName}>{campName(camp.id, lang)}</Text>
+              <Text style={styles.campName} numberOfLines={1}>{campName(camp.id, lang)}</Text>
               <View style={styles.lootRow}>
                 <LootChip assetKey="resourceBanana" amount={camp.loot.bananas} />
                 <LootChip assetKey="resourceWood" amount={camp.loot.wood} />
@@ -47,28 +48,28 @@ export function RaidMapScreen({ fighterCount, lang, onAttack, onClose }: RaidMap
               </View>
             </View>
 
-            <Pressable
+            <SpringPressable
               accessibilityRole="button"
+              accessibilityState={{ disabled: noFighters }}
               disabled={noFighters}
               onPress={() => onAttack(camp.id)}
-              onPressIn={() => playSound("tap")}
-              style={({ pressed }) => [
-                styles.attackButton,
-                noFighters ? styles.attackButtonDisabled : null,
-                pressed && !noFighters ? styles.attackButtonPressed : null
-              ]}
+              style={[styles.attackButton, noFighters ? styles.attackButtonDisabled : null]}
             >
-              <Text style={styles.attackText}>
+              <AssetImage
+                assetKey="uiButtonAttack"
+                resizeMode="stretch"
+                style={styles.attackArt}
+                fallback={<View style={styles.attackArtFallback} />}
+              />
+              <Text style={styles.attackText} numberOfLines={1}>
                 {noFighters ? t("raidmap.needFighter", lang) : t("raidmap.attack", lang)}
               </Text>
-            </Pressable>
+            </SpringPressable>
           </View>
         ))}
       </ScrollView>
 
-      <Pressable accessibilityRole="button" onPress={onClose} onPressIn={() => playSound("close")} style={styles.backButton}>
-        <Text style={styles.backText}>{t("raidmap.close", lang)}</Text>
-      </Pressable>
+      <WoodButton label={t("raidmap.close", lang)} onPress={onClose} />
     </View>
   );
 }
@@ -94,16 +95,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(200, 86, 70, 0.5)",
-    backgroundColor: "rgba(60, 22, 16, 0.85)",
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.4)",
+    backgroundColor: "rgba(60, 22, 16, 0.88)",
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm
+    paddingVertical: theme.spacing.sm,
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5
   },
   title: {
     color: theme.colors.paper,
-    fontSize: 17,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+    fontSize: 16,
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
+    textTransform: "uppercase",
+    letterSpacing: 0.4
   },
   subtitle: {
     color: "#e7b9a0",
@@ -120,15 +128,22 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     minHeight: 80,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.18)",
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.32)",
     backgroundColor: glass,
-    padding: theme.spacing.sm
+    padding: theme.spacing.sm,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4
   },
   cardArt: {
     width: 64,
     height: 64,
     borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.45)",
     overflow: "hidden",
     backgroundColor: "rgba(0,0,0,0.25)"
   },
@@ -142,10 +157,12 @@ const styles = StyleSheet.create({
   },
   levelTag: {
     position: "absolute",
-    left: 4,
-    top: 4,
-    borderRadius: 6,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    left: 3,
+    top: 3,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: "rgba(243, 210, 122, 0.8)",
+    backgroundColor: "rgba(20, 12, 4, 0.78)",
     paddingHorizontal: 5,
     paddingVertical: 1
   },
@@ -189,38 +206,44 @@ const styles = StyleSheet.create({
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   attackButton: {
-    minHeight: 48,
+    minWidth: 96,
+    minHeight: 50,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#7b330e",
-    backgroundColor: "#d96516",
-    paddingHorizontal: theme.spacing.md
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: "rgba(122, 52, 14, 0.95)",
+    backgroundColor: "#a34a10",
+    overflow: "hidden",
+    paddingHorizontal: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5
   },
   attackButtonDisabled: {
-    opacity: 0.5
+    opacity: 0.55
   },
-  attackButtonPressed: {
-    transform: [{ translateY: 1 }, { scale: 0.98 }]
+  // Crop the attack plaque art to its stone body (the source PNG carries a
+  // baked-in backdrop and a totem crest that don't fit a small button).
+  attackArt: {
+    position: "absolute",
+    top: "-62%",
+    left: "-11%",
+    width: "122%",
+    height: "196%"
+  },
+  attackArtFallback: {
+    flex: 1,
+    backgroundColor: "transparent"
   },
   attackText: {
     color: theme.colors.paper,
     fontSize: 14,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
-  },
-  backButton: {
-    minHeight: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255, 224, 151, 0.18)",
-    backgroundColor: "rgba(42, 38, 29, 0.9)"
-  },
-  backText: {
-    color: theme.colors.paper,
-    fontSize: 15,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
+    textShadowColor: "rgba(60, 20, 4, 0.9)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 2
   }
 });
