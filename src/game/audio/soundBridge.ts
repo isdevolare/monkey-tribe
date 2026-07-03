@@ -1,4 +1,5 @@
 import { useGameStore } from "../state/gameStore";
+import { hapticImpact, hapticOutcome } from "./haptics";
 import { playBattleHit, playSound } from "./soundManager";
 
 // Live HP total of every unit plus both camps; any drop means damage landed.
@@ -17,6 +18,7 @@ function buildingLevelSum(state: ReturnType<typeof useGameStore.getState>) {
 }
 
 let started = false;
+let lastHitHapticAt = 0;
 
 /**
  * Watches game-state transitions and plays matching SFX. Keeps the store's
@@ -40,17 +42,27 @@ export function initGameSounds() {
     if (state.raidStatus !== prev.raidStatus) {
       if (state.raidStatus === "active") {
         playSound("raid");
+        hapticImpact("medium");
       } else if (state.raidStatus === "victory") {
         playSound("victory");
+        hapticOutcome("success");
         setTimeout(() => playSound("coins"), 700);
       } else if (state.raidStatus === "defeat") {
         playSound("defeat");
+        hapticOutcome("error");
       }
     }
 
     // Combat impacts (throttled + rotated inside playBattleHit).
     if (state.raidStatus === "active" && hp < prevHp) {
       playBattleHit();
+      // Buzz less often than the hit sounds so combat doesn't turn into
+      // a continuous vibration; big damage chunks thump harder.
+      const hapticNow = Date.now();
+      if (hapticNow - lastHitHapticAt >= 450) {
+        lastHitHapticAt = hapticNow;
+        hapticImpact(prevHp - hp >= 30 ? "medium" : "light");
+      }
     }
 
     if (state.gameStatus === "playing" && prev.gameStatus === "playing") {
@@ -59,11 +71,13 @@ export function initGameSounds() {
         playSound("queue");
       } else if (state.productionQueue.length < prev.productionQueue.length) {
         playSound("confirm");
+        hapticImpact("light");
       }
 
       // Building upgraded.
       if (levels > prevLevels) {
         playSound("build");
+        hapticImpact("light");
       }
 
       // Gems spent on a rush.

@@ -7,6 +7,7 @@ import {
   type StyleProp,
   type ViewStyle
 } from "react-native";
+import { hapticSelect } from "../../game/audio/haptics";
 import { playSound, type SoundName } from "../../game/audio/soundManager";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -34,6 +35,7 @@ export function SpringPressable({
     if (sound) {
       playSound(sound);
     }
+    hapticSelect();
     Animated.spring(scale, {
       toValue: 0.92,
       speed: 50,
