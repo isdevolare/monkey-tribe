@@ -180,6 +180,35 @@ export function Confetti({ width, height, count = 26 }: ConfettiProps) {
   );
 }
 
+// Scale 0 -> 1.1 -> 1 entrance for things that spawn into the scene.
+export function PopIn({
+  children,
+  delay = 0,
+  style
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  style?: object;
+}) {
+  const t = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(t, {
+      toValue: 1,
+      duration: 320,
+      delay,
+      easing: Easing.out(Easing.back(2.2)),
+      useNativeDriver: true
+    }).start();
+  }, [t, delay]);
+
+  return (
+    <Animated.View style={[style, { opacity: t, transform: [{ scale: t }] }]}>
+      {children}
+    </Animated.View>
+  );
+}
+
 // Gentle looping twinkle for workers gathering on a shift.
 export function Sparkle({ seed = 0 }: { seed?: number }) {
   const t = useRef(new Animated.Value(0)).current;

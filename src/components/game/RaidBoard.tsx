@@ -429,13 +429,31 @@ function BattleGround() {
 }
 
 function HealthBar({ percent, enemy, large }: { percent: number; enemy?: boolean; large?: boolean }) {
+  // Tween toward the new value instead of snapping (layout prop, so this
+  // animates on the JS thread — the bars are tiny, it stays cheap).
+  const animated = useRef(new Animated.Value(percent)).current;
+
+  useEffect(() => {
+    Animated.timing(animated, {
+      toValue: percent,
+      duration: 260,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false
+    }).start();
+  }, [animated, percent]);
+
+  const width = animated.interpolate({
+    inputRange: [0, 100],
+    outputRange: ["0%", "100%"]
+  });
+
   return (
     <View style={[styles.hpTrack, large ? styles.hpTrackLarge : null]}>
-      <View
+      <Animated.View
         style={[
           styles.hpFill,
           {
-            width: `${percent}%`,
+            width,
             backgroundColor: enemy ? theme.colors.enemy : theme.colors.player
           }
         ]}

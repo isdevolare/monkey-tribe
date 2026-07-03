@@ -19,6 +19,7 @@ import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { SpringPressable } from "../components/game/SpringPressable";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
+import { PopIn } from "../components/game/Vfx";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { playSound } from "../game/audio/soundManager";
 import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
@@ -44,6 +45,46 @@ const tutorialKeys = ["tut.0", "tut.1", "tut.2", "tut.3"];
 
 function levelOf(buildings: VillageBuilding[], type: VillageBuildingType) {
   return buildings.find((building) => building.type === type)?.level ?? 0;
+}
+
+function useCountUp(value: number) {
+  const [display, setDisplay] = useState(value);
+  const animRef = useRef<Animated.Value | null>(null);
+  const shownRef = useRef(value);
+
+  useEffect(() => {
+    const from = shownRef.current;
+    if (value === from) {
+      return;
+    }
+    if (Math.abs(value - from) < 5) {
+      shownRef.current = value;
+      setDisplay(value);
+      return;
+    }
+    if (!animRef.current) {
+      animRef.current = new Animated.Value(from);
+    }
+    const anim = animRef.current;
+    anim.setValue(from);
+    const listener = anim.addListener(({ value: v }) => {
+      shownRef.current = Math.round(v);
+      setDisplay(Math.round(v));
+    });
+    Animated.timing(anim, {
+      toValue: value,
+      duration: 500,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false
+    }).start(() => {
+      anim.removeListener(listener);
+      shownRef.current = value;
+      setDisplay(value);
+    });
+    return () => anim.removeListener(listener);
+  }, [value]);
+
+  return display;
 }
 
 // Compact display so 4+ digit stockpiles fit the HUD pills on small screens.
@@ -224,9 +265,9 @@ export function GameScreen() {
         </View>
 
         <View style={styles.resourceBar}>
-          <ResourceChip label="Muz" value={formatAmount(Math.floor(state.resources.bananas))} assetKey="resourceBanana" compact={compactHud} />
-          <ResourceChip label="Taş" value={formatAmount(Math.floor(state.resources.stones))} assetKey="resourceStone" compact={compactHud} />
-          <ResourceChip label="Odun" value={formatAmount(Math.floor(state.resources.wood))} assetKey="resourceWood" compact={compactHud} />
+          <ResourceChip label="Muz" value={Math.floor(state.resources.bananas)} assetKey="resourceBanana" compact={compactHud} />
+          <ResourceChip label="Taş" value={Math.floor(state.resources.stones)} assetKey="resourceStone" compact={compactHud} />
+          <ResourceChip label="Odun" value={Math.floor(state.resources.wood)} assetKey="resourceWood" compact={compactHud} />
           <ResourceChip
             label="Nüfus"
             value={`${population}/${state.maxPopulation}`}
@@ -602,14 +643,16 @@ function ProductionQueue({
         {queue.map((item) => {
           const remain = Math.max(0, Math.ceil((item.finishAt - now) / 1000));
           return (
-            <View key={item.id} style={styles.queueSlot}>
-              <AssetImage
-                assetKey={queueUnitAsset(item.type)}
-                style={styles.queueIcon}
-                fallback={<View style={styles.queueIconFallback} />}
-              />
-              <Text style={styles.queueTimer}>{remain}s</Text>
-            </View>
+            <PopIn key={item.id}>
+              <View style={styles.queueSlot}>
+                <AssetImage
+                  assetKey={queueUnitAsset(item.type)}
+                  style={styles.queueIcon}
+                  fallback={<View style={styles.queueIconFallback} />}
+                />
+                <Text style={styles.queueTimer}>{remain}s</Text>
+              </View>
+            </PopIn>
           );
         })}
       </View>
@@ -636,6 +679,9 @@ function ResourceChip({
   assetKey: "resourceBanana" | "resourceStone" | "resourceWood" | "resourcePopulation";
   compact?: boolean;
 }) {
+  const numeric = typeof value === "number" ? value : 0;
+  const counted = useCountUp(numeric);
+  const shown = typeof value === "number" ? formatAmount(counted) : value;
   return (
     <View style={[styles.resourceChip, compact ? styles.resourceChipCompact : null]}>
       <View style={[styles.resourceIcon, compact ? styles.resourceIconCompact : null]}>
@@ -649,7 +695,7 @@ function ResourceChip({
         style={[styles.resourceValue, compact ? styles.resourceValueCompact : null]}
         numberOfLines={1}
       >
-        {value}
+        {shown}
       </Text>
       <Text style={styles.hiddenLabel}>{label}</Text>
     </View>
@@ -756,12 +802,32 @@ function ActionCard({
   active?: boolean;
   onPress: () => void;
 }) {
+  const shake = useRef(new Animated.Value(0)).current;
+  const flash = useRef(new Animated.Value(0)).current;
+
+  // Blocked taps still respond: shake + red flash + error buzz instead
+  // of silently ignoring the press.
+  function handleBlockedPress() {
+    playSound("error", { throttleMs: 250 });
+    shake.setValue(0);
+    Animated.sequence([
+      Animated.timing(shake, { toValue: 1, duration: 55, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: -1, duration: 90, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 0.7, duration: 80, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 0, duration: 70, useNativeDriver: true })
+    ]).start();
+    flash.setValue(0.55);
+    Animated.timing(flash, { toValue: 0, duration: 420, useNativeDriver: true }).start();
+  }
+
+  const shakeX = shake.interpolate({ inputRange: [-1, 1], outputRange: [-5, 5] });
+
   return (
     <SpringPressable
       accessibilityRole="button"
       accessibilityState={{ disabled: Boolean(disabled) }}
-      disabled={disabled}
-      onPress={onPress}
+      sound={disabled ? null : "tap"}
+      onPress={disabled ? handleBlockedPress : onPress}
       style={[
         styles.actionCard,
         active && !disabled ? styles.actionCardActive : null,
@@ -774,20 +840,26 @@ function ActionCard({
         style={styles.cardTexture}
         fallback={<View style={styles.cardTextureFallback} />}
       />
-      {assetKey ? (
-        <AssetImage
-          assetKey={assetKey}
-          style={styles.actionAsset}
-          fallback={<Text style={styles.actionGlyph}>{glyph}</Text>}
-        />
-      ) : (
-        <Text style={styles.actionGlyph}>{glyph}</Text>
-      )}
-      <Text style={styles.actionTitle} numberOfLines={1}>
-        {title}
-      </Text>
-      <CostChips cost={cost} />
+      <Animated.View style={[styles.actionCardBody, { transform: [{ translateX: shakeX }] }]}>
+        {assetKey ? (
+          <AssetImage
+            assetKey={assetKey}
+            style={styles.actionAsset}
+            fallback={<Text style={styles.actionGlyph}>{glyph}</Text>}
+          />
+        ) : (
+          <Text style={styles.actionGlyph}>{glyph}</Text>
+        )}
+        <Text style={styles.actionTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        <CostChips cost={cost} />
+      </Animated.View>
       {disabled ? <View style={styles.actionCardScrim} /> : null}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.actionCardFlash, { opacity: flash }]}
+      />
     </SpringPressable>
   );
 }
@@ -1635,6 +1707,14 @@ const styles = StyleSheet.create({
   actionCardScrim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(14, 13, 8, 0.52)"
+  },
+  actionCardBody: {
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  actionCardFlash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(217, 75, 54, 0.55)"
   },
   actionAsset: {
     width: 46,

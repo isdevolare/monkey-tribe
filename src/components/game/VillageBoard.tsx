@@ -11,7 +11,7 @@ import {
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
 import { LivelyUnit } from "./LivelyUnit";
-import { PulseRing, Sparkle } from "./Vfx";
+import { PopIn, PulseRing, Sparkle } from "./Vfx";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { buildingName } from "../../game/config/buildings";
 import type { Lang, Tile, Unit, VillageBuilding, VillageBuildingType } from "../../game/types/game";
@@ -570,7 +570,8 @@ function UnitArt({ unit }: { unit: Unit }) {
   const player = unit.owner === "player";
 
   return (
-    <LivelyUnit seed={stableIndex(unit.id, 97)} amplitude={4} style={styles.unitWrap}>
+    <PopIn style={styles.unitWrap}>
+    <LivelyUnit seed={stableIndex(unit.id, 97)} amplitude={4} style={styles.full}>
       <AssetImage
         assetKey={unitAssetKey(unit)}
         style={styles.unitAsset}
@@ -579,6 +580,7 @@ function UnitArt({ unit }: { unit: Unit }) {
       />
       <Sparkle seed={stableIndex(unit.id, 13)} />
     </LivelyUnit>
+    </PopIn>
   );
 }
 
