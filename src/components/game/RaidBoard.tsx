@@ -27,6 +27,8 @@ type RaidBoardProps = {
   lang: Lang;
   feedbackText?: string;
   maxSize?: number;
+  /** New stronghold level after a stronghold win; shows the level-up callout. */
+  strongholdLevelUp?: number | null;
   onReturn: () => void;
 };
 
@@ -66,6 +68,7 @@ export function RaidBoard({
   lang,
   feedbackText,
   maxSize = 430,
+  strongholdLevelUp,
   onReturn
 }: RaidBoardProps) {
   const { width } = useWindowDimensions();
@@ -304,6 +307,9 @@ export function RaidBoard({
                 ))}
               </View>
             ) : null}
+            {victory && strongholdLevelUp ? (
+              <StrongholdCallout level={strongholdLevelUp} lang={lang} />
+            ) : null}
             <Text style={styles.resultText}>
               {victory ? t("raid.victoryText", lang) : t("raid.defeatText", lang)}
             </Text>
@@ -330,6 +336,31 @@ export function RaidBoard({
         </SpringPressable>
       )}
     </View>
+  );
+}
+
+function StrongholdCallout({ level, lang }: { level: number; lang: Lang }) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 420,
+      delay: 320,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true
+    }).start();
+  }, [anim]);
+
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
+
+  return (
+    <Animated.View style={[styles.strongholdCallout, { opacity: anim, transform: [{ translateY }] }]}>
+      <Text style={styles.strongholdCalloutText}>{t("raid.strongholdReturn", lang)}</Text>
+      <View style={styles.strongholdLevelChip}>
+        <Text style={styles.strongholdLevelText}>{t("raid.newLevel", lang, { n: level })}</Text>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -711,6 +742,37 @@ const styles = StyleSheet.create({
   rewardText: {
     color: "#ffe9ad",
     fontSize: 14,
+    fontWeight: "900", fontFamily: theme.fonts.heavy
+  },
+  strongholdCallout: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.55)",
+    backgroundColor: "rgba(74, 48, 16, 0.5)",
+    paddingVertical: 9,
+    paddingHorizontal: 12
+  },
+  strongholdCalloutText: {
+    color: "#ffe9ad",
+    fontSize: 12.5,
+    fontWeight: "900", fontFamily: theme.fonts.heavy,
+    textAlign: "center"
+  },
+  strongholdLevelChip: {
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: "#f3d27a",
+    backgroundColor: "#6b3f16",
+    paddingHorizontal: 12,
+    paddingVertical: 2
+  },
+  strongholdLevelText: {
+    color: "#fff4d6",
+    fontSize: 13,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   returnButtonWrap: {

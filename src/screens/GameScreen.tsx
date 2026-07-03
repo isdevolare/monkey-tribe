@@ -251,6 +251,12 @@ export function GameScreen() {
               lang={lang}
               maxSize={Math.min(width - theme.spacing.md * 2, 404)}
               feedbackText={state.feedback?.text}
+              strongholdLevelUp={
+                state.raidStatus === "victory" &&
+                state.activeCampId?.startsWith("stronghold-")
+                  ? state.raidLevel
+                  : null
+              }
               onReturn={state.returnToVillage}
             />
           </FadeIn>

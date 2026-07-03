@@ -119,6 +119,11 @@ const dict: Record<string, Entry> = {
     en: "Your raid party fell. Train more fighters and try again."
   },
   "raid.loot": { tr: "Kazanılan Ganimet", en: "Won Loot" },
+  "raid.strongholdReturn": {
+    tr: "Korsan Kalesi güçlenerek geri döndü!",
+    en: "The Pirate Stronghold returns stronger!"
+  },
+  "raid.newLevel": { tr: "Yeni Seviye: Sv {n}", en: "New Level: Lv {n}" },
   "raid.return": { tr: "Köye Dön", en: "Return to Village" },
   "raid.retreat": { tr: "Geri Çekil", en: "Retreat" },
 
