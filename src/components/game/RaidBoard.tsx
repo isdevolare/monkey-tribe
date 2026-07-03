@@ -2,15 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
-  Pressable,
   StyleSheet,
   Text,
   View,
   useWindowDimensions
 } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path } from "react-native-svg";
-import { playSound } from "../../game/audio/soundManager";
 import { AssetImage } from "./AssetImage";
+import { SpringPressable } from "./SpringPressable";
+import { WoodButton } from "./WoodButton";
 import { LivelyUnit } from "./LivelyUnit";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { t } from "../../game/i18n";
@@ -314,15 +314,20 @@ export function RaidBoard({
                 <RewardChip assetKey="resourceStonePile" amount={loot.stones} />
               </View>
             ) : null}
-            <Pressable accessibilityRole="button" onPress={onReturn} onPressIn={() => playSound("tap")} style={styles.returnButton}>
-              <Text style={styles.returnText}>{t("raid.return", lang)}</Text>
-            </Pressable>
+            <View style={styles.returnButtonWrap}>
+              <WoodButton label={t("raid.return", lang)} onPress={onReturn} primary />
+            </View>
           </Animated.View>
         </View>
       ) : (
-        <Pressable accessibilityRole="button" onPress={onReturn} onPressIn={() => playSound("close")} style={styles.retreatButton}>
+        <SpringPressable
+          accessibilityRole="button"
+          sound="close"
+          onPress={onReturn}
+          style={styles.retreatButton}
+        >
           <Text style={styles.retreatText}>{t("raid.retreat", lang)}</Text>
-        </Pressable>
+        </SpringPressable>
       )}
     </View>
   );
@@ -584,10 +589,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 12,
     bottom: 12,
-    borderRadius: 10,
-    backgroundColor: "rgba(42, 38, 29, 0.9)",
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.45)",
+    backgroundColor: "rgba(20, 16, 9, 0.92)",
     paddingHorizontal: 16,
-    paddingVertical: 10
+    paddingVertical: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6
   },
   retreatText: {
     color: theme.colors.paper,
@@ -701,16 +713,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
-  returnButton: {
-    marginTop: 16,
-    borderRadius: 10,
-    backgroundColor: "#d96516",
-    paddingHorizontal: 18,
-    paddingVertical: 11
-  },
-  returnText: {
-    color: theme.colors.paper,
-    fontSize: 14,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+  returnButtonWrap: {
+    alignSelf: "stretch",
+    marginTop: 16
   }
 });
