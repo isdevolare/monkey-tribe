@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -11,6 +11,7 @@ import {
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
 import { LivelyUnit } from "./LivelyUnit";
+import { PulseRing, Sparkle } from "./Vfx";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { buildingName } from "../../game/config/buildings";
 import type { Lang, Tile, Unit, VillageBuilding, VillageBuildingType } from "../../game/types/game";
@@ -115,6 +116,28 @@ export function VillageBoard({
   const { width } = useWindowDimensions();
   const sceneWidth = Math.min(width - theme.spacing.lg * 2, maxSize);
   const sceneHeight = sceneWidth * 0.94;
+  const prevLevelsRef = useRef<Record<string, number>>({});
+  const [upgradeFx, setUpgradeFx] = useState<{ key: number; point: Point; size: number } | null>(null);
+  const fxSeq = useRef(0);
+  useEffect(() => {
+    for (const building of buildings) {
+      const previous = prevLevelsRef.current[building.type];
+      prevLevelsRef.current[building.type] = building.level;
+      if (previous !== undefined && building.level > previous) {
+        const layout = BUILDING_LAYOUT[building.type];
+        fxSeq.current += 1;
+        setUpgradeFx({ key: fxSeq.current, point: layout.point, size: layout.size });
+      }
+    }
+  }, [buildings]);
+  useEffect(() => {
+    if (!upgradeFx) {
+      return;
+    }
+    const timer = setTimeout(() => setUpgradeFx(null), 750);
+    return () => clearTimeout(timer);
+  }, [upgradeFx]);
+
   const workingUnits = workShiftActive
     ? units.filter(
         (unit) =>
@@ -161,6 +184,24 @@ export function VillageBoard({
           />
         ))}
       </View>
+
+      {upgradeFx ? (
+        <View
+          key={upgradeFx.key}
+          pointerEvents="none"
+          style={[
+            styles.upgradeFxAnchor,
+            {
+              left: `${upgradeFx.point.x - upgradeFx.size * 0.75}%`,
+              top: `${upgradeFx.point.y - upgradeFx.size}%`,
+              width: `${upgradeFx.size * 1.5}%`,
+              height: `${upgradeFx.size * 1.5}%`
+            }
+          ]}
+        >
+          <PulseRing size={Math.round((sceneWidth * upgradeFx.size * 1.5) / 100)} />
+        </View>
+      ) : null}
 
       <Fireflies />
 
@@ -536,6 +577,7 @@ function UnitArt({ unit }: { unit: Unit }) {
         imageStyle={styles.unitImage}
         fallback={<UnitFallback player={player} fighter={unit.type === "fighter"} />}
       />
+      <Sparkle seed={stableIndex(unit.id, 13)} />
     </LivelyUnit>
   );
 }
@@ -734,6 +776,12 @@ const styles = StyleSheet.create({
   },
   buildingLayer: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: 200
+  },
+  upgradeFxAnchor: {
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 200
   },
   buildingSprite: {

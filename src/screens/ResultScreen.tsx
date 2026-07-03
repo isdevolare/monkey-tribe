@@ -1,10 +1,30 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Circle, Line, Path, Svg } from "react-native-svg";
 import { AssetImage } from "../components/game/AssetImage";
+import { Confetti } from "../components/game/Vfx";
 import { WoodButton } from "../components/game/WoodButton";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
+
+// Staggered fade+rise so the panel contents reveal one by one.
+function useReveal(order: number) {
+  const t = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(t, {
+      toValue: 1,
+      duration: 360,
+      delay: 180 + order * 170,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true
+    }).start();
+  }, [t, order]);
+
+  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
+  return { opacity: t, transform: [{ translateY }] };
+}
 
 export function ResultScreen() {
   const gameStatus = useGameStore((state) => state.gameStatus);
@@ -12,6 +32,11 @@ export function ResultScreen() {
   const goToMenu = useGameStore((state) => state.goToMenu);
   const lang = useGameStore((state) => state.language);
   const victory = gameStatus === "victory";
+  const { width, height } = useWindowDimensions();
+  const heroReveal = useReveal(0);
+  const titleReveal = useReveal(1);
+  const textReveal = useReveal(2);
+  const actionsReveal = useReveal(3);
 
   return (
     <View style={styles.screen}>
@@ -31,29 +56,37 @@ export function ResultScreen() {
           fallback={<View style={styles.cardTextureFallback} />}
         />
 
-        <View style={[styles.heroRing, victory ? styles.heroRingVictory : styles.heroRingDefeat]}>
-          <AssetImage
-            assetKey={victory ? "unitFighter" : "unitWorker"}
-            style={styles.resultHero}
-            fallback={<ResultFallback victory={victory} />}
-          />
-        </View>
+        <Animated.View style={heroReveal}>
+          <View style={[styles.heroRing, victory ? styles.heroRingVictory : styles.heroRingDefeat]}>
+            <AssetImage
+              assetKey={victory ? "unitFighter" : "unitWorker"}
+              style={styles.resultHero}
+              fallback={<ResultFallback victory={victory} />}
+            />
+          </View>
+        </Animated.View>
 
-        <Text style={[styles.kicker, victory ? styles.kickerVictory : styles.kickerDefeat]}>
-          {victory ? t("result.victoryKicker", lang) : t("result.defeatKicker", lang)}
-        </Text>
-        <Text style={styles.title}>
-          {victory ? t("result.victory", lang) : t("result.defeat", lang)}
-        </Text>
-        <Text style={styles.subtitle}>
-          {victory ? t("result.victoryText", lang) : t("result.defeatText", lang)}
-        </Text>
+        <Animated.View style={titleReveal}>
+          <Text style={[styles.kicker, victory ? styles.kickerVictory : styles.kickerDefeat]}>
+            {victory ? t("result.victoryKicker", lang) : t("result.defeatKicker", lang)}
+          </Text>
+          <Text style={styles.title}>
+            {victory ? t("result.victory", lang) : t("result.defeat", lang)}
+          </Text>
+        </Animated.View>
+        <Animated.View style={textReveal}>
+          <Text style={styles.subtitle}>
+            {victory ? t("result.victoryText", lang) : t("result.defeatText", lang)}
+          </Text>
+        </Animated.View>
 
-        <View style={styles.actions}>
+        <Animated.View style={[styles.actions, actionsReveal]}>
           <WoodButton label={t("result.retry", lang)} onPress={resetGame} primary />
           <WoodButton label={t("result.menu", lang)} onPress={goToMenu} />
-        </View>
+        </Animated.View>
       </View>
+
+      {victory ? <Confetti width={width} height={height} count={34} /> : null}
     </View>
   );
 }

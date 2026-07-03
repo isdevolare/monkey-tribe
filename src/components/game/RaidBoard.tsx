@@ -12,6 +12,7 @@ import { AssetImage } from "./AssetImage";
 import { SpringPressable } from "./SpringPressable";
 import { WoodButton } from "./WoodButton";
 import { LivelyUnit } from "./LivelyUnit";
+import { Confetti, SparkBurst } from "./Vfx";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { t } from "../../game/i18n";
 import type { Lang, RaidStatus, Resources, Unit } from "../../game/types/game";
@@ -269,7 +270,12 @@ export function RaidBoard({
 
       <View style={styles.markerLayer} pointerEvents="none">
         {markers.map((marker) => (
-          <FloatingNumber key={marker.id} marker={marker} onDone={removeMarker} />
+          <View key={marker.id} style={StyleSheet.absoluteFill} pointerEvents="none">
+            <View style={[styles.sparkAnchor, { left: `${marker.x}%`, top: `${marker.y + 6}%` }]}>
+              <SparkBurst color={marker.tone === "ally" ? "#ff8a5c" : "#ffd95a"} />
+            </View>
+            <FloatingNumber marker={marker} onDone={removeMarker} />
+          </View>
         ))}
       </View>
 
@@ -335,6 +341,8 @@ export function RaidBoard({
           <Text style={styles.retreatText}>{t("raid.retreat", lang)}</Text>
         </SpringPressable>
       )}
+
+      {victory && resultVisible ? <Confetti width={sceneWidth} height={sceneHeight} /> : null}
     </View>
   );
 }
@@ -540,6 +548,11 @@ const styles = StyleSheet.create({
   },
   combatLines: {
     ...StyleSheet.absoluteFillObject
+  },
+  sparkAnchor: {
+    position: "absolute",
+    marginLeft: -17,
+    marginTop: -17
   },
   markerLayer: {
     ...StyleSheet.absoluteFillObject,
