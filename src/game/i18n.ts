@@ -12,6 +12,7 @@ const dict: Record<string, Entry> = {
   "menu.start": { tr: "Oyna", en: "Start Game" },
   "menu.settings": { tr: "Ayarlar", en: "Settings" },
   "menu.credits": { tr: "Künye", en: "Credits" },
+  "menu.bottomTag": { tr: "Kabile seni bekliyor, şef!", en: "The tribe awaits you, chief!" },
 
   // Clan / HUD
   "clan.subtitle": { tr: "Genç Klan", en: "Young Clan" },

@@ -246,8 +246,8 @@ export function GameScreen() {
             </View>
             <View style={styles.namePlate}>
               <PanelTexture dark />
-              <Text style={styles.clanName} numberOfLines={1}>Monkey Tribe</Text>
-              <Text style={styles.clanSubtitle} numberOfLines={1}>{t("clan.subtitle", lang)}</Text>
+              <Text style={styles.clanName} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>Monkey Tribe</Text>
+              <Text style={styles.clanSubtitle} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>{t("clan.subtitle", lang)}</Text>
             </View>
           </View>
 
@@ -354,7 +354,7 @@ export function GameScreen() {
                     fallback={<AvatarFallback />}
                   />
                 </View>
-                <Text style={styles.hintText} numberOfLines={2}>
+                <Text style={styles.hintText} numberOfLines={2} maxFontSizeMultiplier={theme.maxFontScale}>
                   {t("hint.tapBuilding", lang)}
                 </Text>
               </View>
@@ -491,13 +491,13 @@ function UpgradePanel({
       <PanelTexture dark />
       <View style={styles.upgradeMain}>
       <View style={styles.upgradeInfo}>
-        <Text style={styles.upgradeName} numberOfLines={1}>
+        <Text style={styles.upgradeName} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
           {buildingName(type, lang)}
         </Text>
-        <Text style={styles.upgradeMeta}>
+        <Text style={styles.upgradeMeta} maxFontSizeMultiplier={theme.maxFontScale}>
           {t("common.level", lang)} {level} · {buildingEffect(type, level, lang)}
         </Text>
-        <Text style={styles.upgradeNext}>
+        <Text style={styles.upgradeNext} maxFontSizeMultiplier={theme.maxFontScale}>
           {t("upgrade.next", lang)}: {buildingEffect(type, level + 1, lang)}
         </Text>
       </View>
@@ -511,7 +511,7 @@ function UpgradePanel({
         <NineSliceFrame preset="attackPlaque" cornerSize={18} style={StyleSheet.absoluteFill} />
         <Text style={styles.upgradeButtonLabel} maxFontSizeMultiplier={theme.maxFontScale}>{t("upgrade.button", lang)}</Text>
         {gated ? (
-          <Text style={styles.upgradeButtonCost} numberOfLines={1}>
+          <Text style={styles.upgradeButtonCost} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
             {t("upgrade.needClanHall", lang)}
           </Text>
         ) : (
@@ -539,7 +539,7 @@ function UpgradePanel({
                 style={styles.footerUnitIcon}
                 fallback={<View style={styles.footerUnitIconFallback} />}
               />
-              <Text style={styles.workStatusText}>
+              <Text style={styles.workStatusText} maxFontSizeMultiplier={theme.maxFontScale}>
                 {t("shelter.working", lang, { time: formatCountdown(shiftRemaining) })}
               </Text>
             </View>
@@ -556,7 +556,7 @@ function UpgradePanel({
                 style={styles.footerUnitIcon}
                 fallback={<View style={styles.footerUnitIconFallback} />}
               />
-              <Text style={styles.workButtonText}>
+              <Text style={styles.workButtonText} maxFontSizeMultiplier={theme.maxFontScale}>
                 {t("shelter.send", lang)} ({workerCount})
               </Text>
             </SpringPressable>
@@ -566,7 +566,7 @@ function UpgradePanel({
 
       {type === "trainingNest" ? (
         <View style={styles.panelFooter}>
-          <Text style={styles.rosterTitle}>{t("barracks.title", lang)}</Text>
+          <Text style={styles.rosterTitle} maxFontSizeMultiplier={theme.maxFontScale}>{t("barracks.title", lang)}</Text>
           {armyCounts.fighters + armyCounts.archers > 0 ? (
             <View style={styles.rosterChips}>
               <View style={styles.rosterChip}>
@@ -575,7 +575,7 @@ function UpgradePanel({
                   style={styles.footerUnitIcon}
                   fallback={<View style={styles.footerUnitIconFallback} />}
                 />
-                <Text style={styles.rosterCount}>×{armyCounts.fighters}</Text>
+                <Text style={styles.rosterCount} maxFontSizeMultiplier={theme.maxFontScale}>×{armyCounts.fighters}</Text>
               </View>
               <View style={styles.rosterChip}>
                 <AssetImage
@@ -583,7 +583,7 @@ function UpgradePanel({
                   style={styles.footerUnitIcon}
                   fallback={<View style={styles.footerUnitIconFallback} />}
                 />
-                <Text style={styles.rosterCount}>×{armyCounts.archers}</Text>
+                <Text style={styles.rosterCount} maxFontSizeMultiplier={theme.maxFontScale}>×{armyCounts.archers}</Text>
               </View>
             </View>
           ) : (

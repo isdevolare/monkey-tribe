@@ -23,8 +23,16 @@ export function MainMenuScreen() {
       <View style={styles.decorLayer} pointerEvents="none">
         <AssetImage assetKey="menuTorch" resizeMode="contain" style={styles.torchLeft} fallback={<View />} />
         <AssetImage assetKey="menuTorch" resizeMode="contain" style={styles.torchRight} fallback={<View />} />
+        <View style={styles.bottomScrimA} />
+        <View style={styles.bottomScrimB} />
+        <View style={styles.bottomScrimC} />
         <AssetImage assetKey="menuTotem" resizeMode="contain" style={styles.totem} fallback={<View />} />
         <AssetImage assetKey="menuChiefMascot" resizeMode="contain" style={styles.mascot} fallback={<View />} />
+        <View style={styles.bottomTag}>
+          <Text style={styles.bottomTagText} maxFontSizeMultiplier={theme.maxFontScale}>
+            {t("menu.bottomTag", lang)}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -138,17 +146,57 @@ const styles = StyleSheet.create({
   },
   mascot: {
     position: "absolute",
-    left: -14,
-    bottom: 8,
-    width: 150,
-    height: 200
+    left: -10,
+    bottom: 2,
+    width: 132,
+    height: 176
   },
   totem: {
     position: "absolute",
-    right: 2,
-    bottom: 14,
-    width: 86,
-    height: 150
+    right: 4,
+    bottom: 8,
+    width: 80,
+    height: 140
+  },
+  bottomScrimA: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 150,
+    backgroundColor: "rgba(4, 10, 6, 0.18)"
+  },
+  bottomScrimB: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 90,
+    backgroundColor: "rgba(4, 10, 6, 0.26)"
+  },
+  bottomScrimC: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 44,
+    backgroundColor: "rgba(4, 10, 6, 0.36)"
+  },
+  bottomTag: {
+    position: "absolute",
+    bottom: 16,
+    alignSelf: "center",
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.45)",
+    backgroundColor: "rgba(14, 12, 7, 0.78)",
+    paddingHorizontal: 14,
+    paddingVertical: 5
+  },
+  bottomTagText: {
+    color: "#ffe9ad",
+    fontSize: theme.type.label,
+    fontWeight: "800", fontFamily: theme.fonts.bold
   },
   torchLeft: {
     position: "absolute",
@@ -168,9 +216,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 52,
+    paddingTop: 40,
     paddingRight: theme.spacing.xl,
-    paddingBottom: 38,
+    // Keeps the buttons clear of the mascot strip at the bottom.
+    paddingBottom: 176,
     paddingLeft: theme.spacing.xl
   },
   logoShadow: {

@@ -356,17 +356,19 @@ function BuildingSprite({
       <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
 
       {selected ? (
-        <View style={styles.nameTag} pointerEvents="none">
-          <Text style={styles.nameTagText} numberOfLines={1}>
-            {buildingName(building.type, lang)}
-          </Text>
+        <View style={styles.nameTagWrap} pointerEvents="none">
+          <View style={styles.nameTag}>
+            <Text style={styles.nameTagText} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
+              {buildingName(building.type, lang)}
+            </Text>
+          </View>
         </View>
       ) : null}
 
       {selected || building.level >= 2 ? (
         <View style={styles.levelBadgeWrap} pointerEvents="none">
           <View style={styles.levelBadge}>
-            <Text style={styles.levelBadgeText}>{building.level}</Text>
+            <Text style={styles.levelBadgeText} maxFontSizeMultiplier={theme.maxFontScale}>{building.level}</Text>
           </View>
         </View>
       ) : null}
@@ -814,10 +816,15 @@ const styles = StyleSheet.create({
     borderColor: "rgba(150, 255, 105, 0.95)",
     backgroundColor: "rgba(49, 198, 67, 0.18)"
   },
-  nameTag: {
+  // Wider than the sprite so long names don't get squeezed into ellipsis.
+  nameTagWrap: {
     position: "absolute",
     top: "-10%",
-    alignSelf: "center",
+    left: "-70%",
+    right: "-70%",
+    alignItems: "center"
+  },
+  nameTag: {
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: 9,
