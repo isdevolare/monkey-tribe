@@ -28,5 +28,16 @@ export const theme = {
     regular: "Baloo2_500Medium",
     bold: "Baloo2_700Bold",
     heavy: "Baloo2_800ExtraBold"
+  },
+  // Single type scale so numbers/labels feel consistent across the HUD.
+  type: {
+    display: 42,
+    h1: 20,
+    h2: 16,
+    title: 15,
+    body: 13,
+    label: 12,
+    small: 11,
+    tiny: 10
   }
 } as const;

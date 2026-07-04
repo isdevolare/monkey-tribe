@@ -858,8 +858,8 @@ const styles = StyleSheet.create({
   },
   levelBadgeText: {
     color: "#fff4d6",
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: theme.type.small,
+    lineHeight: 13,
     fontFamily: theme.fonts.heavy
   },
   sprite: {

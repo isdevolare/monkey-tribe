@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { theme } from "../../theme/theme";
-import { AssetImage } from "./AssetImage";
+import { NineSliceFrame } from "./NineSliceFrame";
 import { SpringPressable } from "./SpringPressable";
 
 type WoodButtonProps = {
@@ -17,14 +17,8 @@ export function WoodButton({ label, onPress, primary }: WoodButtonProps) {
       onPress={onPress}
       style={[styles.woodButton, primary ? styles.woodButtonPrimary : styles.woodButtonSecondary]}
     >
-      <AssetImage
-        assetKey="uiButtonWoodLarge"
-        resizeMode="stretch"
-        style={styles.woodButtonArt}
-        fallback={
-          <View style={primary ? styles.woodButtonPrimaryFill : styles.woodButtonSecondaryFill} />
-        }
-      />
+      <View style={primary ? styles.woodButtonPrimaryFill : styles.woodButtonSecondaryFill} />
+      <NineSliceFrame preset="woodButton" cornerSize={26} style={StyleSheet.absoluteFill} />
       <Text style={[styles.woodButtonText, primary ? styles.woodButtonTextPrimary : null]}>
         {label}
       </Text>
@@ -63,15 +57,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#66401e"
   },
-  // The plaque art carries transparent top/bottom margins; oversize it so
-  // the carved wood fills the button instead of floating in a flat box.
-  woodButtonArt: {
-    position: "absolute",
-    top: "-31%",
-    bottom: "-46%",
-    left: "-2%",
-    width: "104%"
-  },
+
   woodButtonText: {
     color: "#ffe9ad",
     fontSize: 16,

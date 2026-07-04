@@ -101,7 +101,7 @@ function formatAmount(value: number) {
 
 export function GameScreen() {
   const state = useGameStore();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const layoutWidth = Math.min(width, PHONE_FRAME_WIDTH);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
@@ -124,7 +124,9 @@ export function GameScreen() {
     stones: 0,
     wood: 0
   };
-  const boardMaxSize = Math.max(260, Math.min(layoutWidth - 20, 404));
+  // Cap by height too so board + panel + dock fit ~667pt phones without
+  // pushing the dock off-screen.
+  const boardMaxSize = Math.max(260, Math.min(layoutWidth - 20, 404, Math.round(height * 0.52)));
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -403,12 +405,7 @@ export function GameScreen() {
                   onPress={state.openRaidMap}
                   style={styles.raidButton}
                 >
-                  <AssetImage
-                    assetKey="uiButtonRaid"
-                    resizeMode="contain"
-                    style={styles.raidButtonArt}
-                    fallback={<View style={styles.raidButtonFallback} />}
-                  />
+                  <NineSliceFrame preset="raidPlaque" cornerSize={22} style={StyleSheet.absoluteFill} />
                   <Text style={styles.raidText}>{t("dock.raid", lang)}</Text>
                 </SpringPressable>
               </Animated.View>
@@ -511,12 +508,7 @@ function UpgradePanel({
         onPress={onUpgrade}
         style={[styles.upgradeButton, disabled ? styles.upgradeButtonDisabled : null]}
       >
-        <AssetImage
-          assetKey="uiButtonAttack"
-          resizeMode="stretch"
-          style={styles.upgradeButtonArt}
-          fallback={<View style={styles.upgradeButtonArtFallback} />}
-        />
+        <NineSliceFrame preset="attackPlaque" cornerSize={18} style={StyleSheet.absoluteFill} />
         <Text style={styles.upgradeButtonLabel}>{t("upgrade.button", lang)}</Text>
         {gated ? (
           <Text style={styles.upgradeButtonCost} numberOfLines={1}>
@@ -961,7 +953,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: theme.spacing.sm
+    gap: theme.spacing.md
   },
   heroBadge: {
     flex: 1,
@@ -1009,12 +1001,14 @@ const styles = StyleSheet.create({
   },
   levelSealText: {
     color: theme.colors.paper,
-    fontSize: 12,
+    fontSize: theme.type.label,
     lineHeight: 15,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   namePlate: {
     flexShrink: 1,
+    flexGrow: 1,
+    maxWidth: 190,
     minHeight: 44,
     justifyContent: "center",
     marginLeft: -12,
@@ -1029,7 +1023,7 @@ const styles = StyleSheet.create({
   },
   clanName: {
     color: theme.colors.paper,
-    fontSize: 14,
+    fontSize: theme.type.title,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   clanSubtitle: {
@@ -1041,7 +1035,7 @@ const styles = StyleSheet.create({
   topButtons: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.xs
+    gap: theme.spacing.sm
   },
   gemPill: {
     flexDirection: "row",
@@ -1065,7 +1059,7 @@ const styles = StyleSheet.create({
   },
   gemText: {
     color: "#bfe6ff",
-    fontSize: 15,
+    fontSize: theme.type.title,
     fontWeight: "900",
     fontFamily: theme.fonts.heavy
   },
@@ -1189,7 +1183,7 @@ const styles = StyleSheet.create({
   resourceValue: {
     flex: 1,
     color: "#ffe9ad",
-    fontSize: 15,
+    fontSize: theme.type.title,
     fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "right"
   },
@@ -1525,19 +1519,7 @@ const styles = StyleSheet.create({
   upgradeButtonDisabled: {
     opacity: 0.55
   },
-  // Same crop trick as the raid map's attack plaque: skip the art's baked-in
-  // backdrop and totem crest, keep the stone body.
-  upgradeButtonArt: {
-    position: "absolute",
-    top: "-62%",
-    left: "-11%",
-    width: "122%",
-    height: "196%"
-  },
-  upgradeButtonArtFallback: {
-    flex: 1,
-    backgroundColor: "transparent"
-  },
+
   upgradeButtonLabel: {
     color: theme.colors.paper,
     fontSize: 14,
@@ -1773,9 +1755,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "rgba(226, 177, 90, 0.4)",
-    backgroundColor: "#31200f",
+    backgroundColor: "#8a3d10",
     overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.48,
@@ -1799,19 +1779,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 2
   },
-  // Slightly oversized so the plaque art spans the full button width and the
-  // rope ends sit at the edges instead of floating inside.
-  raidButtonArt: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: "-9%",
-    width: "118%"
-  },
-  raidButtonFallback: {
-    flex: 1,
-    backgroundColor: "transparent"
-  },
+
   modalScrim: {
     flex: 1,
     alignItems: "center",

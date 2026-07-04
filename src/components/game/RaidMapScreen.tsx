@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { AssetImage } from "./AssetImage";
+import { NineSliceFrame } from "./NineSliceFrame";
 import { SpringPressable } from "./SpringPressable";
 import { WoodButton } from "./WoodButton";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
@@ -66,12 +67,7 @@ export function RaidMapScreen({ fighterCount, raidLevel, lang, onAttack, onClose
               onPress={() => onAttack(camp.id)}
               style={[styles.attackButton, noFighters ? styles.attackButtonDisabled : null]}
             >
-              <AssetImage
-                assetKey="uiButtonAttack"
-                resizeMode="stretch"
-                style={styles.attackArt}
-                fallback={<View style={styles.attackArtFallback} />}
-              />
+              <NineSliceFrame preset="attackPlaque" cornerSize={18} style={StyleSheet.absoluteFill} />
               <Text style={styles.attackText} numberOfLines={1}>
                 {noFighters ? t("raidmap.needFighter", lang) : t("raidmap.attack", lang)}
               </Text>
