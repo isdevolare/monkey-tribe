@@ -68,7 +68,7 @@ export function RaidMapScreen({ fighterCount, raidLevel, lang, onAttack, onClose
               style={[styles.attackButton, noFighters ? styles.attackButtonDisabled : null]}
             >
               <NineSliceFrame preset="attackPlaque" cornerSize={18} style={StyleSheet.absoluteFill} />
-              <Text style={styles.attackText} numberOfLines={1}>
+              <Text style={styles.attackText} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
                 {noFighters ? t("raidmap.needFighter", lang) : t("raidmap.attack", lang)}
               </Text>
             </SpringPressable>
@@ -86,7 +86,7 @@ function LootChip({ assetKey, amount }: { assetKey: GameAssetKey; amount: number
   return (
     <View style={styles.lootChip}>
       <AssetImage assetKey={assetKey} style={styles.lootIcon} fallback={<View style={styles.lootIconFallback} />} />
-      <Text style={styles.lootText}>{amount}</Text>
+      <Text style={styles.lootText} maxFontSizeMultiplier={theme.maxFontScale}>{amount}</Text>
     </View>
   );
 }

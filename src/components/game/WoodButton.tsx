@@ -19,7 +19,11 @@ export function WoodButton({ label, onPress, primary }: WoodButtonProps) {
     >
       <View style={primary ? styles.woodButtonPrimaryFill : styles.woodButtonSecondaryFill} />
       <NineSliceFrame preset="woodButton" cornerSize={26} style={StyleSheet.absoluteFill} />
-      <Text style={[styles.woodButtonText, primary ? styles.woodButtonTextPrimary : null]}>
+      <Text
+        style={[styles.woodButtonText, primary ? styles.woodButtonTextPrimary : null]}
+        numberOfLines={1}
+        maxFontSizeMultiplier={theme.maxFontScale}
+      >
         {label}
       </Text>
     </SpringPressable>

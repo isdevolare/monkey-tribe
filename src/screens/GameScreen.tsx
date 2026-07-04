@@ -241,7 +241,7 @@ export function GameScreen() {
                 />
               </View>
               <View style={styles.levelSeal}>
-                <Text style={styles.levelSealText}>{clanLevel}</Text>
+                <Text style={styles.levelSealText} maxFontSizeMultiplier={theme.maxFontScale}>{clanLevel}</Text>
               </View>
             </View>
             <View style={styles.namePlate}>
@@ -254,7 +254,7 @@ export function GameScreen() {
           <View style={styles.topButtons}>
             <View style={styles.gemPill}>
               <AssetImage assetKey="resourceJungleGem" style={styles.gemIcon} fallback={<View />} />
-              <Text style={styles.gemText}>{state.gems}</Text>
+              <Text style={styles.gemText} maxFontSizeMultiplier={theme.maxFontScale}>{state.gems}</Text>
             </View>
             <TopIcon
               label="Ayarlar"
@@ -406,7 +406,7 @@ export function GameScreen() {
                   style={styles.raidButton}
                 >
                   <NineSliceFrame preset="raidPlaque" cornerSize={22} style={StyleSheet.absoluteFill} />
-                  <Text style={styles.raidText}>{t("dock.raid", lang)}</Text>
+                  <Text style={styles.raidText} maxFontSizeMultiplier={theme.maxFontScale}>{t("dock.raid", lang)}</Text>
                 </SpringPressable>
               </Animated.View>
             </View>
@@ -509,7 +509,7 @@ function UpgradePanel({
         style={[styles.upgradeButton, disabled ? styles.upgradeButtonDisabled : null]}
       >
         <NineSliceFrame preset="attackPlaque" cornerSize={18} style={StyleSheet.absoluteFill} />
-        <Text style={styles.upgradeButtonLabel}>{t("upgrade.button", lang)}</Text>
+        <Text style={styles.upgradeButtonLabel} maxFontSizeMultiplier={theme.maxFontScale}>{t("upgrade.button", lang)}</Text>
         {gated ? (
           <Text style={styles.upgradeButtonCost} numberOfLines={1}>
             {t("upgrade.needClanHall", lang)}
@@ -643,7 +643,7 @@ function ProductionQueue({
                   style={styles.queueIcon}
                   fallback={<View style={styles.queueIconFallback} />}
                 />
-                <Text style={styles.queueTimer}>{remain}s</Text>
+                <Text style={styles.queueTimer} maxFontSizeMultiplier={theme.maxFontScale}>{remain}s</Text>
               </View>
             </PopIn>
           );
@@ -687,6 +687,7 @@ function ResourceChip({
       <Text
         style={[styles.resourceValue, compact ? styles.resourceValueCompact : null]}
         numberOfLines={1}
+        maxFontSizeMultiplier={theme.maxFontScale}
       >
         {shown}
       </Text>
@@ -769,7 +770,10 @@ function CostChips({ cost, light }: { cost: Resources; light?: boolean }) {
             style={styles.costIcon}
             fallback={<View style={styles.costIconFallback} />}
           />
-          <Text style={[styles.costAmount, light ? styles.costAmountLight : null]}>
+          <Text
+            style={[styles.costAmount, light ? styles.costAmountLight : null]}
+            maxFontSizeMultiplier={theme.maxFontScale}
+          >
             {entry.amount}
           </Text>
         </View>
@@ -838,7 +842,7 @@ function ActionCard({
         ) : (
           <Text style={styles.actionGlyph}>{glyph}</Text>
         )}
-        <Text style={styles.actionTitle} numberOfLines={1}>
+        <Text style={styles.actionTitle} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
           {title}
         </Text>
         <CostChips cost={cost} />

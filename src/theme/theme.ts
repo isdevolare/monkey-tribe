@@ -29,6 +29,9 @@ export const theme = {
     bold: "Baloo2_700Bold",
     heavy: "Baloo2_800ExtraBold"
   },
+  // Cap Dynamic Type scaling for text inside fixed-size game chrome
+  // (plaques, pills, cards) so accessibility sizes can't clip them.
+  maxFontScale: 1.2,
   // Single type scale so numbers/labels feel consistent across the HUD.
   type: {
     display: 42,
