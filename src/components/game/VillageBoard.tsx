@@ -626,7 +626,10 @@ function unitAssetKey(unit: Unit): GameAssetKey {
   if (unit.type === "archer") {
     return "unitArcher";
   }
-  return unit.type === "fighter" ? "unitWarrior" : "unitWorker";
+  if (unit.type === "fighter" || unit.type === "guardian") {
+    return "unitWarrior";
+  }
+  return "unitWorker";
 }
 
 function Campfire() {

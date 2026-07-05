@@ -20,7 +20,8 @@ export const WATCH_TOWER_DAMAGE_REDUCTION = 2;
 export const UNIT_COSTS: Record<UnitType, Resources> = {
   worker: { bananas: 10, stones: 0, wood: 0 },
   fighter: { bananas: 15, stones: 5, wood: 3 },
-  archer: { bananas: 18, stones: 8, wood: 6 }
+  archer: { bananas: 18, stones: 8, wood: 6 },
+  guardian: { bananas: 25, stones: 20, wood: 10 }
 };
 
 export const RAID_REWARD: Resources = {
@@ -33,7 +34,8 @@ export const RAID_REWARD: Resources = {
 export const PRODUCTION_DURATION_MS: Record<UnitType, number> = {
   worker: 5000,
   fighter: 9000,
-  archer: 11000
+  archer: 11000,
+  guardian: 13000
 };
 
 // Gems to instantly finish the whole production queue.
@@ -48,7 +50,9 @@ export const UNIT_STATS: Record<
 > = {
   worker: { hp: 24, attack: 2, range: 1 },
   fighter: { hp: 56, attack: 10, range: 1 },
-  archer: { hp: 34, attack: 7, range: 3 }
+  archer: { hp: 34, attack: 7, range: 3 },
+  // Tank: soaks damage up front, hits softly.
+  guardian: { hp: 110, attack: 6, range: 1 }
 };
 
 // Wounded units slowly recover while back home in the village.

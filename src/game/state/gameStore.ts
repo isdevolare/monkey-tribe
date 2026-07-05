@@ -96,7 +96,7 @@ function buildingLevel(buildings: VillageBuilding[], type: VillageBuildingType) 
 
 // Units that fight in a raid (as opposed to workers).
 function isCombatant(unit: Unit) {
-  return unit.type === "fighter" || unit.type === "archer";
+  return unit.type === "fighter" || unit.type === "archer" || unit.type === "guardian";
 }
 
 function cloneBuildings(buildings: VillageBuilding[]): VillageBuilding[] {
@@ -536,6 +536,13 @@ function createPlayerUnit(state: GameState, type: UnitType) {
     };
   }
 
+  if (type === "guardian" && buildingLevel(state.buildings, "trainingNest") <= 0) {
+    return {
+      ...state,
+      feedback: { id: Date.now(), text: t("fb.needTrainingNest", state.language) }
+    };
+  }
+
   if (type === "archer" && buildingLevel(state.buildings, "watchTower") <= 0) {
     return {
       ...state,
@@ -855,6 +862,7 @@ export const useGameStore = create<GameState>((set) => ({
     }),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
   trainArcher: () => set((state) => createPlayerUnit(state, "archer")),
+  trainGuardian: () => set((state) => createPlayerUnit(state, "guardian")),
   rushProduction: () =>
     set((state) => {
       if (state.productionQueue.length === 0) {

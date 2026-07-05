@@ -28,7 +28,7 @@ export type TileType =
   | "enemyCamp"
   | "empty";
 
-export type UnitType = "worker" | "fighter" | "archer";
+export type UnitType = "worker" | "fighter" | "archer" | "guardian";
 export type UnitState =
   | "idle"
   | "moving"
@@ -162,6 +162,7 @@ export type GameState = {
   buyShopItem: (id: string) => void;
   trainFighter: () => void;
   trainArcher: () => void;
+  trainGuardian: () => void;
   rushProduction: () => void;
   openRaidMap: () => void;
   closeRaidMap: () => void;

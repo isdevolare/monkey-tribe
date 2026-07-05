@@ -25,6 +25,8 @@ const dict: Record<string, Entry> = {
   "unit.worker": { tr: "İşçi", en: "Worker" },
   "unit.fighter": { tr: "Savaşçı", en: "Fighter" },
   "unit.archer": { tr: "Okçu", en: "Archer" },
+  "unit.guardian": { tr: "Koruyucu", en: "Guardian" },
+  "barracks.trainGuardian": { tr: "Koruyucu Eğit", en: "Train Guardian" },
   "dock.raid": { tr: "BASKIN", en: "RAID" },
 
   // Village interaction
@@ -161,9 +163,11 @@ const dict: Record<string, Entry> = {
   "fb.trained.worker": { tr: "İşçi kabileye katıldı", en: "Worker joined the tribe" },
   "fb.trained.fighter": { tr: "Savaşçı eğitildi", en: "Fighter trained" },
   "fb.trained.archer": { tr: "Okçu eğitildi", en: "Archer trained" },
+  "fb.trained.guardian": { tr: "Koruyucu eğitildi", en: "Guardian trained" },
   "fb.queued.worker": { tr: "İşçi kuyruğa alındı", en: "Worker queued" },
   "fb.queued.fighter": { tr: "Savaşçı kuyruğa alındı", en: "Fighter queued" },
   "fb.queued.archer": { tr: "Okçu kuyruğa alındı", en: "Archer queued" },
+  "fb.queued.guardian": { tr: "Koruyucu kuyruğa alındı", en: "Guardian queued" },
   "fb.queueFull": { tr: "Üretim kuyruğu dolu", en: "Production queue is full" },
   "fb.needGems": { tr: "Yeterli gem yok", en: "Not enough gems" },
   "fb.rushed": { tr: "Üretim hızlandırıldı", en: "Production rushed" },

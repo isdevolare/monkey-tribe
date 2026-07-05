@@ -125,7 +125,7 @@ export function GameScreen() {
   const fighterCount = state.units.filter(
     (unit) =>
       unit.owner === "player" &&
-      (unit.type === "fighter" || unit.type === "archer") &&
+      (unit.type === "fighter" || unit.type === "archer" || unit.type === "guardian") &&
       unit.state !== "dead" &&
       unit.hp > 0
   ).length;
@@ -212,6 +212,10 @@ export function GameScreen() {
     levelOf(state.buildings, "watchTower") <= 0 ||
     population >= state.maxPopulation ||
     !hasResources(state.resources, UNIT_COSTS.archer);
+  const trainGuardianDisabled =
+    levelOf(state.buildings, "trainingNest") <= 0 ||
+    population >= state.maxPopulation ||
+    !hasResources(state.resources, UNIT_COSTS.guardian);
   const sheet = getGameAsset("unitMonkeySheet");
   const queuedTypes = new Set(state.productionQueue.map((item) => item.type));
   const compactHud = layoutWidth < 370;
@@ -388,7 +392,9 @@ export function GameScreen() {
                 units={state.units}
                 workShiftUntil={state.workShiftUntil}
                 workerCount={workerCount}
+                guardianDisabled={trainGuardianDisabled}
                 onSendWorkers={state.sendWorkersToWork}
+                onTrainGuardian={state.trainGuardian}
                 onUpgrade={() => state.upgradeBuilding(selectedBuilding)}
                 onClose={() => setSelectedBuilding(null)}
               />
@@ -512,7 +518,9 @@ function UpgradePanel({
   units,
   workShiftUntil,
   workerCount,
+  guardianDisabled,
   onSendWorkers,
+  onTrainGuardian,
   onUpgrade,
   onClose
 }: {
@@ -523,7 +531,9 @@ function UpgradePanel({
   units: Unit[];
   workShiftUntil: number | null;
   workerCount: number;
+  guardianDisabled: boolean;
   onSendWorkers: () => void;
+  onTrainGuardian: () => void;
   onUpgrade: () => void;
   onClose: () => void;
 }) {
@@ -540,10 +550,11 @@ function UpgradePanel({
       if (unit.owner === "player" && unit.state !== "dead" && unit.hp > 0) {
         if (unit.type === "fighter") acc.fighters += 1;
         if (unit.type === "archer") acc.archers += 1;
+        if (unit.type === "guardian") acc.guardians += 1;
       }
       return acc;
     },
-    { fighters: 0, archers: 0 }
+    { fighters: 0, archers: 0, guardians: 0 }
   );
 
   return (
@@ -625,30 +636,40 @@ function UpgradePanel({
       ) : null}
 
       {type === "trainingNest" ? (
-        <View style={styles.panelFooter}>
-          <Text style={styles.rosterTitle} maxFontSizeMultiplier={theme.maxFontScale}>{t("barracks.title", lang)}</Text>
-          {armyCounts.fighters + armyCounts.archers > 0 ? (
-            <View style={styles.rosterChips}>
-              <View style={styles.rosterChip}>
-                <AssetImage
-                  assetKey="unitWarrior"
-                  style={styles.footerUnitIcon}
-                  fallback={<View style={styles.footerUnitIconFallback} />}
-                />
-                <Text style={styles.rosterCount} maxFontSizeMultiplier={theme.maxFontScale}>×{armyCounts.fighters}</Text>
+        <View style={styles.barracksFooter}>
+          <View style={styles.rosterCol}>
+            <Text style={styles.rosterTitle} maxFontSizeMultiplier={theme.maxFontScale}>{t("barracks.title", lang)}</Text>
+            {armyCounts.fighters + armyCounts.archers + armyCounts.guardians > 0 ? (
+              <View style={styles.rosterChips}>
+                <View style={styles.rosterChip}>
+                  <AssetImage assetKey="unitWarrior" style={styles.footerUnitIcon} fallback={<View style={styles.footerUnitIconFallback} />} />
+                  <Text style={styles.rosterCount} maxFontSizeMultiplier={theme.maxFontScale}>×{armyCounts.fighters}</Text>
+                </View>
+                <View style={styles.rosterChip}>
+                  <AssetImage assetKey="unitArcher" style={styles.footerUnitIcon} fallback={<View style={styles.footerUnitIconFallback} />} />
+                  <Text style={styles.rosterCount} maxFontSizeMultiplier={theme.maxFontScale}>×{armyCounts.archers}</Text>
+                </View>
+                <View style={styles.rosterChip}>
+                  <AssetImage assetKey="unitWarrior" style={styles.footerUnitIcon} fallback={<View style={styles.footerUnitIconFallback} />} />
+                  <Text style={styles.rosterCount} maxFontSizeMultiplier={theme.maxFontScale}>🛡×{armyCounts.guardians}</Text>
+                </View>
               </View>
-              <View style={styles.rosterChip}>
-                <AssetImage
-                  assetKey="unitArcher"
-                  style={styles.footerUnitIcon}
-                  fallback={<View style={styles.footerUnitIconFallback} />}
-                />
-                <Text style={styles.rosterCount} maxFontSizeMultiplier={theme.maxFontScale}>×{armyCounts.archers}</Text>
-              </View>
-            </View>
-          ) : (
-            <Text style={styles.rosterEmpty}>{t("barracks.empty", lang)}</Text>
-          )}
+            ) : (
+              <Text style={styles.rosterEmpty}>{t("barracks.empty", lang)}</Text>
+            )}
+          </View>
+          <SpringPressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: guardianDisabled }}
+            disabled={guardianDisabled}
+            onPress={onTrainGuardian}
+            style={[styles.guardianButton, guardianDisabled ? styles.guardianButtonDisabled : null]}
+          >
+            <Text style={styles.guardianButtonText} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
+              🛡 {t("barracks.trainGuardian", lang)}
+            </Text>
+            <CostChips cost={UNIT_COSTS.guardian} light />
+          </SpringPressable>
         </View>
       ) : null}
     </View>
@@ -659,7 +680,7 @@ function queueUnitAsset(type: UnitType): GameAssetKey {
   if (type === "archer") {
     return "unitArcher";
   }
-  if (type === "fighter") {
+  if (type === "fighter" || type === "guardian") {
     return "unitWarrior";
   }
   return "unitWorker";
@@ -1564,6 +1585,36 @@ const styles = StyleSheet.create({
   workStatusText: {
     color: "#ffe9ad",
     fontSize: 12.5,
+    fontWeight: "900", fontFamily: theme.fonts.heavy
+  },
+  barracksFooter: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 248, 217, 0.12)"
+  },
+  rosterCol: {
+    gap: 6
+  },
+  guardianButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minHeight: 44,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "rgba(120, 200, 255, 0.5)",
+    backgroundColor: "rgba(40, 70, 95, 0.85)",
+    paddingHorizontal: theme.spacing.md
+  },
+  guardianButtonDisabled: {
+    opacity: 0.5
+  },
+  guardianButtonText: {
+    color: "#dff1ff",
+    fontSize: 13,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   rosterTitle: {
