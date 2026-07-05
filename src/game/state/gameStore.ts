@@ -31,6 +31,7 @@ import {
 import { STRONGHOLD_BASE_LEVEL, getCamp, campName, type RaidCamp } from "../config/camps";
 import { DAILY_REWARDS, dayDiff, todayKey } from "../config/dailyRewards";
 import { QUESTS, isQuestComplete } from "../config/quests";
+import { SHOP_ITEMS } from "../config/shop";
 import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import type {
@@ -806,6 +807,27 @@ export const useGameStore = create<GameState>((set) => ({
       };
     }),
   dismissOfflineReport: () => set(() => ({ offlineReport: null })),
+  buyShopItem: (id: string) =>
+    set((state) => {
+      const item = SHOP_ITEMS.find((entry) => entry.id === id);
+      if (!item) {
+        return state;
+      }
+      if (state.gems < item.gemCost) {
+        return { ...state, feedback: { id: Date.now(), text: t("fb.needGems", state.language) } };
+      }
+      const now = Date.now();
+      return {
+        ...state,
+        gems: state.gems - item.gemCost,
+        resources: {
+          bananas: state.resources.bananas + (item.reward.bananas ?? 0),
+          stones: state.resources.stones + (item.reward.stones ?? 0),
+          wood: state.resources.wood + (item.reward.wood ?? 0)
+        },
+        feedback: { id: now, text: t("shop.bought", state.language) }
+      };
+    }),
   claimDaily: () =>
     set((state) => {
       const today = todayKey();

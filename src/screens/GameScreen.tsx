@@ -21,6 +21,7 @@ import { DailyRewardModal } from "../components/game/DailyRewardModal";
 import { NineSliceFrame } from "../components/game/NineSliceFrame";
 import { OfflineModal } from "../components/game/OfflineModal";
 import { QuestModal } from "../components/game/QuestModal";
+import { ShopModal } from "../components/game/ShopModal";
 import { SpringPressable } from "../components/game/SpringPressable";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { PopIn, TapHint } from "../components/game/Vfx";
@@ -112,6 +113,7 @@ export function GameScreen() {
   const [tutorialStep, setTutorialStep] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showQuests, setShowQuests] = useState(false);
+  const [showShop, setShowShop] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
   const dailyAutoShown = useRef(false);
   const [selectedBuilding, setSelectedBuilding] = useState<VillageBuildingType | null>(null);
@@ -271,10 +273,19 @@ export function GameScreen() {
           </View>
 
           <View style={styles.topButtons}>
-            <View style={styles.gemPill}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Gem Mağazası"
+              onPress={() => {
+                playSound("open");
+                setShowShop(true);
+              }}
+              style={styles.gemPill}
+            >
               <AssetImage assetKey="resourceJungleGem" style={styles.gemIcon} fallback={<View />} />
               <Text style={styles.gemText} maxFontSizeMultiplier={theme.maxFontScale}>{state.gems}</Text>
-            </View>
+              <Text style={styles.gemPlus} maxFontSizeMultiplier={theme.maxFontScale}>+</Text>
+            </Pressable>
             <TopIcon
               label="Günlük Ödül"
               glyph="🎁"
@@ -479,6 +490,8 @@ export function GameScreen() {
       />
 
       <DailyRewardModal visible={showDaily} lang={lang} onClose={() => setShowDaily(false)} />
+
+      <ShopModal visible={showShop} lang={lang} onClose={() => setShowShop(false)} />
     </View>
   );
 
@@ -1105,16 +1118,16 @@ const styles = StyleSheet.create({
   topButtons: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.sm
+    gap: 6
   },
   gemPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
     minHeight: 40,
     borderRadius: 999,
     backgroundColor: "rgba(14, 12, 7, 0.85)",
-    paddingHorizontal: 11,
+    paddingHorizontal: 8,
     borderWidth: 1.5,
     borderColor: "rgba(120, 200, 255, 0.45)",
     shadowColor: "#000",
@@ -1124,12 +1137,26 @@ const styles = StyleSheet.create({
     elevation: 4
   },
   gemIcon: {
-    width: 22,
-    height: 22
+    width: 20,
+    height: 20
   },
   gemText: {
     color: "#bfe6ff",
     fontSize: theme.type.title,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
+  },
+  gemPlus: {
+    marginLeft: 2,
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    overflow: "hidden",
+    textAlign: "center",
+    lineHeight: 15,
+    color: "#0e2417",
+    backgroundColor: "#7ec86a",
+    fontSize: theme.type.small,
     fontWeight: "900",
     fontFamily: theme.fonts.heavy
   },
@@ -1162,11 +1189,11 @@ const styles = StyleSheet.create({
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   topIcon: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 22,
+    borderRadius: 20,
     borderWidth: 1.5,
     borderColor: "rgba(226, 177, 90, 0.4)",
     backgroundColor: "rgba(14, 12, 7, 0.85)",

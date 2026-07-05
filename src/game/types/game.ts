@@ -159,6 +159,7 @@ export type GameState = {
   claimQuest: (id: string) => void;
   dismissOfflineReport: () => void;
   claimDaily: () => void;
+  buyShopItem: (id: string) => void;
   trainFighter: () => void;
   trainArcher: () => void;
   rushProduction: () => void;
