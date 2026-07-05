@@ -58,3 +58,9 @@ export const VILLAGE_REGEN_PER_SEC = 2;
 // boosting passive production per working monkey.
 export const WORK_SHIFT_MS = 3 * 60 * 1000;
 export const WORKER_BOOST = 0.2;
+
+// Offline earnings: buildings keep producing while the game is closed,
+// but only up to this many hours so leaving doesn't trivialize the game.
+export const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000;
+// Ignore trivially short gaps (app backgrounded for a moment).
+export const OFFLINE_MIN_MS = 60 * 1000;

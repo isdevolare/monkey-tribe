@@ -111,6 +111,15 @@ export type VillageSave = {
   workShiftUntil?: number | null;
   questProgress?: Partial<Record<QuestMetric, number>>;
   questsClaimed?: string[];
+  lastSeenAt?: number;
+};
+
+// Summary shown when the player returns after being away.
+export type OfflineReport = {
+  bananas: number;
+  stones: number;
+  wood: number;
+  durationMs: number;
 };
 
 export type GameState = {
@@ -134,6 +143,7 @@ export type GameState = {
   workShiftUntil: number | null;
   questProgress: Partial<Record<QuestMetric, number>>;
   questsClaimed: string[];
+  offlineReport: OfflineReport | null;
   lastProductionAt: number;
   language: Lang;
   feedback: FeedbackMessage | null;
@@ -143,6 +153,7 @@ export type GameState = {
   createWorker: () => void;
   sendWorkersToWork: () => void;
   claimQuest: (id: string) => void;
+  dismissOfflineReport: () => void;
   trainFighter: () => void;
   trainArcher: () => void;
   rushProduction: () => void;

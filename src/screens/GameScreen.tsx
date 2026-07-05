@@ -18,6 +18,7 @@ import { RaidBoard } from "../components/game/RaidBoard";
 import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { NineSliceFrame } from "../components/game/NineSliceFrame";
+import { OfflineModal } from "../components/game/OfflineModal";
 import { QuestModal } from "../components/game/QuestModal";
 import { SpringPressable } from "../components/game/SpringPressable";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
@@ -447,6 +448,12 @@ export function GameScreen() {
       />
 
       <QuestModal visible={showQuests} lang={lang} onClose={() => setShowQuests(false)} />
+
+      <OfflineModal
+        report={state.offlineReport}
+        lang={lang}
+        onCollect={state.dismissOfflineReport}
+      />
     </View>
   );
 

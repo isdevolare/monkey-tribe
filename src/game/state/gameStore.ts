@@ -7,6 +7,8 @@ import {
   ENEMY_CAMP,
   ENEMY_DETECTION_RANGE,
   MOVE_INTERVAL_MS,
+  OFFLINE_CAP_MS,
+  OFFLINE_MIN_MS,
   PLAYER_CAMP,
   PRODUCTION_DURATION_MS,
   PRODUCTION_SLOTS,
@@ -34,6 +36,7 @@ import type {
   GameState,
   GatherTarget,
   Lang,
+  OfflineReport,
   Owner,
   Position,
   ProductionItem,
@@ -53,6 +56,23 @@ function bumpQuest(
   metric: QuestMetric
 ): Partial<Record<QuestMetric, number>> {
   return { ...progress, [metric]: (progress[metric] ?? 0) + 1 };
+}
+
+// What the leveled buildings would have produced over `elapsedMs` while
+// the game was closed (same rates as the live tick, capped elsewhere).
+function offlineEarnings(
+  buildings: VillageBuilding[],
+  elapsedMs: number
+): OfflineReport {
+  const seconds = elapsedMs / 1000;
+  const report: OfflineReport = { bananas: 0, stones: 0, wood: 0, durationMs: elapsedMs };
+  for (const building of buildings) {
+    const production = BUILDING_PRODUCTION[building.type];
+    if (production) {
+      report[production.resource] += Math.floor(production.perSecond * building.level * seconds);
+    }
+  }
+  return report;
 }
 
 export const SAVE_KEY = "monkey-tribe:save";
@@ -107,6 +127,7 @@ function createFreshState(now: number) {
     workShiftUntil: null as number | null,
     questProgress: {} as Partial<Record<QuestMetric, number>>,
     questsClaimed: [] as string[],
+    offlineReport: null as OfflineReport | null,
     lastProductionAt: now,
     language: "tr" as Lang,
     feedback: null
@@ -627,12 +648,31 @@ export const useGameStore = create<GameState>((set) => ({
   hydrate: (save: VillageSave) =>
     set((state) => {
       const levels = new Map(save.buildings.map((building) => [building.type, building.level]));
+      const buildings = DEFAULT_BUILDINGS.map((building) => ({
+        type: building.type,
+        level: levels.get(building.type) ?? building.level
+      }));
+
+      // Award (capped) production for the time the game was closed.
+      const resources = { ...save.resources };
+      let offlineReport: OfflineReport | null = null;
+      if (save.lastSeenAt != null) {
+        const elapsed = Math.min(Date.now() - save.lastSeenAt, OFFLINE_CAP_MS);
+        if (elapsed >= OFFLINE_MIN_MS) {
+          const earned = offlineEarnings(buildings, elapsed);
+          if (earned.bananas + earned.stones + earned.wood > 0) {
+            resources.bananas += earned.bananas;
+            resources.stones += earned.stones;
+            resources.wood += earned.wood;
+            offlineReport = earned;
+          }
+        }
+      }
+
       return {
-        buildings: DEFAULT_BUILDINGS.map((building) => ({
-          type: building.type,
-          level: levels.get(building.type) ?? building.level
-        })),
-        resources: { ...save.resources },
+        buildings,
+        resources,
+        offlineReport,
         maxPopulation: save.maxPopulation,
         gems: save.gems ?? state.gems,
         productionQueue: save.productionQueue ?? [],
@@ -760,6 +800,7 @@ export const useGameStore = create<GameState>((set) => ({
         feedback: { id: now, text: t("fb.questClaimed", state.language) }
       };
     }),
+  dismissOfflineReport: () => set(() => ({ offlineReport: null })),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
   trainArcher: () => set((state) => createPlayerUnit(state, "archer")),
   rushProduction: () =>
@@ -995,7 +1036,8 @@ function persistVillage(state: GameState) {
     raidLevel: state.raidLevel,
     workShiftUntil: state.workShiftUntil,
     questProgress: state.questProgress,
-    questsClaimed: state.questsClaimed
+    questsClaimed: state.questsClaimed,
+    lastSeenAt: Date.now()
   };
   void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 }
