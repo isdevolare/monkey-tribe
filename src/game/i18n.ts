@@ -167,6 +167,18 @@ const dict: Record<string, Entry> = {
   "fb.queueFull": { tr: "Üretim kuyruğu dolu", en: "Production queue is full" },
   "fb.needGems": { tr: "Yeterli gem yok", en: "Not enough gems" },
   "fb.rushed": { tr: "Üretim hızlandırıldı", en: "Production rushed" },
+  "fb.questClaimed": { tr: "Görev ödülü alındı!", en: "Quest reward claimed!" },
+  "quests.title": { tr: "Görevler", en: "Quests" },
+  "quests.claim": { tr: "Al", en: "Claim" },
+  "quests.done": { tr: "Alındı", en: "Done" },
+  "quests.empty": { tr: "Şimdilik hepsi bu kadar, şef!", en: "That's all for now, chief!" },
+  "quest.train3": { tr: "3 birim üret", en: "Train 3 units" },
+  "quest.upgrade1": { tr: "Bir bina geliştir", en: "Upgrade a building" },
+  "quest.shift1": { tr: "İşçileri işe gönder", en: "Send workers to work" },
+  "quest.raid1": { tr: "İlk baskını kazan", en: "Win your first raid" },
+  "quest.train12": { tr: "12 birim üret", en: "Train 12 units" },
+  "quest.upgrade5": { tr: "5 kez bina geliştir", en: "Upgrade buildings 5 times" },
+  "quest.raid5": { tr: "5 baskın kazan", en: "Win 5 raids" },
   "fb.workersSent": {
     tr: "İşçiler işe koyuldu! Üretim +%{n}",
     en: "Workers set off! Production +{n}%"

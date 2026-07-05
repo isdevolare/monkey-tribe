@@ -96,6 +96,10 @@ export type ProductionItem = {
   finishAt: number;
 };
 
+// What a quest counts toward; cumulative per metric so tiered quests
+// (train 3 / train 10) share one counter.
+export type QuestMetric = "trainAny" | "upgradeAny" | "winRaid" | "workShift";
+
 export type VillageSave = {
   buildings: VillageBuilding[];
   resources: Resources;
@@ -105,6 +109,8 @@ export type VillageSave = {
   language?: Lang;
   raidLevel?: number;
   workShiftUntil?: number | null;
+  questProgress?: Partial<Record<QuestMetric, number>>;
+  questsClaimed?: string[];
 };
 
 export type GameState = {
@@ -126,6 +132,8 @@ export type GameState = {
   raidStars: number;
   raidLevel: number;
   workShiftUntil: number | null;
+  questProgress: Partial<Record<QuestMetric, number>>;
+  questsClaimed: string[];
   lastProductionAt: number;
   language: Lang;
   feedback: FeedbackMessage | null;
@@ -134,6 +142,7 @@ export type GameState = {
   setLanguage: (lang: Lang) => void;
   createWorker: () => void;
   sendWorkersToWork: () => void;
+  claimQuest: (id: string) => void;
   trainFighter: () => void;
   trainArcher: () => void;
   rushProduction: () => void;

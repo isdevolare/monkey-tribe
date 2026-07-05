@@ -27,6 +27,7 @@ import {
   upgradeCost
 } from "../config/buildings";
 import { STRONGHOLD_BASE_LEVEL, getCamp, campName, type RaidCamp } from "../config/camps";
+import { QUESTS, isQuestComplete } from "../config/quests";
 import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import type {
@@ -36,6 +37,7 @@ import type {
   Owner,
   Position,
   ProductionItem,
+  QuestMetric,
   Resources,
   Unit,
   UnitTarget,
@@ -44,6 +46,14 @@ import type {
   VillageBuildingType,
   VillageSave
 } from "../types/game";
+
+// Cumulative per-metric quest counter (immutably bumped by +1).
+function bumpQuest(
+  progress: Partial<Record<QuestMetric, number>>,
+  metric: QuestMetric
+): Partial<Record<QuestMetric, number>> {
+  return { ...progress, [metric]: (progress[metric] ?? 0) + 1 };
+}
 
 export const SAVE_KEY = "monkey-tribe:save";
 
@@ -95,6 +105,8 @@ function createFreshState(now: number) {
     raidStars: 0,
     raidLevel: STRONGHOLD_BASE_LEVEL,
     workShiftUntil: null as number | null,
+    questProgress: {} as Partial<Record<QuestMetric, number>>,
+    questsClaimed: [] as string[],
     lastProductionAt: now,
     language: "tr" as Lang,
     feedback: null
@@ -543,6 +555,7 @@ function createPlayerUnit(state: GameState, type: UnitType) {
     ...state,
     resources: spendResources(state.resources, cost),
     productionQueue: [...state.productionQueue, queueItem],
+    questProgress: bumpQuest(state.questProgress, "trainAny"),
     feedback: { id: now, text: t(`fb.queued.${type}`, state.language) }
   };
 }
@@ -585,6 +598,7 @@ function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): Ga
     buildings,
     resources: spendResources(state.resources, cost),
     maxPopulation: populationCap(shelterLevel),
+    questProgress: bumpQuest(state.questProgress, "upgradeAny"),
     feedback: { id: now, text: t("fb.upgraded", state.language, { name, level: level + 1 }) }
   };
 }
@@ -625,6 +639,8 @@ export const useGameStore = create<GameState>((set) => ({
         language: save.language ?? state.language,
         raidLevel: save.raidLevel ?? STRONGHOLD_BASE_LEVEL,
         workShiftUntil: save.workShiftUntil ?? null,
+        questProgress: save.questProgress ?? {},
+        questsClaimed: save.questsClaimed ?? [],
         lastProductionAt: Date.now()
       };
     }),
@@ -714,10 +730,34 @@ export const useGameStore = create<GameState>((set) => ({
       return {
         ...state,
         workShiftUntil: now + WORK_SHIFT_MS,
+        questProgress: bumpQuest(state.questProgress, "workShift"),
         feedback: {
           id: now,
           text: t("fb.workersSent", state.language, { n: Math.round(WORKER_BOOST * 100 * workers) })
         }
+      };
+    }),
+  claimQuest: (id: string) =>
+    set((state) => {
+      const quest = QUESTS.find((entry) => entry.id === id);
+      if (
+        !quest ||
+        state.questsClaimed.includes(id) ||
+        !isQuestComplete(state.questProgress, quest)
+      ) {
+        return state;
+      }
+      const now = Date.now();
+      return {
+        ...state,
+        resources: {
+          bananas: state.resources.bananas + (quest.reward.bananas ?? 0),
+          stones: state.resources.stones + (quest.reward.stones ?? 0),
+          wood: state.resources.wood + (quest.reward.wood ?? 0)
+        },
+        gems: state.gems + (quest.reward.gems ?? 0),
+        questsClaimed: [...state.questsClaimed, id],
+        feedback: { id: now, text: t("fb.questClaimed", state.language) }
       };
     }),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
@@ -797,6 +837,7 @@ export const useGameStore = create<GameState>((set) => ({
             enemyCampHp: 0,
             raidStars: stars,
             gems: state.gems + stars,
+            questProgress: bumpQuest(state.questProgress, "winRaid"),
             feedback: {
               id: now,
               text: t("fb.victoryLoot", state.language, {
@@ -952,7 +993,9 @@ function persistVillage(state: GameState) {
     productionQueue: state.productionQueue,
     language: state.language,
     raidLevel: state.raidLevel,
-    workShiftUntil: state.workShiftUntil
+    workShiftUntil: state.workShiftUntil,
+    questProgress: state.questProgress,
+    questsClaimed: state.questsClaimed
   };
   void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 }

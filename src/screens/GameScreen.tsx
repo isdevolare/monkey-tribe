@@ -18,6 +18,7 @@ import { RaidBoard } from "../components/game/RaidBoard";
 import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { NineSliceFrame } from "../components/game/NineSliceFrame";
+import { QuestModal } from "../components/game/QuestModal";
 import { SpringPressable } from "../components/game/SpringPressable";
 import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { PopIn, TapHint } from "../components/game/Vfx";
@@ -27,6 +28,7 @@ import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
 import { RUSH_GEM_COST, UNIT_COSTS } from "../game/config/constants";
 import { buildingName, buildingEffect, upgradeCost } from "../game/config/buildings";
 import { getCamp } from "../game/config/camps";
+import { claimableQuestCount } from "../game/config/quests";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
 import type {
@@ -106,6 +108,7 @@ export function GameScreen() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [showQuests, setShowQuests] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<VillageBuildingType | null>(null);
   const lang = state.language;
   const population = state.units.filter(
@@ -210,6 +213,7 @@ export function GameScreen() {
     (unit) =>
       unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
   ).length;
+  const claimableQuests = claimableQuestCount(state.questProgress, state.questsClaimed);
 
   return (
     <View style={styles.safeScreen}>
@@ -256,6 +260,15 @@ export function GameScreen() {
               <AssetImage assetKey="resourceJungleGem" style={styles.gemIcon} fallback={<View />} />
               <Text style={styles.gemText} maxFontSizeMultiplier={theme.maxFontScale}>{state.gems}</Text>
             </View>
+            <TopIcon
+              label="Görevler"
+              glyph="🎯"
+              badge={claimableQuests}
+              onPress={() => {
+                playSound("open");
+                setShowQuests(true);
+              }}
+            />
             <TopIcon
               label="Ayarlar"
               glyph="⚙"
@@ -432,6 +445,8 @@ export function GameScreen() {
         }}
         onClose={() => setShowSettings(false)}
       />
+
+      <QuestModal visible={showQuests} lang={lang} onClose={() => setShowQuests(false)} />
     </View>
   );
 
@@ -744,13 +759,32 @@ function IconFrame() {
   );
 }
 
-function TopIcon({ label, glyph, onPress }: { label: string; glyph: string; onPress?: () => void }) {
+function TopIcon({
+  label,
+  glyph,
+  badge,
+  onPress
+}: {
+  label: string;
+  glyph: string;
+  badge?: number;
+  onPress?: () => void;
+}) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.topIcon}>
-      <PanelTexture dark />
-      <IconFrame />
-      <Text style={styles.topIconText}>{glyph}</Text>
-    </Pressable>
+    <View style={styles.topIconWrap}>
+      <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.topIcon}>
+        <PanelTexture dark />
+        <IconFrame />
+        <Text style={styles.topIconText}>{glyph}</Text>
+      </Pressable>
+      {badge && badge > 0 ? (
+        <View style={styles.topIconBadge} pointerEvents="none">
+          <Text style={styles.topIconBadgeText} maxFontSizeMultiplier={theme.maxFontScale}>
+            {badge}
+          </Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -1114,6 +1148,29 @@ const styles = StyleSheet.create({
   topIconText: {
     color: theme.colors.paper,
     fontSize: 17,
+    fontWeight: "900", fontFamily: theme.fonts.heavy
+  },
+  topIconWrap: {
+    position: "relative"
+  },
+  topIconBadge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    minWidth: 19,
+    height: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#1a140a",
+    backgroundColor: "#d94b36",
+    paddingHorizontal: 4
+  },
+  topIconBadgeText: {
+    color: theme.colors.paper,
+    fontSize: theme.type.small,
+    lineHeight: 14,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   resourceBar: {
