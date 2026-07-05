@@ -17,6 +17,7 @@ import { FadeIn } from "../components/game/FadeIn";
 import { RaidBoard } from "../components/game/RaidBoard";
 import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
+import { DailyRewardModal } from "../components/game/DailyRewardModal";
 import { NineSliceFrame } from "../components/game/NineSliceFrame";
 import { OfflineModal } from "../components/game/OfflineModal";
 import { QuestModal } from "../components/game/QuestModal";
@@ -29,6 +30,7 @@ import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
 import { RUSH_GEM_COST, UNIT_COSTS } from "../game/config/constants";
 import { buildingName, buildingEffect, upgradeCost } from "../game/config/buildings";
 import { getCamp } from "../game/config/camps";
+import { todayKey } from "../game/config/dailyRewards";
 import { claimableQuestCount } from "../game/config/quests";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
@@ -110,6 +112,8 @@ export function GameScreen() {
   const [tutorialStep, setTutorialStep] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showQuests, setShowQuests] = useState(false);
+  const [showDaily, setShowDaily] = useState(false);
+  const dailyAutoShown = useRef(false);
   const [selectedBuilding, setSelectedBuilding] = useState<VillageBuildingType | null>(null);
   const lang = state.language;
   const population = state.units.filter(
@@ -215,6 +219,16 @@ export function GameScreen() {
       unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
   ).length;
   const claimableQuests = claimableQuestCount(state.questProgress, state.questsClaimed);
+  const dailyAvailable = state.dailyLastClaim !== todayKey();
+
+  // Auto-open the daily reward once per launch, but wait until the
+  // welcome-back (offline) modal has been dismissed so they don't stack.
+  useEffect(() => {
+    if (!dailyAutoShown.current && dailyAvailable && state.offlineReport == null) {
+      dailyAutoShown.current = true;
+      setShowDaily(true);
+    }
+  }, [dailyAvailable, state.offlineReport]);
 
   return (
     <View style={styles.safeScreen}>
@@ -261,6 +275,15 @@ export function GameScreen() {
               <AssetImage assetKey="resourceJungleGem" style={styles.gemIcon} fallback={<View />} />
               <Text style={styles.gemText} maxFontSizeMultiplier={theme.maxFontScale}>{state.gems}</Text>
             </View>
+            <TopIcon
+              label="Günlük Ödül"
+              glyph="🎁"
+              badge={dailyAvailable ? 1 : 0}
+              onPress={() => {
+                playSound("open");
+                setShowDaily(true);
+              }}
+            />
             <TopIcon
               label="Görevler"
               glyph="🎯"
@@ -454,6 +477,8 @@ export function GameScreen() {
         lang={lang}
         onCollect={state.dismissOfflineReport}
       />
+
+      <DailyRewardModal visible={showDaily} lang={lang} onClose={() => setShowDaily(false)} />
     </View>
   );
 

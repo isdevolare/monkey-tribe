@@ -29,6 +29,7 @@ import {
   upgradeCost
 } from "../config/buildings";
 import { STRONGHOLD_BASE_LEVEL, getCamp, campName, type RaidCamp } from "../config/camps";
+import { DAILY_REWARDS, dayDiff, todayKey } from "../config/dailyRewards";
 import { QUESTS, isQuestComplete } from "../config/quests";
 import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
@@ -128,6 +129,8 @@ function createFreshState(now: number) {
     questProgress: {} as Partial<Record<QuestMetric, number>>,
     questsClaimed: [] as string[],
     offlineReport: null as OfflineReport | null,
+    dailyStreak: 0,
+    dailyLastClaim: null as string | null,
     lastProductionAt: now,
     language: "tr" as Lang,
     feedback: null
@@ -681,6 +684,8 @@ export const useGameStore = create<GameState>((set) => ({
         workShiftUntil: save.workShiftUntil ?? null,
         questProgress: save.questProgress ?? {},
         questsClaimed: save.questsClaimed ?? [],
+        dailyStreak: save.dailyStreak ?? 0,
+        dailyLastClaim: save.dailyLastClaim ?? null,
         lastProductionAt: Date.now()
       };
     }),
@@ -801,6 +806,31 @@ export const useGameStore = create<GameState>((set) => ({
       };
     }),
   dismissOfflineReport: () => set(() => ({ offlineReport: null })),
+  claimDaily: () =>
+    set((state) => {
+      const today = todayKey();
+      if (state.dailyLastClaim === today) {
+        return state;
+      }
+      // Next streak day if claimed yesterday; reset to day 1 if a day slipped.
+      const consecutive =
+        state.dailyLastClaim != null && dayDiff(state.dailyLastClaim, today) === 1;
+      const day = consecutive ? (state.dailyStreak % DAILY_REWARDS.length) + 1 : 1;
+      const reward = DAILY_REWARDS[day - 1] ?? {};
+      const now = Date.now();
+      return {
+        ...state,
+        resources: {
+          bananas: state.resources.bananas + (reward.bananas ?? 0),
+          stones: state.resources.stones + (reward.stones ?? 0),
+          wood: state.resources.wood + (reward.wood ?? 0)
+        },
+        gems: state.gems + (reward.gems ?? 0),
+        dailyStreak: day,
+        dailyLastClaim: today,
+        feedback: { id: now, text: t("daily.claimed", state.language) }
+      };
+    }),
   trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
   trainArcher: () => set((state) => createPlayerUnit(state, "archer")),
   rushProduction: () =>
@@ -1037,6 +1067,8 @@ function persistVillage(state: GameState) {
     workShiftUntil: state.workShiftUntil,
     questProgress: state.questProgress,
     questsClaimed: state.questsClaimed,
+    dailyStreak: state.dailyStreak,
+    dailyLastClaim: state.dailyLastClaim,
     lastSeenAt: Date.now()
   };
   void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
