@@ -96,8 +96,8 @@ function useCountUp(value: number) {
 
 // Compact display so 4+ digit stockpiles fit the HUD pills on small screens.
 function formatAmount(value: number) {
-  if (value >= 100000) {
-    return `${Math.floor(value / 1000)}K`;
+  if (value >= 10000) {
+    return `${Math.round(value / 1000)}K`;
   }
   if (value >= 1000) {
     return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K`;
@@ -129,11 +129,8 @@ export function GameScreen() {
       unit.state !== "dead" &&
       unit.hp > 0
   ).length;
-  const activeCampLoot = getCamp(state.activeCampId ?? "")?.loot ?? {
-    bananas: 0,
-    stones: 0,
-    wood: 0
-  };
+  const activeCamp = getCamp(state.activeCampId ?? "");
+  const activeCampLoot = activeCamp?.loot ?? { bananas: 0, stones: 0, wood: 0 };
   // Cap by height too so board + panel + dock fit ~667pt phones without
   // pushing the dock off-screen.
   const boardMaxSize = Math.max(260, Math.min(layoutWidth - 20, 404, Math.round(height * 0.52)));
@@ -271,7 +268,13 @@ export function GameScreen() {
             </View>
             <View style={styles.namePlate}>
               <PanelTexture dark />
-              <Text style={styles.clanName} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>Monkey Tribe</Text>
+              <Text
+                style={styles.clanName}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.72}
+                maxFontSizeMultiplier={theme.maxFontScale}
+              >Monkey Tribe</Text>
               <Text style={styles.clanSubtitle} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>{t("clan.subtitle", lang)}</Text>
             </View>
           </View>
@@ -290,24 +293,6 @@ export function GameScreen() {
               <Text style={styles.gemText} maxFontSizeMultiplier={theme.maxFontScale}>{state.gems}</Text>
               <Text style={styles.gemPlus} maxFontSizeMultiplier={theme.maxFontScale}>+</Text>
             </Pressable>
-            <TopIcon
-              label="Günlük Ödül"
-              glyph="🎁"
-              badge={dailyAvailable ? 1 : 0}
-              onPress={() => {
-                playSound("open");
-                setShowDaily(true);
-              }}
-            />
-            <TopIcon
-              label="Görevler"
-              glyph="🎯"
-              badge={claimableQuests}
-              onPress={() => {
-                playSound("open");
-                setShowQuests(true);
-              }}
-            />
             <TopIcon
               label="Ayarlar"
               glyph="⚙"
@@ -353,6 +338,7 @@ export function GameScreen() {
               lang={lang}
               maxSize={Math.min(width - theme.spacing.md * 2, 404)}
               feedbackText={state.feedback?.text}
+              campLevel={activeCamp?.level ?? 1}
               strongholdLevelUp={
                 state.raidStatus === "victory" &&
                 state.activeCampId?.startsWith("stronghold-")
@@ -366,6 +352,26 @@ export function GameScreen() {
           <>
             <View style={styles.boardShell}>
               <View style={styles.boardShellInner}>
+                <View style={styles.boardFloaters}>
+                  <TopIcon
+                    label="Günlük Ödül"
+                    glyph="🎁"
+                    badge={dailyAvailable ? 1 : 0}
+                    onPress={() => {
+                      playSound("open");
+                      setShowDaily(true);
+                    }}
+                  />
+                  <TopIcon
+                    label="Görevler"
+                    glyph="🎯"
+                    badge={claimableQuests}
+                    onPress={() => {
+                      playSound("open");
+                      setShowQuests(true);
+                    }}
+                  />
+                </View>
                 <VillageBoard
                   tiles={state.mapTiles}
                   units={state.units}
@@ -1057,7 +1063,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: theme.spacing.md
+    gap: theme.spacing.sm
   },
   heroBadge: {
     flex: 1,
@@ -1127,7 +1133,7 @@ const styles = StyleSheet.create({
   },
   clanName: {
     color: theme.colors.paper,
-    fontSize: theme.type.title,
+    fontSize: theme.type.body,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   clanSubtitle: {
@@ -1406,6 +1412,15 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "rgba(226, 177, 90, 0.4)",
     overflow: "hidden"
+  },
+  // Event buttons float over the board corner, Clash-style.
+  boardFloaters: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 50,
+    gap: 8,
+    alignItems: "center"
   },
   hintPanel: {
     minHeight: 46,

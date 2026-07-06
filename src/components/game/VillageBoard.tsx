@@ -323,6 +323,68 @@ const MemoBuildingSprite = memo(
     a.lang === b.lang
 );
 
+// ---- Upgrade tiers: every level visibly changes the building ----------
+// Continuous growth per level so each single upgrade is observable...
+const GROWTH_PER_LEVEL = 0.045;
+const GROWTH_CAP_LEVELS = 7;
+
+function visualSize(baseSize: number, level: number) {
+  return baseSize * (1 + Math.min(Math.max(level - 1, 0), GROWTH_CAP_LEVELS) * GROWTH_PER_LEVEL);
+}
+
+// ...plus function-themed props at tier thresholds. Offsets/sizes are in
+// percent of the building's sprite box.
+type TierProp = {
+  minLevel: number;
+  asset: GameAssetKey;
+  left: number;
+  top: number;
+  size: number;
+};
+
+const TIER_PROPS: Record<VillageBuildingType, TierProp[]> = {
+  clanHall: [],
+  bananaGrove: [
+    { minLevel: 2, asset: "propBananaBasket", left: 66, top: 66, size: 38 },
+    { minLevel: 4, asset: "propBananaBasket", left: -8, top: 72, size: 30 }
+  ],
+  lumberCamp: [
+    { minLevel: 2, asset: "propLogPile", left: 62, top: 68, size: 44 },
+    { minLevel: 4, asset: "propBarrel", left: -6, top: 70, size: 32 }
+  ],
+  stoneQuarry: [
+    { minLevel: 2, asset: "propBarrel", left: 64, top: 62, size: 38 },
+    { minLevel: 4, asset: "propCrate", left: -10, top: 66, size: 36 }
+  ],
+  watchTower: [
+    { minLevel: 2, asset: "propRopeCoil", left: 64, top: 76, size: 30 },
+    { minLevel: 4, asset: "propCrate", left: -4, top: 78, size: 28 }
+  ],
+  workerShelter: [
+    { minLevel: 2, asset: "propCrate", left: 66, top: 64, size: 34 },
+    { minLevel: 4, asset: "propBananaBasket", left: -8, top: 68, size: 30 }
+  ],
+  trainingNest: [
+    { minLevel: 2, asset: "propTrainingDummy", left: 68, top: 56, size: 40 },
+    { minLevel: 4, asset: "propRopeCoil", left: -6, top: 72, size: 28 }
+  ]
+};
+
+const PENNANT_LEVEL = 4;
+const GLOW_LEVEL = 6;
+
+// Small clan pennant planted once a building reaches tier 3.
+function Pennant() {
+  return (
+    <View style={styles.pennant} pointerEvents="none">
+      <Svg width="100%" height="100%" viewBox="0 0 20 34">
+        <Line x1="4" y1="2" x2="4" y2="32" stroke="#6a4121" strokeWidth="2.6" />
+        <Path d="M5 3 L18 7.5 L5 12 Z" fill="#4f8f3a" stroke="#2e5220" strokeWidth="1" />
+      </Svg>
+    </View>
+  );
+}
+
 function BuildingSprite({
   building,
   layout,
@@ -336,8 +398,10 @@ function BuildingSprite({
   selected: boolean;
   onPress: () => void;
 }) {
-  const { point, size, asset } = layout;
+  const { point, asset } = layout;
+  const size = visualSize(layout.size, building.level);
   const art = assetForBuilding(building, asset);
+  const props = TIER_PROPS[building.type].filter((prop) => building.level >= prop.minLevel);
   return (
     <Pressable
       onPress={onPress}
@@ -352,8 +416,29 @@ function BuildingSprite({
         }
       ]}
     >
+      {building.level >= GLOW_LEVEL ? (
+        <View style={styles.prestigeGlow} pointerEvents="none" />
+      ) : null}
       {selected ? <View style={styles.buildingSelected} pointerEvents="none" /> : null}
       <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
+      {props.map((prop) => (
+        <View
+          key={`${prop.asset}-${prop.minLevel}`}
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: `${prop.left}%`,
+            top: `${prop.top}%`,
+            width: `${prop.size}%`,
+            height: `${prop.size}%`
+          }}
+        >
+          <PopIn style={styles.full}>
+            <AssetImage assetKey={prop.asset} style={styles.full} fallback={<View />} />
+          </PopIn>
+        </View>
+      ))}
+      {building.level >= PENNANT_LEVEL ? <Pennant /> : null}
 
       {selected ? (
         <View style={styles.nameTagWrap} pointerEvents="none">
@@ -807,6 +892,26 @@ const styles = StyleSheet.create({
     position: "absolute",
     alignItems: "center",
     justifyContent: "flex-end"
+  },
+  prestigeGlow: {
+    position: "absolute",
+    left: "8%",
+    right: "8%",
+    top: "22%",
+    bottom: "-2%",
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 214, 110, 0.16)",
+    shadowColor: "#ffd66e",
+    shadowOpacity: 0.75,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 }
+  },
+  pennant: {
+    position: "absolute",
+    top: "-14%",
+    right: "2%",
+    width: "26%",
+    height: "44%"
   },
   buildingSelected: {
     position: "absolute",

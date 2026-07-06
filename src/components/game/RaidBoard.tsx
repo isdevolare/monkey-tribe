@@ -30,6 +30,8 @@ type RaidBoardProps = {
   maxSize?: number;
   /** New stronghold level after a stronghold win; shows the level-up callout. */
   strongholdLevelUp?: number | null;
+  /** Camp tier — higher-level camps render visibly bigger. */
+  campLevel?: number;
   onReturn: () => void;
 };
 
@@ -70,6 +72,7 @@ export function RaidBoard({
   feedbackText,
   maxSize = 430,
   strongholdLevelUp,
+  campLevel = 1,
   onReturn
 }: RaidBoardProps) {
   const { width } = useWindowDimensions();
@@ -182,6 +185,8 @@ export function RaidBoard({
   }, [resultVisible, resultAnim]);
 
   const campTranslate = campShake.interpolate({ inputRange: [-1, 1], outputRange: [-3, 3] });
+  // Sv 1 patrol stays small; each camp tier grows ~7%, capped at +42%.
+  const campScale = 1 + Math.min(Math.max(campLevel - 1, 0), 6) * 0.07;
   const resultScale = resultAnim.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] });
 
   return (
@@ -195,7 +200,12 @@ export function RaidBoard({
       <View style={styles.depthShade} />
       <BattleGround />
 
-      <Animated.View style={[styles.enemyCamp, { transform: [{ translateX: campTranslate }] }]}>
+      <Animated.View
+        style={[
+          styles.enemyCamp,
+          { transform: [{ translateX: campTranslate }, { scale: campScale }] }
+        ]}
+      >
         <AssetImage assetKey="buildingEnemyCamp" style={styles.full} fallback={<CampFallback />} />
         <Animated.View style={[styles.campFlash, { opacity: campFlash }]} pointerEvents="none" />
         <HealthBar percent={Math.max(0, Math.round((enemyCampHp / enemyCampMaxHp) * 100))} enemy large />
