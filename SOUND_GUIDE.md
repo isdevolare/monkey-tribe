@@ -18,7 +18,7 @@ still wanted. Drop-in files go to `assets/game/audio/` and are registered in
 | File | Trigger | Length | Character |
 | --- | --- | ---: | --- |
 | `tap.m4a` | every button press-in | ~0.1s | soft wooden tick |
-| `open.m4a` / `close.m4a` | modal open / close & cancels | ~0.2s | short whoosh up / down |
+| `open.m4a` / `close.m4a` | modal open / close & cancels | ~0.15s | soft kalimba pluck, high / low note (whoosh replaced by user request) |
 | `confirm.m4a` | unit trained, game start | ~0.3s | bright positive blip |
 | `error.m4a` | rejected action (cost/capacity) | ~0.3s | muted double-buzz |
 | `queue.m4a` | unit added to production queue | ~0.2s | pop |
