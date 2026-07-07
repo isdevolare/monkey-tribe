@@ -45,7 +45,35 @@ const dict: Record<string, Entry> = {
   "settings.sound": { tr: "Ses Efektleri", en: "Sound Effects" },
   "settings.soundOn": { tr: "Açık", en: "On" },
   "settings.soundOff": { tr: "Kapalı", en: "Off" },
+  "settings.support": { tr: "Yardım & Destek", en: "Help & Support" },
   "settings.reset": { tr: "Köyü Sıfırla", en: "Reset Village" },
+  "support.title": { tr: "Yardım & Destek", en: "Help & Support" },
+  "support.helpHeader": { tr: "Hızlı Yardım", en: "Quick Help" },
+  "support.help1": {
+    tr: "Asker eğitmek için alttaki kartlara dokun; Eğitim Yuvası savaşçıları açar.",
+    en: "Tap the bottom cards to train units; the Training Nest unlocks fighters."
+  },
+  "support.help2": {
+    tr: "BASKIN için önce en az bir savaşçı eğitmen gerekir.",
+    en: "You need at least one trained fighter before you can RAID."
+  },
+  "support.help3": {
+    tr: "İşçi Barınağı'na dokunup işçileri işe gönderirsen üretim hızlanır.",
+    en: "Tap the Worker Shelter and send workers to work to boost production."
+  },
+  "support.reportHeader": { tr: "Sorun Bildir", en: "Report a Problem" },
+  "support.notePlaceholder": { tr: "İstersen kısaca anlat...", en: "Optionally add details..." },
+  "support.send": { tr: "Bildir", en: "Send Report" },
+  "support.sent": { tr: "Bildirimin alındı, sağ ol şef!", en: "Report received, thanks chief!" },
+  "support.mailFail": {
+    tr: "Posta uygulaması açılamadı — kaydı aldık, tekrar dener misin?",
+    en: "Couldn't open a mail app — we logged it, please try again."
+  },
+  "issue.raidButton": { tr: "Baskın tuşu çalışmıyor", en: "Raid button not working" },
+  "issue.noSound": { tr: "Ses gelmiyor", en: "No sound" },
+  "issue.freeze": { tr: "Oyun takılıyor / donuyor", en: "Game stutters / freezes" },
+  "issue.lostProgress": { tr: "İlerlemem kayboldu", en: "My progress is gone" },
+  "issue.other": { tr: "Başka bir sorun", en: "Something else" },
   "settings.close": { tr: "Kapat", en: "Close" },
 
   // Building names

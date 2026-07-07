@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { playSound, useSoundStore } from "../../game/audio/soundManager";
+import { SupportModal } from "./SupportModal";
 import { t } from "../../game/i18n";
 import type { Lang } from "../../game/types/game";
 import { theme } from "../../theme/theme";
@@ -16,6 +18,7 @@ type SettingsModalProps = {
 export function SettingsModal({ visible, lang, onPickLanguage, onClose, onReset }: SettingsModalProps) {
   const soundEnabled = useSoundStore((state) => state.enabled);
   const setSoundEnabled = useSoundStore((state) => state.setEnabled);
+  const [showSupport, setShowSupport] = useState(false);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -66,6 +69,17 @@ export function SettingsModal({ visible, lang, onPickLanguage, onClose, onReset 
             ))}
           </View>
 
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              playSound("open");
+              setShowSupport(true);
+            }}
+            style={styles.support}
+          >
+            <Text style={styles.supportText}>{t("settings.support", lang)}</Text>
+          </Pressable>
+
           {onReset ? (
             <Pressable accessibilityRole="button" onPress={onReset} style={styles.reset}>
               <Text style={styles.resetText}>{t("settings.reset", lang)}</Text>
@@ -83,6 +97,8 @@ export function SettingsModal({ visible, lang, onPickLanguage, onClose, onReset 
           </Pressable>
         </Pressable>
       </Pressable>
+
+      <SupportModal visible={showSupport} lang={lang} onClose={() => setShowSupport(false)} />
     </Modal>
   );
 }
@@ -148,11 +164,26 @@ const styles = StyleSheet.create({
   langTextActive: {
     color: theme.colors.paper
   },
-  reset: {
+  support: {
     minHeight: 46,
     alignItems: "center",
     justifyContent: "center",
     marginTop: theme.spacing.lg,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.4)",
+    backgroundColor: "rgba(74, 56, 28, 0.75)"
+  },
+  supportText: {
+    color: "#ffe9ad",
+    fontSize: 14,
+    fontFamily: theme.fonts.heavy
+  },
+  reset: {
+    minHeight: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: theme.spacing.sm,
     borderRadius: 10,
     backgroundColor: "#9a3322"
   },
