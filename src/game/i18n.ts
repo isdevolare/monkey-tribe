@@ -69,7 +69,7 @@ const dict: Record<string, Entry> = {
     tr: "Posta uygulaması açılamadı — kaydı aldık, tekrar dener misin?",
     en: "Couldn't open a mail app — we logged it, please try again."
   },
-  "issue.raidButton": { tr: "Baskın tuşu çalışmıyor", en: "Raid button not working" },
+  "issue.broken": { tr: "Bir özellik çalışmıyor", en: "A feature isn't working" },
   "issue.noSound": { tr: "Ses gelmiyor", en: "No sound" },
   "issue.freeze": { tr: "Oyun takılıyor / donuyor", en: "Game stutters / freezes" },
   "issue.lostProgress": { tr: "İlerlemem kayboldu", en: "My progress is gone" },

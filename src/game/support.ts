@@ -4,18 +4,18 @@ import { useGameStore } from "./state/gameStore";
 
 // Where player reports land. Swap `deliverReport` for an HTTP endpoint
 // once a backend exists — everything else stays the same.
-const SUPPORT_EMAIL = "realbluee97@gmail.com";
+const SUPPORT_EMAIL = "quickmoodigital@gmail.com";
 const REPORT_LOG_KEY = "monkey-tribe:support-reports";
 
 export type SupportIssueId =
-  | "raidButton"
+  | "broken"
   | "noSound"
   | "freeze"
   | "lostProgress"
   | "other";
 
 export const SUPPORT_ISSUES: SupportIssueId[] = [
-  "raidButton",
+  "broken",
   "noSound",
   "freeze",
   "lostProgress",
