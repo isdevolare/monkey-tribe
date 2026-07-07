@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import Svg, { Line, Path } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
 import { NineSliceFrame } from "./NineSliceFrame";
 import { SpringPressable } from "./SpringPressable";
@@ -33,14 +34,19 @@ export function RaidMapScreen({ fighterCount, raidLevel, lang, onAttack, onClose
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
         {camps.map((camp) => {
           const endless = camp.id.startsWith("stronghold-");
+          // Same tier language as the village: higher camps loom larger.
+          const artScale = 0.82 + Math.min(camp.level, 7) * 0.05;
           return (
           <View key={camp.id} style={[styles.card, endless ? styles.cardEndless : null]}>
             <View style={styles.cardArt}>
+              {endless ? <View style={styles.artGlow} /> : null}
               <AssetImage
                 assetKey="buildingEnemyCamp"
-                style={styles.cardArtImage}
+                style={[styles.cardArtImage, { transform: [{ scale: artScale }] }]}
                 fallback={<View style={styles.cardArtFallback} />}
               />
+              {camp.level >= 2 ? <WarBanner right={4} /> : null}
+              {camp.level >= 5 ? <WarBanner right={17} small /> : null}
               <View style={styles.levelTag}>
                 <Text style={styles.levelTagText}>{t("common.levelShort", lang)} {camp.level}</Text>
               </View>
@@ -78,6 +84,18 @@ export function RaidMapScreen({ fighterCount, raidLevel, lang, onAttack, onClose
       </ScrollView>
 
       <WoodButton label={t("raidmap.close", lang)} onPress={onClose} />
+    </View>
+  );
+}
+
+// Small enemy war pennant planted on tougher camps.
+function WarBanner({ right, small }: { right: number; small?: boolean }) {
+  return (
+    <View style={[styles.warBanner, { right, width: small ? 11 : 14, height: small ? 22 : 28 }]}>
+      <Svg width="100%" height="100%" viewBox="0 0 20 34">
+        <Line x1="4" y1="2" x2="4" y2="32" stroke="#3a1c12" strokeWidth="2.6" />
+        <Path d="M5 3 L18 7.5 L5 12 Z" fill="#c84a3a" stroke="#7f2d25" strokeWidth="1" />
+      </Svg>
     </View>
   );
 }
@@ -172,6 +190,23 @@ const styles = StyleSheet.create({
   cardArtFallback: {
     flex: 1,
     backgroundColor: "#7f2d25"
+  },
+  artGlow: {
+    position: "absolute",
+    left: "10%",
+    right: "10%",
+    top: "30%",
+    bottom: "4%",
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 120, 40, 0.22)",
+    shadowColor: "#ff7828",
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 }
+  },
+  warBanner: {
+    position: "absolute",
+    top: 1
   },
   levelTag: {
     position: "absolute",
