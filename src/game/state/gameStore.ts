@@ -688,7 +688,10 @@ export const useGameStore = create<GameState>((set) => ({
         gems: save.gems ?? state.gems,
         productionQueue: save.productionQueue ?? [],
         language: save.language ?? state.language,
-        raidLevel: save.raidLevel ?? STRONGHOLD_BASE_LEVEL,
+        // Migration: older saves tracked the stronghold from Sv4; the ladder
+        // now has handcrafted camps through Sv7, so lift stale levels to the
+        // new base (higher progress is kept as-is).
+        raidLevel: Math.max(save.raidLevel ?? STRONGHOLD_BASE_LEVEL, STRONGHOLD_BASE_LEVEL),
         workShiftUntil: save.workShiftUntil ?? null,
         questProgress: save.questProgress ?? {},
         questsClaimed: save.questsClaimed ?? [],

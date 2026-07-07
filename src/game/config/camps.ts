@@ -50,15 +50,59 @@ export const RAID_CAMPS: RaidCamp[] = [
     level: 3,
     campHp: 160,
     enemyCount: 3,
-    archerCount: 2,
-    enemyHp: 46,
-    enemyAttack: 10,
+    archerCount: 1,
+    enemyHp: 44,
+    enemyAttack: 9,
     loot: { bananas: 220, stones: 80, wood: 90 }
+  },
+  {
+    id: "den",
+    name: "Yağmacı Sığınağı",
+    level: 4,
+    campHp: 200,
+    enemyCount: 3,
+    archerCount: 2,
+    enemyHp: 52,
+    enemyAttack: 11,
+    loot: { bananas: 300, stones: 110, wood: 120 }
+  },
+  {
+    id: "swamp",
+    name: "Bataklık Karakolu",
+    level: 5,
+    campHp: 250,
+    enemyCount: 4,
+    archerCount: 2,
+    enemyHp: 58,
+    enemyAttack: 12,
+    loot: { bananas: 400, stones: 150, wood: 170 }
+  },
+  {
+    id: "skull",
+    name: "Kafatası Tepesi",
+    level: 6,
+    campHp: 300,
+    enemyCount: 4,
+    archerCount: 3,
+    enemyHp: 64,
+    enemyAttack: 13,
+    loot: { bananas: 520, stones: 200, wood: 220 }
+  },
+  {
+    id: "harbor",
+    name: "Gölge Limanı",
+    level: 7,
+    campHp: 360,
+    enemyCount: 5,
+    archerCount: 3,
+    enemyHp: 70,
+    enemyAttack: 15,
+    loot: { bananas: 660, stones: 260, wood: 280 }
   }
 ];
 
 // The endless late-game ladder starts one level above the handcrafted camps.
-export const STRONGHOLD_BASE_LEVEL = 4;
+export const STRONGHOLD_BASE_LEVEL = 8;
 
 /**
  * Procedural "Korsan Kalesi": one stronghold that comes back one level
@@ -70,15 +114,15 @@ export function strongholdCamp(level: number): RaidCamp {
     id: `stronghold-${level}`,
     name: "Korsan Kalesi",
     level,
-    campHp: 200 + tier * 55,
-    enemyCount: Math.min(3 + Math.ceil(tier / 2), 6),
-    archerCount: Math.min(2 + Math.floor(tier / 2), 4),
-    enemyHp: 52 + tier * 7,
-    enemyAttack: 11 + tier * 2,
+    campHp: 430 + tier * 65,
+    enemyCount: Math.min(5 + Math.ceil(tier / 2), 7),
+    archerCount: Math.min(3 + Math.floor(tier / 2), 5),
+    enemyHp: 76 + tier * 8,
+    enemyAttack: 16 + tier * 2,
     loot: {
-      bananas: 300 + tier * 130,
-      stones: 110 + tier * 50,
-      wood: 120 + tier * 55
+      bananas: 820 + tier * 160,
+      stones: 330 + tier * 65,
+      wood: 350 + tier * 70
     }
   };
 }

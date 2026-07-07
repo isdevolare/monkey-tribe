@@ -101,6 +101,10 @@ const dict: Record<string, Entry> = {
   "camp.patrol": { tr: "Korsan Devriyesi", en: "Pirate Patrol" },
   "camp.camp": { tr: "Korsan Kampı", en: "Pirate Camp" },
   "camp.fort": { tr: "Korsan Üssü", en: "Pirate Fort" },
+  "camp.den": { tr: "Yağmacı Sığınağı", en: "Raider Den" },
+  "camp.swamp": { tr: "Bataklık Karakolu", en: "Swamp Outpost" },
+  "camp.skull": { tr: "Kafatası Tepesi", en: "Skull Hill" },
+  "camp.harbor": { tr: "Gölge Limanı", en: "Shadow Harbor" },
   "camp.stronghold": { tr: "Korsan Kalesi", en: "Pirate Stronghold" },
   "raidmap.endless": {
     tr: "Her zaferden sonra güçlenerek geri döner",
