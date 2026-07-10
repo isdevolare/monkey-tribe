@@ -2,24 +2,35 @@
   "expo": {
     "name": "Monkey Tribe",
     "slug": "monkey-tribe",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.quickmoodigital.monkeytribe",
+      "buildNumber": "1"
     },
     "android": {
+      "package": "com.quickmoodigital.monkeytribe",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#3f8f42"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2f7d42"
       }
     },
     "plugins": [
       "expo-font",
       "expo-audio",
       "expo-asset"
-    ]
+    ],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#14301d"
+    }
   }
 }
