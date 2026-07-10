@@ -97,6 +97,7 @@ const dict: Record<string, Entry> = {
     en: "{rate}/min {res} per worker · {slots} worker slots"
   },
   "fx.storage": { tr: "Depo", en: "Storage" },
+  "fx.troopPower": { tr: "Asker gücü", en: "Troop power" },
   "fx.workersHint": { tr: "Çalışan işçi", en: "Working" },
   "fb.storageFull": {
     tr: "Depo dolu! Klan Salonu'nu geliştir.",

@@ -19,7 +19,9 @@ import {
   VILLAGE_REGEN_PER_SEC,
   WATCH_TOWER_DAMAGE_REDUCTION,
   WORKER_BOOST,
-  WORK_SHIFT_MS
+  WORK_SHIFT_MS,
+  troopStatMultiplier,
+  unitCost
 } from "../config/constants";
 import {
   BUILDING_PRODUCTION,
@@ -592,7 +594,7 @@ function createPlayerUnit(state: GameState, type: UnitType) {
     };
   }
 
-  const cost = UNIT_COSTS[type];
+  const cost = unitCost(type, buildingLevel(state.buildings, "trainingNest"));
   if (!hasResources(state.resources, cost)) {
     return {
       ...state,
@@ -695,16 +697,26 @@ export const useGameStore = create<GameState>((set) => ({
       const cap = storageCap(buildingLevel(buildings, "clanHall"));
 
       // Rebuild the persisted army. Older saves have no unitCounts — they
-      // fall back to the fresh-village single worker.
+      // fall back to the fresh-village single worker. Troops respawn at the
+      // CURRENT nest level's strength (nest upgrades buff retroactively).
       let units = createInitialUnits(now);
       if (save.unitCounts) {
+        const troopBoost = troopStatMultiplier(buildingLevel(buildings, "trainingNest"));
         units = [];
         for (const [type, count] of Object.entries(save.unitCounts) as [UnitType, number][]) {
           for (let i = 0; i < Math.max(0, Math.floor(count)); i++) {
             unitSerial += 1;
             const spawn = findSpawnPosition(units, "player");
             units.push(
-              createUnit(`player-${type}-${now}-${unitSerial}`, type, "player", spawn.x, spawn.y, now)
+              createUnit(
+                `player-${type}-${now}-${unitSerial}`,
+                type,
+                "player",
+                spawn.x,
+                spawn.y,
+                now,
+                type === "worker" ? 1 : troopBoost
+              )
             );
           }
         }
@@ -1100,11 +1112,20 @@ export const useGameStore = create<GameState>((set) => ({
       let productionQueue = state.productionQueue;
       const ready = productionQueue.filter((item) => item.finishAt <= now);
       if (ready.length > 0) {
+        const troopBoost = troopStatMultiplier(buildingLevel(game.buildings, "trainingNest"));
         for (const item of ready) {
           unitSerial += 1;
           const spawn = findSpawnPosition(game.units, "player");
           game.units.push(
-            createUnit(`player-${item.type}-${now}-${unitSerial}`, item.type, "player", spawn.x, spawn.y, now)
+            createUnit(
+              `player-${item.type}-${now}-${unitSerial}`,
+              item.type,
+              "player",
+              spawn.x,
+              spawn.y,
+              now,
+              item.type === "worker" ? 1 : troopBoost
+            )
           );
         }
         productionQueue = productionQueue.filter((item) => item.finishAt > now);
@@ -1118,7 +1139,10 @@ export const useGameStore = create<GameState>((set) => ({
       const canRecover =
         hasResources(game.resources, UNIT_COSTS.worker) ||
         (buildingLevel(state.buildings, "trainingNest") > 0 &&
-          hasResources(game.resources, UNIT_COSTS.fighter));
+          hasResources(
+            game.resources,
+            unitCost("fighter", buildingLevel(state.buildings, "trainingNest"))
+          ));
       const feedback = game.feedbackText
         ? { id: now, text: game.feedbackText }
         : state.feedback;

@@ -28,7 +28,7 @@ import { PopIn, TapHint } from "../components/game/Vfx";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { playSound } from "../game/audio/soundManager";
 import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
-import { RUSH_GEM_COST, UNIT_COSTS } from "../game/config/constants";
+import { RUSH_GEM_COST, unitCost } from "../game/config/constants";
 import {
   BUILDING_PRODUCTION,
   assignWorkers,
@@ -205,20 +205,28 @@ export function GameScreen() {
     setTutorialStep((step) => step + 1);
   }
 
+  // Troop prices climb with the Training Nest (stronger recruits cost more).
+  const nestLevel = levelOf(state.buildings, "trainingNest");
+  const troopCosts = {
+    worker: unitCost("worker", nestLevel),
+    fighter: unitCost("fighter", nestLevel),
+    archer: unitCost("archer", nestLevel),
+    guardian: unitCost("guardian", nestLevel)
+  };
   const createWorkerDisabled =
-    population >= state.maxPopulation || !hasResources(state.resources, UNIT_COSTS.worker);
+    population >= state.maxPopulation || !hasResources(state.resources, troopCosts.worker);
   const trainFighterDisabled =
-    levelOf(state.buildings, "trainingNest") <= 0 ||
+    nestLevel <= 0 ||
     population >= state.maxPopulation ||
-    !hasResources(state.resources, UNIT_COSTS.fighter);
+    !hasResources(state.resources, troopCosts.fighter);
   const trainArcherDisabled =
     levelOf(state.buildings, "watchTower") <= 0 ||
     population >= state.maxPopulation ||
-    !hasResources(state.resources, UNIT_COSTS.archer);
+    !hasResources(state.resources, troopCosts.archer);
   const trainGuardianDisabled =
-    levelOf(state.buildings, "trainingNest") <= 0 ||
+    nestLevel <= 0 ||
     population >= state.maxPopulation ||
-    !hasResources(state.resources, UNIT_COSTS.guardian);
+    !hasResources(state.resources, troopCosts.guardian);
   const sheet = getGameAsset("unitMonkeySheet");
   const queuedTypes = new Set(state.productionQueue.map((item) => item.type));
   const compactHud = layoutWidth < 370;
@@ -439,7 +447,7 @@ export function GameScreen() {
               <View style={styles.actionCards}>
                 <ActionCard
                   title={t("unit.worker", lang)}
-                  cost={UNIT_COSTS.worker}
+                  cost={troopCosts.worker}
                   glyph="M"
                   assetKey="unitWorker"
                   disabled={createWorkerDisabled}
@@ -448,7 +456,7 @@ export function GameScreen() {
                 />
                 <ActionCard
                   title={t("unit.fighter", lang)}
-                  cost={UNIT_COSTS.fighter}
+                  cost={troopCosts.fighter}
                   glyph="X"
                   assetKey="unitWarrior"
                   disabled={trainFighterDisabled}
@@ -457,7 +465,7 @@ export function GameScreen() {
                 />
                 <ActionCard
                   title={t("unit.archer", lang)}
-                  cost={UNIT_COSTS.archer}
+                  cost={troopCosts.archer}
                   glyph="A"
                   assetKey="unitArcher"
                   disabled={trainArcherDisabled}
@@ -693,7 +701,7 @@ function UpgradePanel({
             <Text style={styles.guardianButtonText} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
               🛡 {t("barracks.trainGuardian", lang)}
             </Text>
-            <CostChips cost={UNIT_COSTS.guardian} light />
+            <CostChips cost={unitCost("guardian", level)} light />
           </SpringPressable>
         </View>
       ) : null}

@@ -1,5 +1,5 @@
 import { t, type Lang } from "../i18n";
-import { STORAGE_PER_HALL_LEVEL } from "./constants";
+import { STORAGE_PER_HALL_LEVEL, TROOP_BONUS_PER_NEST_LEVEL } from "./constants";
 import type {
   ResourceKind,
   Resources,
@@ -128,7 +128,8 @@ export function buildingEffect(type: VillageBuildingType, level: number, lang: L
   }
 
   if (type === "trainingNest") {
-    return t("fx.fighterTraining", lang);
+    const pct = Math.round((level - 1) * TROOP_BONUS_PER_NEST_LEVEL * 100);
+    return `${t("fx.fighterTraining", lang)} · ${t("fx.troopPower", lang)} +${pct}%`;
   }
 
   if (type === "watchTower") {

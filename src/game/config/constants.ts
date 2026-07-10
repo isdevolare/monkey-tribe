@@ -24,6 +24,29 @@ export const UNIT_COSTS: Record<UnitType, Resources> = {
   guardian: { bananas: 25, stones: 20, wood: 10 }
 };
 
+// Training Nest levels buff the troops they train: +10% hp/attack per
+// level past 1, and the stronger recruits cost +10% more to train.
+// This is the player's endless power curve against the scaling stronghold.
+export const TROOP_BONUS_PER_NEST_LEVEL = 0.1;
+
+export function troopStatMultiplier(nestLevel: number) {
+  return 1 + TROOP_BONUS_PER_NEST_LEVEL * Math.max(0, nestLevel - 1);
+}
+
+/** Cost to train `type` at the given Training Nest level (workers exempt). */
+export function unitCost(type: UnitType, nestLevel: number): Resources {
+  const base = UNIT_COSTS[type];
+  if (type === "worker") {
+    return base;
+  }
+  const factor = troopStatMultiplier(nestLevel);
+  return {
+    bananas: Math.round(base.bananas * factor),
+    stones: Math.round(base.stones * factor),
+    wood: Math.round(base.wood * factor)
+  };
+}
+
 export const RAID_REWARD: Resources = {
   bananas: 25,
   stones: 10,

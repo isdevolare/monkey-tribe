@@ -81,9 +81,12 @@ export function createUnit(
   owner: "player" | "enemy",
   x: number,
   y: number,
-  now: number
+  now: number,
+  /** Training Nest buff for player troops; 1 = base stats. */
+  statMultiplier = 1
 ): Unit {
   const stats = UNIT_STATS[type];
+  const hp = Math.round(stats.hp * statMultiplier);
 
   return {
     id,
@@ -91,9 +94,9 @@ export function createUnit(
     owner,
     x,
     y,
-    hp: stats.hp,
-    maxHp: stats.hp,
-    attack: stats.attack,
+    hp,
+    maxHp: hp,
+    attack: Math.round(stats.attack * statMultiplier),
     range: stats.range,
     state: "idle",
     carriedResource: null,
