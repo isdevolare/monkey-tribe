@@ -114,6 +114,8 @@ export type VillageSave = {
   lastSeenAt?: number;
   dailyStreak?: number;
   dailyLastClaim?: string | null;
+  /** Alive units by type; the army is respawned from this on load. */
+  unitCounts?: Partial<Record<UnitType, number>>;
 };
 
 // Summary shown when the player returns after being away.

@@ -2,15 +2,16 @@ import type { Resources } from "../types/game";
 
 export type DailyReward = Partial<Resources> & { gems?: number };
 
-// 7-day escalating streak. Day 7 is the big one; the cycle repeats.
+// 7-day escalating streak, gem-weighted: resources are earned by raiding,
+// the calendar hands out the scarce currency. Day 7 is the big one.
 export const DAILY_REWARDS: DailyReward[] = [
-  { bananas: 60 },
-  { wood: 60 },
-  { stones: 50 },
+  { bananas: 80 },
+  { gems: 1 },
+  { wood: 80 },
   { gems: 2 },
-  { bananas: 150 },
-  { wood: 140 },
-  { gems: 5 }
+  { stones: 100 },
+  { gems: 3 },
+  { gems: 5, bananas: 150 }
 ];
 
 /** Local calendar day as YYYY-MM-DD, used to gate one claim per day. */

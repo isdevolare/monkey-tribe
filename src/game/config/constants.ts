@@ -63,8 +63,12 @@ export const VILLAGE_REGEN_PER_SEC = 2;
 export const WORK_SHIFT_MS = 3 * 60 * 1000;
 export const WORKER_BOOST = 0.2;
 
-// Offline earnings: buildings keep producing while the game is closed,
-// but only up to this many hours so leaving doesn't trivialize the game.
-export const OFFLINE_CAP_MS = 8 * 60 * 60 * 1000;
+// Offline earnings: manned buildings keep producing while the game is
+// closed. The storage cap is the real limiter, so the time cap is loose.
+export const OFFLINE_CAP_MS = 24 * 60 * 60 * 1000;
 // Ignore trivially short gaps (app backgrounded for a moment).
 export const OFFLINE_MIN_MS = 60 * 1000;
+
+// Resource stockpile limit per Clan Hall level. Full depots stop
+// production and clip loot — upgrading the hall is how you grow reserves.
+export const STORAGE_PER_HALL_LEVEL = 400;

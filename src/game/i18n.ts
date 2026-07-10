@@ -92,6 +92,16 @@ const dict: Record<string, Entry> = {
   "fx.defense": { tr: "Savunma", en: "Defense" },
   "fx.villageLevel": { tr: "Köy seviyesi", en: "Village level" },
   "fx.perSec": { tr: "/sn", en: "/s" },
+  "fx.workerProduction": {
+    tr: "İşçi başına {rate}/dk {res} · {slots} işçi yuvası",
+    en: "{rate}/min {res} per worker · {slots} worker slots"
+  },
+  "fx.storage": { tr: "Depo", en: "Storage" },
+  "fx.workersHint": { tr: "Çalışan işçi", en: "Working" },
+  "fb.storageFull": {
+    tr: "Depo dolu! Klan Salonu'nu geliştir.",
+    en: "Storage full! Upgrade the Clan Hall."
+  },
   "fx.muz": { tr: "muz", en: "bananas" },
   "fx.odun": { tr: "odun", en: "wood" },
   "fx.tas": { tr: "taş", en: "stone" },

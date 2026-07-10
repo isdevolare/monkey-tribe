@@ -1,4 +1,5 @@
 import { t, type Lang } from "../i18n";
+import { STORAGE_PER_HALL_LEVEL } from "./constants";
 import type {
   ResourceKind,
   Resources,
@@ -31,14 +32,46 @@ export const BUILDING_NAMES: Record<VillageBuildingType, string> = {
   watchTower: "Gözetleme Kulesi"
 };
 
-// Passive production per second at level 1; scales linearly with level.
+// Production per WORKER per second; a building hosts up to `level`
+// workers, so output = rate × manned slots. Unmanned buildings produce
+// nothing — resources come from monkeys, not thin air.
 export const BUILDING_PRODUCTION: Partial<
   Record<VillageBuildingType, { resource: ResourceKind; perSecond: number }>
 > = {
-  bananaGrove: { resource: "bananas", perSecond: 1.2 },
-  lumberCamp: { resource: "wood", perSecond: 0.8 },
-  stoneQuarry: { resource: "stones", perSecond: 0.6 }
+  bananaGrove: { resource: "bananas", perSecond: 2 / 60 },
+  lumberCamp: { resource: "wood", perSecond: 1.4 / 60 },
+  stoneQuarry: { resource: "stones", perSecond: 1 / 60 }
 };
+
+/**
+ * Distributes idle workers across production buildings in BUILDING_ORDER
+ * priority (grove first). Each building offers `level` slots. Returns
+ * manned slot counts keyed by building type.
+ */
+export function assignWorkers(
+  buildings: VillageBuilding[],
+  workerCount: number
+): Partial<Record<VillageBuildingType, number>> {
+  const assigned: Partial<Record<VillageBuildingType, number>> = {};
+  let remaining = Math.max(0, Math.floor(workerCount));
+  for (const type of BUILDING_ORDER) {
+    if (!BUILDING_PRODUCTION[type]) {
+      continue;
+    }
+    const level = buildings.find((building) => building.type === type)?.level ?? 0;
+    const slots = Math.min(level, remaining);
+    if (slots > 0) {
+      assigned[type] = slots;
+      remaining -= slots;
+    }
+  }
+  return assigned;
+}
+
+// Clan Hall level caps how much of each resource the village can stockpile.
+export function storageCap(hallLevel: number) {
+  return STORAGE_PER_HALL_LEVEL * Math.max(1, hallLevel);
+}
 
 // Every village starts with one of each building at level 1.
 export const DEFAULT_BUILDINGS: VillageBuilding[] = BUILDING_ORDER.map((type) => ({
@@ -82,8 +115,12 @@ const RESOURCE_KEY: Record<ResourceKind, string> = {
 export function buildingEffect(type: VillageBuildingType, level: number, lang: Lang): string {
   const production = BUILDING_PRODUCTION[type];
   if (production) {
-    const rate = (production.perSecond * level).toFixed(1);
-    return `${rate}${t("fx.perSec", lang)} ${t(RESOURCE_KEY[production.resource], lang)}`;
+    const perMinute = Math.round(production.perSecond * 60 * 10) / 10;
+    return t("fx.workerProduction", lang, {
+      rate: perMinute,
+      res: t(RESOURCE_KEY[production.resource], lang),
+      slots: level
+    });
   }
 
   if (type === "workerShelter") {
@@ -98,5 +135,5 @@ export function buildingEffect(type: VillageBuildingType, level: number, lang: L
     return `${t("fx.defense", lang)} +${level * 2}`;
   }
 
-  return `${t("fx.villageLevel", lang)} ${level}`;
+  return `${t("fx.villageLevel", lang)} ${level} · ${t("fx.storage", lang)} ${storageCap(level)}`;
 }

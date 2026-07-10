@@ -24,8 +24,10 @@ import {
 import {
   BUILDING_PRODUCTION,
   DEFAULT_BUILDINGS,
+  assignWorkers,
   buildingName,
   populationCap,
+  storageCap,
   upgradeCost
 } from "../config/buildings";
 import { STRONGHOLD_BASE_LEVEL, getCamp, campName, type RaidCamp } from "../config/camps";
@@ -60,21 +62,47 @@ function bumpQuest(
   return { ...progress, [metric]: (progress[metric] ?? 0) + 1 };
 }
 
-// What the leveled buildings would have produced over `elapsedMs` while
-// the game was closed (same rates as the live tick, capped elsewhere).
+// What the MANNED buildings would have produced over `elapsedMs` while the
+// game was closed — same worker-based rates as the live tick. No workers,
+// no offline income.
 function offlineEarnings(
   buildings: VillageBuilding[],
+  workerCount: number,
   elapsedMs: number
 ): OfflineReport {
   const seconds = elapsedMs / 1000;
   const report: OfflineReport = { bananas: 0, stones: 0, wood: 0, durationMs: elapsedMs };
+  const manned = assignWorkers(buildings, workerCount);
   for (const building of buildings) {
     const production = BUILDING_PRODUCTION[building.type];
-    if (production) {
-      report[production.resource] += Math.floor(production.perSecond * building.level * seconds);
+    const workers = manned[building.type] ?? 0;
+    if (production && workers > 0) {
+      report[production.resource] += Math.floor(production.perSecond * workers * seconds);
     }
   }
   return report;
+}
+
+/**
+ * Adds `delta` to `resources` in place, clamping every resource to the
+ * Clan Hall storage cap. Returns true when anything was clipped so the
+ * caller can surface a "storage full" hint.
+ */
+function addResourcesCapped(resources: Resources, delta: Partial<Resources>, cap: number) {
+  let clipped = false;
+  for (const key of ["bananas", "stones", "wood"] as const) {
+    const gain = delta[key] ?? 0;
+    const next = resources[key] + gain;
+    if (next > cap) {
+      resources[key] = Math.max(resources[key], cap);
+      if (gain > 0) {
+        clipped = true;
+      }
+    } else {
+      resources[key] = next;
+    }
+  }
+  return clipped;
 }
 
 export const SAVE_KEY = "monkey-tribe:save";
@@ -658,19 +686,52 @@ export const useGameStore = create<GameState>((set) => ({
     })),
   hydrate: (save: VillageSave) =>
     set((state) => {
+      const now = Date.now();
       const levels = new Map(save.buildings.map((building) => [building.type, building.level]));
       const buildings = DEFAULT_BUILDINGS.map((building) => ({
         type: building.type,
         level: levels.get(building.type) ?? building.level
       }));
+      const cap = storageCap(buildingLevel(buildings, "clanHall"));
 
-      // Award (capped) production for the time the game was closed.
-      const resources = { ...save.resources };
+      // Rebuild the persisted army. Older saves have no unitCounts — they
+      // fall back to the fresh-village single worker.
+      let units = createInitialUnits(now);
+      if (save.unitCounts) {
+        units = [];
+        for (const [type, count] of Object.entries(save.unitCounts) as [UnitType, number][]) {
+          for (let i = 0; i < Math.max(0, Math.floor(count)); i++) {
+            unitSerial += 1;
+            const spawn = findSpawnPosition(units, "player");
+            units.push(
+              createUnit(`player-${type}-${now}-${unitSerial}`, type, "player", spawn.x, spawn.y, now)
+            );
+          }
+        }
+        if (units.length === 0) {
+          units = createInitialUnits(now);
+        }
+      }
+      const workerCount = units.filter((unit) => unit.type === "worker").length;
+
+      // Migration squeeze: stockpiles from the pre-cap economy clamp to the
+      // new depot limit.
+      const resources = {
+        bananas: Math.min(save.resources.bananas, cap),
+        stones: Math.min(save.resources.stones, cap),
+        wood: Math.min(save.resources.wood, cap)
+      };
+
+      // Award worker-driven production for the time the game was closed;
+      // the depot cap is the real ceiling, so the report shows only what fit.
       let offlineReport: OfflineReport | null = null;
       if (save.lastSeenAt != null) {
-        const elapsed = Math.min(Date.now() - save.lastSeenAt, OFFLINE_CAP_MS);
+        const elapsed = Math.min(now - save.lastSeenAt, OFFLINE_CAP_MS);
         if (elapsed >= OFFLINE_MIN_MS) {
-          const earned = offlineEarnings(buildings, elapsed);
+          const earned = offlineEarnings(buildings, workerCount, elapsed);
+          earned.bananas = Math.min(earned.bananas, Math.max(0, cap - resources.bananas));
+          earned.stones = Math.min(earned.stones, Math.max(0, cap - resources.stones));
+          earned.wood = Math.min(earned.wood, Math.max(0, cap - resources.wood));
           if (earned.bananas + earned.stones + earned.wood > 0) {
             resources.bananas += earned.bananas;
             resources.stones += earned.stones;
@@ -682,6 +743,7 @@ export const useGameStore = create<GameState>((set) => ({
 
       return {
         buildings,
+        units,
         resources,
         offlineReport,
         maxPopulation: save.maxPopulation,
@@ -804,13 +866,15 @@ export const useGameStore = create<GameState>((set) => ({
         return state;
       }
       const now = Date.now();
+      const resources = { ...state.resources };
+      addResourcesCapped(
+        resources,
+        quest.reward,
+        storageCap(buildingLevel(state.buildings, "clanHall"))
+      );
       return {
         ...state,
-        resources: {
-          bananas: state.resources.bananas + (quest.reward.bananas ?? 0),
-          stones: state.resources.stones + (quest.reward.stones ?? 0),
-          wood: state.resources.wood + (quest.reward.wood ?? 0)
-        },
+        resources,
         gems: state.gems + (quest.reward.gems ?? 0),
         questsClaimed: [...state.questsClaimed, id],
         feedback: { id: now, text: t("fb.questClaimed", state.language) }
@@ -827,6 +891,15 @@ export const useGameStore = create<GameState>((set) => ({
         return { ...state, feedback: { id: Date.now(), text: t("fb.needGems", state.language) } };
       }
       const now = Date.now();
+      const cap = storageCap(buildingLevel(state.buildings, "clanHall"));
+      // Never let gems buy resources the depot can't hold — block instead
+      // of silently eating a paid pack.
+      const overflows = (["bananas", "stones", "wood"] as const).some(
+        (key) => state.resources[key] + (item.reward[key] ?? 0) > cap
+      );
+      if (overflows) {
+        return { ...state, feedback: { id: now, text: t("fb.storageFull", state.language) } };
+      }
       return {
         ...state,
         gems: state.gems - item.gemCost,
@@ -850,13 +923,15 @@ export const useGameStore = create<GameState>((set) => ({
       const day = consecutive ? (state.dailyStreak % DAILY_REWARDS.length) + 1 : 1;
       const reward = DAILY_REWARDS[day - 1] ?? {};
       const now = Date.now();
+      const resources = { ...state.resources };
+      addResourcesCapped(
+        resources,
+        reward,
+        storageCap(buildingLevel(state.buildings, "clanHall"))
+      );
       return {
         ...state,
-        resources: {
-          bananas: state.resources.bananas + (reward.bananas ?? 0),
-          stones: state.resources.stones + (reward.stones ?? 0),
-          wood: state.resources.wood + (reward.wood ?? 0)
-        },
+        resources,
         gems: state.gems + (reward.gems ?? 0),
         dailyStreak: day,
         dailyLastClaim: today,
@@ -930,14 +1005,17 @@ export const useGameStore = create<GameState>((set) => ({
                 ? 2
                 : 1;
 
+          const lootResources = { ...game.resources };
+          addResourcesCapped(
+            lootResources,
+            loot,
+            storageCap(buildingLevel(state.buildings, "clanHall"))
+          );
+
           return {
             ...state,
             units: game.units,
-            resources: {
-              bananas: game.resources.bananas + loot.bananas,
-              stones: game.resources.stones + loot.stones,
-              wood: game.resources.wood + loot.wood
-            },
+            resources: lootResources,
             enemyCampHp: 0,
             raidStars: stars,
             gems: state.gems + stars,
@@ -982,8 +1060,9 @@ export const useGameStore = create<GameState>((set) => ({
         }
       }
 
-      // Passive resource production from leveled buildings (time-based).
-      // Workers on a shift boost the whole village's output.
+      // Worker-driven production: each production building hosts up to its
+      // level in workers and only manned slots produce. A work shift
+      // boosts the whole crew's output for a while.
       const elapsedSeconds = Math.max(0, (now - state.lastProductionAt) / 1000);
       const workerCount = units.filter(
         (unit) =>
@@ -996,11 +1075,17 @@ export const useGameStore = create<GameState>((set) => ({
         workShiftUntil = null;
         game.feedbackText = t("fb.workersReturned", state.language);
       }
+      const storageLimit = storageCap(buildingLevel(game.buildings, "clanHall"));
+      const manned = assignWorkers(game.buildings, workerCount);
       for (const building of game.buildings) {
         const production = BUILDING_PRODUCTION[building.type];
-        if (production) {
-          game.resources[production.resource] +=
-            production.perSecond * building.level * elapsedSeconds * productionBoost;
+        const crew = manned[building.type] ?? 0;
+        if (production && crew > 0) {
+          game.resources[production.resource] = Math.min(
+            storageLimit,
+            game.resources[production.resource] +
+              production.perSecond * crew * elapsedSeconds * productionBoost
+          );
         }
       }
 
@@ -1089,10 +1174,19 @@ export const useGameStore = create<GameState>((set) => ({
 
 // Persist the village (buildings/resources/population/language).
 function persistVillage(state: GameState) {
+  // Persist the living roster so the army survives restarts.
+  const unitCounts: Partial<Record<UnitType, number>> = {};
+  for (const unit of state.units) {
+    if (unit.owner === "player" && unit.state !== "dead" && unit.hp > 0) {
+      unitCounts[unit.type] = (unitCounts[unit.type] ?? 0) + 1;
+    }
+  }
+
   const payload: VillageSave = {
     buildings: state.buildings,
     resources: state.resources,
     maxPopulation: state.maxPopulation,
+    unitCounts,
     gems: state.gems,
     productionQueue: state.productionQueue,
     language: state.language,

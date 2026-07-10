@@ -29,7 +29,13 @@ import { VillageBoard } from "../components/game/VillageBoard";
 import { playSound } from "../game/audio/soundManager";
 import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
 import { RUSH_GEM_COST, UNIT_COSTS } from "../game/config/constants";
-import { buildingName, buildingEffect, upgradeCost } from "../game/config/buildings";
+import {
+  BUILDING_PRODUCTION,
+  assignWorkers,
+  buildingEffect,
+  buildingName,
+  upgradeCost
+} from "../game/config/buildings";
 import { getCamp } from "../game/config/camps";
 import { todayKey } from "../game/config/dailyRewards";
 import { claimableQuestCount } from "../game/config/quests";
@@ -557,11 +563,16 @@ function UpgradePanel({
         if (unit.type === "fighter") acc.fighters += 1;
         if (unit.type === "archer") acc.archers += 1;
         if (unit.type === "guardian") acc.guardians += 1;
+        if (unit.type === "worker") acc.workers += 1;
       }
       return acc;
     },
-    { fighters: 0, archers: 0, guardians: 0 }
+    { fighters: 0, archers: 0, guardians: 0, workers: 0 }
   );
+  // Manned slots for this production building; 0/N means output is stopped.
+  const mannedSlots = BUILDING_PRODUCTION[type]
+    ? (assignWorkers(buildings, armyCounts.workers)[type] ?? 0)
+    : null;
 
   return (
     <View style={styles.upgradePanel}>
@@ -574,6 +585,14 @@ function UpgradePanel({
         <Text style={styles.upgradeMeta} maxFontSizeMultiplier={theme.maxFontScale}>
           {t("common.level", lang)} {level} · {buildingEffect(type, level, lang)}
         </Text>
+        {mannedSlots != null ? (
+          <Text
+            style={[styles.upgradeMeta, mannedSlots === 0 ? styles.upgradeMetaWarn : null]}
+            maxFontSizeMultiplier={theme.maxFontScale}
+          >
+            {t("fx.workersHint", lang)}: {mannedSlots}/{level}
+          </Text>
+        ) : null}
         <Text style={styles.upgradeNext} maxFontSizeMultiplier={theme.maxFontScale}>
           {t("upgrade.next", lang)}: {buildingEffect(type, level + 1, lang)}
         </Text>
@@ -1678,6 +1697,9 @@ const styles = StyleSheet.create({
     color: "#a7df80",
     fontSize: 12,
     fontWeight: "800", fontFamily: theme.fonts.bold
+  },
+  upgradeMetaWarn: {
+    color: "#f0a381"
   },
   upgradeNext: {
     marginTop: 1,
