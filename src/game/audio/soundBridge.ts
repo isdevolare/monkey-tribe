@@ -1,9 +1,11 @@
+import { QUESTS, isQuestComplete } from "../config/quests";
 import { useGameStore } from "../state/gameStore";
+import type { GameState } from "../types/game";
 import { hapticImpact, hapticOutcome } from "./haptics";
-import { playBattleHit, playSound } from "./soundManager";
+import { playBattleHit, playSound, setBackgroundLoop, type BackgroundLoopName } from "./soundManager";
 
 // Live HP total of every unit plus both camps; any drop means damage landed.
-function totalHp(state: ReturnType<typeof useGameStore.getState>) {
+function totalHp(state: GameState) {
   let hp = state.playerCampHp + state.enemyCampHp;
   for (const unit of state.units) {
     if (unit.state !== "dead") {
@@ -13,8 +15,35 @@ function totalHp(state: ReturnType<typeof useGameStore.getState>) {
   return hp;
 }
 
-function buildingLevelSum(state: ReturnType<typeof useGameStore.getState>) {
+function buildingLevelSum(state: GameState) {
   return state.buildings.reduce((sum, building) => sum + building.level, 0);
+}
+
+function targetBackgroundLoop(state: GameState): BackgroundLoopName | null {
+  if (state.currentScreen !== "game" || state.gameStatus !== "playing") {
+    return null;
+  }
+
+  if (state.gameMode === "village") {
+    return "village";
+  }
+
+  // Raid map = preparation/waiting; the tense loop stops once combat starts.
+  if (state.gameMode === "raidMap") {
+    return "raidWaiting";
+  }
+
+  if (state.gameMode === "raid" && state.raidStatus === "active") {
+    return "raid";
+  }
+
+  return null;
+}
+
+// Quest progress is cumulative, so a quest can only cross its goal once —
+// counting completions makes the unlock jingle fire exactly once each.
+function completedQuestCount(state: GameState) {
+  return QUESTS.filter((quest) => isQuestComplete(state.questProgress, quest)).length;
 }
 
 let started = false;
@@ -33,10 +62,12 @@ export function initGameSounds() {
   let prev = useGameStore.getState();
   let prevHp = totalHp(prev);
   let prevLevels = buildingLevelSum(prev);
+  setBackgroundLoop(targetBackgroundLoop(prev));
 
   useGameStore.subscribe((state) => {
     const hp = totalHp(state);
     const levels = buildingLevelSum(state);
+    setBackgroundLoop(targetBackgroundLoop(state));
 
     // Raid lifecycle: horn on attack, jingle + loot coins on the outcome.
     if (state.raidStatus !== prev.raidStatus) {
@@ -84,6 +115,23 @@ export function initGameSounds() {
       if (state.gems < prev.gems) {
         playSound("coins");
       }
+    }
+
+    // A quest just crossed its goal — achievement unlocked (fires once,
+    // because progress only ever counts up).
+    if (completedQuestCount(state) > completedQuestCount(prev)) {
+      playSound("achievement");
+      hapticOutcome("success");
+    }
+
+    // Reward actually banked: quest claim or daily calendar claim. Watching
+    // the store means failed claims (reducer returns same state) stay silent.
+    if (
+      state.questsClaimed.length > prev.questsClaimed.length ||
+      (state.dailyLastClaim !== prev.dailyLastClaim && state.dailyLastClaim != null)
+    ) {
+      playSound("reward");
+      hapticImpact("medium");
     }
 
     // Rejected actions surface as feedback (not enough resources/gems/etc.).

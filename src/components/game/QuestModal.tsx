@@ -57,7 +57,7 @@ export function QuestModal({ visible, lang, onClose }: QuestModalProps) {
                 done={isQuestComplete(progress, quest)}
                 claimed={claimed.includes(quest.id)}
                 onClaim={() => {
-                  playSound("coins");
+                  // soundBridge plays the reward jingle when the claim lands.
                   claimQuest(quest.id);
                 }}
               />

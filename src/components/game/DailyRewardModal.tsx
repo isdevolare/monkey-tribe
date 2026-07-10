@@ -71,7 +71,7 @@ export function DailyRewardModal({ visible, lang, onClose }: DailyRewardModalPro
               <WoodButton
                 label={t("daily.claim", lang)}
                 onPress={() => {
-                  playSound("coins");
+                  // soundBridge plays the reward jingle when the claim lands.
                   claimDaily();
                 }}
                 primary

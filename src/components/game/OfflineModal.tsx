@@ -64,7 +64,9 @@ export function OfflineModal({ report, lang, onCollect }: OfflineModalProps) {
               <WoodButton
                 label={t("offline.collect", lang)}
                 onPress={() => {
-                  playSound("coins");
+                  // Offline earnings are already banked by hydrate; this is
+                  // the player acknowledging the windfall — reward jingle.
+                  playSound("reward");
                   onCollect();
                 }}
                 primary
