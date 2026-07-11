@@ -18,6 +18,8 @@ export type RaidCamp = {
   enemyHp: number;
   enemyAttack: number;
   loot: Resources;
+  /** Difficulty band: 1 = starter ladder, 2 = hard mode with richer loot. */
+  tier?: 2;
 };
 
 // Leveled enemy camps the player can raid, easiest first.
@@ -98,15 +100,103 @@ export const RAID_CAMPS: RaidCamp[] = [
     enemyHp: 70,
     enemyAttack: 15,
     loot: { bananas: 660, stones: 260, wood: 280 }
+  },
+
+  // ── 2. Kademe: hard mode. Defenders outclass the starter ladder, and
+  // the loot pays for it — big hauls need a leveled Clan Hall to bank.
+  {
+    id: "cove",
+    name: "Kızıl Koy",
+    level: 8,
+    campHp: 420,
+    enemyCount: 5,
+    archerCount: 3,
+    enemyHp: 78,
+    enemyAttack: 16,
+    loot: { bananas: 800, stones: 320, wood: 340 },
+    tier: 2
+  },
+  {
+    id: "venom",
+    name: "Zehir Bataklığı",
+    level: 9,
+    campHp: 470,
+    enemyCount: 5,
+    archerCount: 4,
+    enemyHp: 84,
+    enemyAttack: 17,
+    loot: { bananas: 950, stones: 380, wood: 400 },
+    tier: 2
+  },
+  {
+    id: "storm",
+    name: "Fırtına Burnu",
+    level: 10,
+    campHp: 520,
+    enemyCount: 6,
+    archerCount: 4,
+    enemyHp: 90,
+    enemyAttack: 18,
+    loot: { bananas: 1100, stones: 440, wood: 470 },
+    tier: 2
+  },
+  {
+    id: "bones",
+    name: "Kemik Vadisi",
+    level: 11,
+    campHp: 570,
+    enemyCount: 6,
+    archerCount: 4,
+    enemyHp: 92,
+    enemyAttack: 18,
+    loot: { bananas: 1300, stones: 520, wood: 550 },
+    tier: 2
+  },
+  {
+    id: "ember",
+    name: "Kor Kayalıkları",
+    level: 12,
+    campHp: 620,
+    enemyCount: 6,
+    archerCount: 5,
+    enemyHp: 96,
+    enemyAttack: 19,
+    loot: { bananas: 1500, stones: 600, wood: 640 },
+    tier: 2
+  },
+  {
+    id: "blackfort",
+    name: "Kara Hisar",
+    level: 13,
+    campHp: 680,
+    enemyCount: 6,
+    archerCount: 5,
+    enemyHp: 100,
+    enemyAttack: 20,
+    loot: { bananas: 1750, stones: 700, wood: 740 },
+    tier: 2
+  },
+  {
+    id: "armada",
+    name: "Korsan Armadası",
+    level: 14,
+    campHp: 680,
+    enemyCount: 6,
+    archerCount: 5,
+    enemyHp: 104,
+    enemyAttack: 20,
+    loot: { bananas: 2000, stones: 800, wood: 850 },
+    tier: 2
   }
 ];
 
 // The endless late-game ladder starts one level above the handcrafted camps.
-export const STRONGHOLD_BASE_LEVEL = 8;
+export const STRONGHOLD_BASE_LEVEL = 15;
 
 /**
  * Procedural "Korsan Kalesi": one stronghold that comes back one level
- * stronger every time it falls, so raids never run out of targets.
+ * stronger every time it falls, so raids never run out of targets. Its
+ * floor sits just above the tier-2 armada.
  */
 export function strongholdCamp(level: number): RaidCamp {
   const tier = Math.max(0, level - STRONGHOLD_BASE_LEVEL);
@@ -114,15 +204,15 @@ export function strongholdCamp(level: number): RaidCamp {
     id: `stronghold-${level}`,
     name: "Korsan Kalesi",
     level,
-    campHp: 430 + tier * 65,
-    enemyCount: Math.min(5 + Math.ceil(tier / 2), 7),
-    archerCount: Math.min(3 + Math.floor(tier / 2), 5),
-    enemyHp: 76 + tier * 8,
-    enemyAttack: 16 + tier * 2,
+    campHp: 720 + tier * 70,
+    enemyCount: Math.min(6 + Math.floor(tier / 4), 7),
+    archerCount: 5,
+    enemyHp: 110 + tier * 7,
+    enemyAttack: 21 + tier * 2,
     loot: {
-      bananas: 820 + tier * 160,
-      stones: 330 + tier * 65,
-      wood: 350 + tier * 70
+      bananas: 2200 + tier * 180,
+      stones: 880 + tier * 70,
+      wood: 930 + tier * 75
     }
   };
 }

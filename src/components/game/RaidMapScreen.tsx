@@ -32,12 +32,25 @@ export function RaidMapScreen({ fighterCount, raidLevel, lang, onAttack, onClose
       </View>
 
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {camps.map((camp) => {
+        {camps.map((camp, index) => {
           const endless = camp.id.startsWith("stronghold-");
+          const tier2 = camp.tier === 2;
+          const firstTier2 = tier2 && camps[index - 1]?.tier !== 2;
           // Same tier language as the village: higher camps loom larger.
           const artScale = 0.82 + Math.min(camp.level, 7) * 0.05;
           return (
-          <View key={camp.id} style={[styles.card, endless ? styles.cardEndless : null]}>
+          <View key={camp.id}>
+          {firstTier2 ? (
+            <View style={styles.tierDivider}>
+              <Text style={styles.tierDividerText} maxFontSizeMultiplier={theme.maxFontScale}>
+                {t("raidmap.tier2", lang)}
+              </Text>
+              <Text style={styles.tierDividerNote} maxFontSizeMultiplier={theme.maxFontScale}>
+                {t("raidmap.tier2Note", lang)}
+              </Text>
+            </View>
+          ) : null}
+          <View style={[styles.card, tier2 ? styles.cardTier2 : null, endless ? styles.cardEndless : null]}>
             <View style={styles.cardArt}>
               {endless ? <View style={styles.artGlow} /> : null}
               <AssetImage
@@ -78,6 +91,7 @@ export function RaidMapScreen({ fighterCount, raidLevel, lang, onAttack, onClose
                 {noFighters ? t("raidmap.needFighter", lang) : t("raidmap.attack", lang)}
               </Text>
             </SpringPressable>
+          </View>
           </View>
           );
         })}
@@ -167,6 +181,30 @@ const styles = StyleSheet.create({
   cardEndless: {
     borderColor: "rgba(216, 106, 84, 0.6)",
     backgroundColor: "rgba(46, 18, 13, 0.86)"
+  },
+  cardTier2: {
+    borderColor: "rgba(200, 74, 58, 0.5)",
+    backgroundColor: "rgba(38, 16, 12, 0.82)"
+  },
+  tierDivider: {
+    alignItems: "center",
+    marginTop: 6,
+    marginBottom: 10,
+    paddingTop: 10,
+    borderTopWidth: 1.5,
+    borderTopColor: "rgba(200, 74, 58, 0.45)"
+  },
+  tierDividerText: {
+    color: "#f0a381",
+    fontSize: 13,
+    letterSpacing: 1.2,
+    fontFamily: theme.fonts.heavy
+  },
+  tierDividerNote: {
+    marginTop: 1,
+    color: "#c9a68b",
+    fontSize: 11,
+    fontFamily: theme.fonts.bold
   },
   endlessNote: {
     marginTop: 1,

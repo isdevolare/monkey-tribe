@@ -260,15 +260,11 @@ function moveUnitToward(unit: Unit, target: Position, now: number) {
     return;
   }
 
+  // Clamp instead of giving up: a step that would leave the board slides
+  // along the edge, so a unit near (or past) the border keeps fighting.
   const step = nextStepToward(unit, target);
-  if (!isInsideBoard(step.x, step.y)) {
-    unit.state = "idle";
-    unit.target = undefined;
-    return;
-  }
-
-  unit.x = step.x;
-  unit.y = step.y;
+  unit.x = Math.min(BOARD_SIZE - 1, Math.max(0, step.x));
+  unit.y = Math.min(BOARD_SIZE - 1, Math.max(0, step.y));
   unit.lastStepAt = now;
 }
 
@@ -428,12 +424,21 @@ function findSpawnPosition(units: Unit[], owner: Owner): Position {
   return camp;
 }
 
+// Enough unique tiles for the biggest tier-2 garrisons (12 defenders) —
+// stacked units confuse targeting and read as one monkey on screen.
 const ENEMY_DEPLOY_SPOTS: Position[] = [
   { x: 8, y: 2 },
   { x: 7, y: 1 },
   { x: 9, y: 1 },
   { x: 8, y: 3 },
-  { x: 9, y: 3 }
+  { x: 9, y: 3 },
+  { x: 7, y: 2 },
+  { x: 6, y: 1 },
+  { x: 9, y: 2 },
+  { x: 7, y: 3 },
+  { x: 6, y: 2 },
+  { x: 8, y: 4 },
+  { x: 9, y: 4 }
 ];
 
 function createRaidEnemies(now: number, camp: RaidCamp): Unit[] {
@@ -481,8 +486,11 @@ function deployRaidUnits(units: Unit[], now: number, camp: RaidCamp) {
 
         return {
           ...unit,
-          x: 6 + (slot % 2),
-          y: 3 + Math.floor(slot / 2),
+          // 3-wide column keeps even a 16-strong army on the 10x10 board
+          // (the old 2-wide layout pushed slots 14+ off the bottom edge,
+          // freezing them in a step-outside/idle loop forever).
+          x: 5 + (slot % 3),
+          y: 3 + Math.floor(slot / 3),
           state: "attacking" as const,
           target: { kind: "camp", owner: "enemy" } as UnitTarget,
           gatherTarget: undefined,

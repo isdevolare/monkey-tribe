@@ -145,7 +145,19 @@ const dict: Record<string, Entry> = {
   "camp.swamp": { tr: "Bataklık Karakolu", en: "Swamp Outpost" },
   "camp.skull": { tr: "Kafatası Tepesi", en: "Skull Hill" },
   "camp.harbor": { tr: "Gölge Limanı", en: "Shadow Harbor" },
+  "camp.cove": { tr: "Kızıl Koy", en: "Crimson Cove" },
+  "camp.venom": { tr: "Zehir Bataklığı", en: "Venom Marsh" },
+  "camp.storm": { tr: "Fırtına Burnu", en: "Storm Point" },
+  "camp.bones": { tr: "Kemik Vadisi", en: "Valley of Bones" },
+  "camp.ember": { tr: "Kor Kayalıkları", en: "Ember Cliffs" },
+  "camp.blackfort": { tr: "Kara Hisar", en: "Black Citadel" },
+  "camp.armada": { tr: "Korsan Armadası", en: "Pirate Armada" },
   "camp.stronghold": { tr: "Korsan Kalesi", en: "Pirate Stronghold" },
+  "raidmap.tier2": { tr: "2. KADEME — ZORLU SULAR", en: "TIER 2 — ROUGH WATERS" },
+  "raidmap.tier2Note": {
+    tr: "Daha sert savunma, çok daha dolgun ganimet",
+    en: "Tougher defenses, far richer loot"
+  },
   "raidmap.endless": {
     tr: "Her zaferden sonra güçlenerek geri döner",
     en: "Returns stronger after every victory"
