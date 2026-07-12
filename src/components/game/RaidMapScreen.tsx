@@ -66,9 +66,19 @@ export function RaidMapScreen({ fighterCount, raidLevel, lang, onAttack, onClose
             </View>
 
             <View style={styles.cardBody}>
-              <Text style={styles.campName} numberOfLines={1}>{campName(camp.id, lang)}</Text>
+              <Text
+                style={styles.campName}
+                numberOfLines={2}
+                maxFontSizeMultiplier={theme.maxFontScale}
+              >
+                {campName(camp.id, lang)}
+              </Text>
               {endless ? (
-                <Text style={styles.endlessNote} numberOfLines={1}>
+                <Text
+                  style={styles.endlessNote}
+                  numberOfLines={2}
+                  maxFontSizeMultiplier={theme.maxFontScale}
+                >
                   {t("raidmap.endless", lang)}
                 </Text>
               ) : null}
@@ -269,6 +279,7 @@ const styles = StyleSheet.create({
   campName: {
     color: theme.colors.paper,
     fontSize: 15,
+    lineHeight: 18,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   lootRow: {
