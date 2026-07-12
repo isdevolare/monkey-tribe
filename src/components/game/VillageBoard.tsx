@@ -416,6 +416,8 @@ function BuildingSprite({
         }
       ]}
     >
+      <View style={styles.groundShadowSoft} pointerEvents="none" />
+      <View style={styles.groundShadow} pointerEvents="none" />
       {building.level >= GLOW_LEVEL ? (
         <View style={styles.prestigeGlow} pointerEvents="none" />
       ) : null}
@@ -670,6 +672,7 @@ function UnitArt({ unit }: { unit: Unit }) {
 
   return (
     <PopIn style={styles.unitWrap}>
+    <View style={styles.unitShadow} pointerEvents="none" />
     <LivelyUnit seed={stableIndex(unit.id, 97)} amplitude={4} style={styles.full}>
       <AssetImage
         assetKey={unitAssetKey(unit)}
@@ -892,6 +895,37 @@ const styles = StyleSheet.create({
     position: "absolute",
     alignItems: "center",
     justifyContent: "flex-end"
+  },
+  // Soft contact shadow so buildings sit in the ground instead of floating.
+  // The building's foot lands ~68% down its container (see top offset), so
+  // the shadow straddles that line, not the container bottom.
+  groundShadowSoft: {
+    position: "absolute",
+    left: "6%",
+    right: "6%",
+    top: "60%",
+    height: "22%",
+    borderRadius: 999,
+    backgroundColor: "rgba(14, 22, 9, 0.16)"
+  },
+  groundShadow: {
+    position: "absolute",
+    left: "15%",
+    right: "15%",
+    top: "63%",
+    height: "15%",
+    borderRadius: 999,
+    backgroundColor: "rgba(14, 22, 9, 0.3)"
+  },
+  unitShadow: {
+    position: "absolute",
+    left: "26%",
+    right: "26%",
+    top: "70%",
+    height: "12%",
+    borderRadius: 999,
+    backgroundColor: "rgba(14, 22, 9, 0.28)",
+    zIndex: 0
   },
   prestigeGlow: {
     position: "absolute",
