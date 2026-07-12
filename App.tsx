@@ -5,7 +5,8 @@ import {
   Baloo2_800ExtraBold,
   useFonts
 } from "@expo-google-fonts/baloo-2";
-import { useEffect } from "react";
+import * as SplashScreen from "expo-splash-screen";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SafeAreaView, StatusBar, StyleSheet, View } from "react-native";
 import { FadeIn } from "./src/components/game/FadeIn";
 import { initGameSounds } from "./src/game/audio/soundBridge";
@@ -16,6 +17,10 @@ import { ResultScreen } from "./src/screens/ResultScreen";
 import type { VillageSave } from "./src/game/types/game";
 import { theme } from "./src/theme/theme";
 
+// Hold the native splash up until hydration + fonts finish, so the default
+// (empty) village never flashes before the saved state is restored.
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
 export default function App() {
   const screen = useGameStore((state) => state.currentScreen);
   const [fontsLoaded] = useFonts({
@@ -23,32 +28,72 @@ export default function App() {
     Baloo2_700Bold,
     Baloo2_800ExtraBold
   });
+  const [hydrated, setHydrated] = useState(false);
+  const bootStarted = useRef(false);
 
+  // One-time boot. Order matters: restore the save FIRST, then start the
+  // audio bridge — so the bridge seeds its baseline from the restored state
+  // and never replays saved-progress transitions as fresh events (that was
+  // the source of the stray achievement/reward jingles on launch).
   useEffect(() => {
-    initGameSounds();
+    if (bootStarted.current) {
+      return;
+    }
+    bootStarted.current = true;
+
+    (async () => {
+      if (__DEV__) {
+        console.log("[startup] hydration start");
+      }
+      try {
+        const raw = await AsyncStorage.getItem(SAVE_KEY);
+        if (raw) {
+          const save = JSON.parse(raw) as VillageSave;
+          if (Array.isArray(save.buildings) && save.resources) {
+            useGameStore.getState().hydrate(save);
+          }
+        }
+      } catch {
+        // A corrupt save must never block launch; fall back to a fresh village.
+      }
+      if (__DEV__) {
+        console.log("[startup] hydration complete");
+      }
+      // Audio bridge subscribes only now, after hydration is applied.
+      initGameSounds();
+      setHydrated(true);
+    })();
   }, []);
 
-  // Restore the saved village once on launch so it persists across sessions.
   useEffect(() => {
-    AsyncStorage.getItem(SAVE_KEY)
-      .then((raw) => {
-        if (!raw) {
-          return;
-        }
-        const save = JSON.parse(raw) as VillageSave;
-        if (Array.isArray(save.buildings) && save.resources) {
-          useGameStore.getState().hydrate(save);
-        }
-      })
-      .catch(() => undefined);
-  }, []);
+    if (fontsLoaded && __DEV__) {
+      console.log("[startup] assets ready");
+    }
+  }, [fontsLoaded]);
 
-  if (!fontsLoaded) {
-    return <View style={styles.appShell} />;
+  const appReady = hydrated && fontsLoaded;
+
+  useEffect(() => {
+    if (appReady && __DEV__) {
+      console.log("[startup] app ready");
+    }
+  }, [appReady]);
+
+  // Hide the native splash only once real content is about to paint.
+  const onLayoutRootView = useCallback(() => {
+    if (appReady) {
+      SplashScreen.hideAsync().catch(() => undefined);
+    }
+  }, [appReady]);
+
+  // Render nothing (native splash stays visible) until fully ready — never
+  // the default state.
+  if (!appReady) {
+    return null;
   }
 
   return (
-    <View style={styles.appShell}>
+    <View style={styles.appShell} onLayout={onLayoutRootView}>
       <SafeAreaView style={styles.phoneFrame}>
         <StatusBar barStyle="light-content" />
         <FadeIn key={screen} rise={0} style={styles.screenFill}>
