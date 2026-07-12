@@ -12,6 +12,7 @@ import {
   useWindowDimensions
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AssetImage } from "../components/game/AssetImage";
 import { FadeIn } from "../components/game/FadeIn";
 import { RaidBoard } from "../components/game/RaidBoard";
@@ -113,6 +114,7 @@ function formatAmount(value: number) {
 
 export function GameScreen() {
   const state = useGameStore();
+  const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const layoutWidth = Math.min(width, PHONE_FRAME_WIDTH);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -259,7 +261,13 @@ export function GameScreen() {
 
       <ScrollView
         style={styles.screen}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: theme.spacing.sm + insets.top,
+            paddingBottom: theme.spacing.md + insets.bottom
+          }
+        ]}
         bounces={false}
         showsVerticalScrollIndicator={false}
       >
@@ -281,7 +289,6 @@ export function GameScreen() {
               </View>
             </View>
             <View style={styles.namePlate}>
-              <PanelTexture dark />
               <Text
                 style={styles.clanName}
                 numberOfLines={1}
@@ -420,7 +427,6 @@ export function GameScreen() {
               />
             ) : (
               <View style={styles.hintPanel}>
-                <PanelTexture dark />
                 <View style={styles.hintAvatar}>
                   <AssetImage
                     assetKey="menuChiefMascot"
@@ -443,7 +449,6 @@ export function GameScreen() {
             ) : null}
 
             <View style={styles.bottomDock}>
-              <PanelTexture dark />
               <View style={styles.actionCards}>
                 <ActionCard
                   title={t("unit.worker", lang)}
@@ -584,7 +589,6 @@ function UpgradePanel({
 
   return (
     <View style={styles.upgradePanel}>
-      <PanelTexture dark />
       <View style={styles.upgradeMain}>
       <View style={styles.upgradeInfo}>
         <Text style={styles.upgradeName} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
@@ -731,7 +735,6 @@ function ProductionQueue({
   const now = Date.now();
   return (
     <View style={styles.queuePanel}>
-      <PanelTexture dark />
       <View style={styles.queueHeader}>
         <Text style={styles.queueTitle}>{t("production.title", lang)}</Text>
         <Pressable

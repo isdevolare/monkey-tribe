@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AssetImage } from "../components/game/AssetImage";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { WoodButton } from "../components/game/WoodButton";
@@ -13,6 +14,7 @@ export function MainMenuScreen() {
   const startGame = useGameStore((state) => state.startGame);
   const setLanguage = useGameStore((state) => state.setLanguage);
   const lang = useGameStore((state) => state.language);
+  const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
 
   return (
@@ -35,7 +37,7 @@ export function MainMenuScreen() {
         </View>
       </View>
 
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingTop: 40 + insets.top }]}>
         <View style={styles.logoShadow}>
           <AssetImage
             assetKey="uiLogo"

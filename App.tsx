@@ -7,7 +7,8 @@ import {
 } from "@expo-google-fonts/baloo-2";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SafeAreaView, StatusBar, StyleSheet, View } from "react-native";
+import { StatusBar, StyleSheet, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { FadeIn } from "./src/components/game/FadeIn";
 import { initGameSounds } from "./src/game/audio/soundBridge";
 import { SAVE_KEY, useGameStore } from "./src/game/state/gameStore";
@@ -93,16 +94,21 @@ export default function App() {
   }
 
   return (
-    <View style={styles.appShell} onLayout={onLayoutRootView}>
-      <SafeAreaView style={styles.phoneFrame}>
-        <StatusBar barStyle="light-content" />
-        <FadeIn key={screen} rise={0} style={styles.screenFill}>
-          {screen === "menu" ? <MainMenuScreen /> : null}
-          {screen === "game" ? <GameScreen /> : null}
-          {screen === "result" ? <ResultScreen /> : null}
-        </FadeIn>
-      </SafeAreaView>
-    </View>
+    <SafeAreaProvider>
+      <View style={styles.appShell} onLayout={onLayoutRootView}>
+        {/* Full-bleed frame: the background fills edge to edge (including behind
+            the status bar); each screen insets its own content via safe-area
+            padding. No solid strip at the top. */}
+        <View style={styles.phoneFrame}>
+          <StatusBar barStyle="light-content" />
+          <FadeIn key={screen} rise={0} style={styles.screenFill}>
+            {screen === "menu" ? <MainMenuScreen /> : null}
+            {screen === "game" ? <GameScreen /> : null}
+            {screen === "result" ? <ResultScreen /> : null}
+          </FadeIn>
+        </View>
+      </View>
+    </SafeAreaProvider>
   );
 }
 
