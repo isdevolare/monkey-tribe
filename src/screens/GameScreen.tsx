@@ -32,7 +32,6 @@ import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
 import { RUSH_GEM_COST, unitCost } from "../game/config/constants";
 import {
   BUILDING_PRODUCTION,
-  assignWorkers,
   buildingEffect,
   buildingName,
   upgradeCost
@@ -43,6 +42,7 @@ import { claimableQuestCount } from "../game/config/quests";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
 import type {
+  ActiveWorkTask,
   Lang,
   ProductionItem,
   Resources,
@@ -232,7 +232,6 @@ export function GameScreen() {
   const sheet = getGameAsset("unitMonkeySheet");
   const queuedTypes = new Set(state.productionQueue.map((item) => item.type));
   const compactHud = layoutWidth < 370;
-  const workShiftActive = state.workShiftUntil != null && state.workShiftUntil > Date.now();
   const workerCount = state.units.filter(
     (unit) =>
       unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
@@ -395,13 +394,11 @@ export function GameScreen() {
                 </View>
                 <VillageBoard
                   tiles={state.mapTiles}
-                  units={state.units}
                   buildings={state.buildings}
                   lang={lang}
                   maxSize={boardMaxSize}
                   feedbackText={state.feedback?.text}
                   selectedType={selectedBuilding}
-                  workShiftActive={workShiftActive}
                   onBuildingPress={(type) => {
                     playSound("tap");
                     setSelectedBuilding(type);
@@ -417,7 +414,7 @@ export function GameScreen() {
                 type={selectedBuilding}
                 lang={lang}
                 units={state.units}
-                workShiftUntil={state.workShiftUntil}
+                activeWorkTask={state.activeWorkTask}
                 workerCount={workerCount}
                 guardianDisabled={trainGuardianDisabled}
                 onSendWorkers={state.sendWorkersToWork}
@@ -532,7 +529,22 @@ function formatCountdown(ms: number) {
   const total = Math.max(0, Math.ceil(ms / 1000));
   const minutes = Math.floor(total / 60);
   const seconds = total % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function workingWorkersForBuilding(
+  type: VillageBuildingType,
+  activeWorkTask: ActiveWorkTask | null
+) {
+  const production = BUILDING_PRODUCTION[type];
+  if (!production || !activeWorkTask || production.perSecond <= 0) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    Math.round(activeWorkTask.productionPerSecond[production.resource] / production.perSecond)
+  );
 }
 
 function UpgradePanel({
@@ -541,7 +553,7 @@ function UpgradePanel({
   type,
   lang,
   units,
-  workShiftUntil,
+  activeWorkTask,
   workerCount,
   guardianDisabled,
   onSendWorkers,
@@ -554,7 +566,7 @@ function UpgradePanel({
   type: VillageBuildingType;
   lang: Lang;
   units: Unit[];
-  workShiftUntil: number | null;
+  activeWorkTask: ActiveWorkTask | null;
   workerCount: number;
   guardianDisabled: boolean;
   onSendWorkers: () => void;
@@ -568,8 +580,8 @@ function UpgradePanel({
   const gated = type !== "clanHall" && level >= clanLevel;
   const disabled = gated || !hasResources(resources, cost);
   const now = Date.now();
-  const shiftRemaining = workShiftUntil != null ? workShiftUntil - now : 0;
-  const shiftActive = shiftRemaining > 0;
+  const shiftRemaining = activeWorkTask ? activeWorkTask.endsAt - now : 0;
+  const shiftActive = activeWorkTask != null;
   const armyCounts = units.reduce(
     (acc, unit) => {
       if (unit.owner === "player" && unit.state !== "dead" && unit.hp > 0) {
@@ -582,9 +594,8 @@ function UpgradePanel({
     },
     { fighters: 0, archers: 0, guardians: 0, workers: 0 }
   );
-  // Manned slots for this production building; 0/N means output is stopped.
-  const mannedSlots = BUILDING_PRODUCTION[type]
-    ? (assignWorkers(buildings, armyCounts.workers)[type] ?? 0)
+  const workingWorkers = BUILDING_PRODUCTION[type]
+    ? workingWorkersForBuilding(type, activeWorkTask)
     : null;
 
   return (
@@ -597,12 +608,12 @@ function UpgradePanel({
         <Text style={styles.upgradeMeta} maxFontSizeMultiplier={theme.maxFontScale}>
           {t("common.level", lang)} {level} · {buildingEffect(type, level, lang)}
         </Text>
-        {mannedSlots != null ? (
+        {workingWorkers != null ? (
           <Text
-            style={[styles.upgradeMeta, mannedSlots === 0 ? styles.upgradeMetaWarn : null]}
+            style={[styles.upgradeMeta, workingWorkers === 0 ? styles.upgradeMetaWarn : null]}
             maxFontSizeMultiplier={theme.maxFontScale}
           >
-            {t("fx.workersHint", lang)}: {mannedSlots}/{level}
+            {t("fx.workersHint", lang)}: {workingWorkers}
           </Text>
         ) : null}
         <Text style={styles.upgradeNext} maxFontSizeMultiplier={theme.maxFontScale}>
@@ -640,35 +651,35 @@ function UpgradePanel({
 
       {type === "workerShelter" ? (
         <View style={styles.panelFooter}>
-          {shiftActive ? (
-            <View style={styles.workStatusChip}>
-              <AssetImage
-                assetKey="unitWorker"
-                style={styles.footerUnitIcon}
-                fallback={<View style={styles.footerUnitIconFallback} />}
-              />
-              <Text style={styles.workStatusText} maxFontSizeMultiplier={theme.maxFontScale}>
-                {t("shelter.working", lang, { time: formatCountdown(shiftRemaining) })}
-              </Text>
-            </View>
-          ) : (
-            <SpringPressable
-              accessibilityRole="button"
-              accessibilityState={{ disabled: workerCount <= 0 }}
-              disabled={workerCount <= 0}
-              onPress={onSendWorkers}
-              style={[styles.workButton, workerCount <= 0 ? styles.workButtonDisabled : null]}
-            >
-              <AssetImage
-                assetKey="unitWorker"
-                style={styles.footerUnitIcon}
-                fallback={<View style={styles.footerUnitIconFallback} />}
-              />
+          <SpringPressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: shiftActive || workerCount <= 0 }}
+            disabled={shiftActive || workerCount <= 0}
+            onPress={onSendWorkers}
+            style={[
+              styles.workButton,
+              shiftActive ? styles.workButtonActive : null,
+              !shiftActive && workerCount <= 0 ? styles.workButtonDisabled : null
+            ]}
+          >
+            <AssetImage
+              assetKey="unitWorker"
+              style={styles.footerUnitIcon}
+              fallback={<View style={styles.footerUnitIconFallback} />}
+            />
+            <View style={styles.workButtonCopy}>
               <Text style={styles.workButtonText} maxFontSizeMultiplier={theme.maxFontScale}>
-                {t("shelter.send", lang)} ({workerCount})
+                {shiftActive
+                  ? t("shelter.workingCount", lang, { n: activeWorkTask.workerCount })
+                  : t("shelter.send", lang)}
               </Text>
-            </SpringPressable>
-          )}
+              {shiftActive ? (
+                <Text style={styles.workButtonSubtext} maxFontSizeMultiplier={theme.maxFontScale}>
+                  {t("shelter.remaining", lang, { time: formatCountdown(shiftRemaining) })}
+                </Text>
+              ) : null}
+            </View>
+          </SpringPressable>
         </View>
       ) : null}
 
@@ -1601,7 +1612,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    minHeight: 42,
+    minHeight: 48,
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: "rgba(198, 238, 137, 0.5)",
@@ -1611,25 +1622,22 @@ const styles = StyleSheet.create({
   workButtonDisabled: {
     opacity: 0.55
   },
+  workButtonActive: {
+    borderColor: "rgba(226, 177, 90, 0.4)",
+    backgroundColor: "rgba(74, 56, 28, 0.72)"
+  },
+  workButtonCopy: {
+    flex: 1,
+    justifyContent: "center"
+  },
   workButtonText: {
     color: theme.colors.paper,
     fontSize: 13,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
-  workStatusChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    minHeight: 36,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "rgba(226, 177, 90, 0.4)",
-    backgroundColor: "rgba(74, 56, 28, 0.6)",
-    paddingHorizontal: theme.spacing.sm
-  },
-  workStatusText: {
+  workButtonSubtext: {
     color: "#ffe9ad",
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   barracksFooter: {

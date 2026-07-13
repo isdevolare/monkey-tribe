@@ -98,7 +98,7 @@ const dict: Record<string, Entry> = {
   },
   "fx.storage": { tr: "Depo", en: "Storage" },
   "fx.troopPower": { tr: "Asker gücü", en: "Troop power" },
-  "fx.workersHint": { tr: "Çalışan işçi", en: "Working" },
+  "fx.workersHint": { tr: "Çalışan", en: "Working" },
   "fb.storageFull": {
     tr: "Depo dolu! Klan Salonu'nu geliştir.",
     en: "Storage full! Upgrade the Clan Hall."
@@ -265,8 +265,10 @@ const dict: Record<string, Entry> = {
   },
   "fb.workersReturned": { tr: "İşçiler işten döndü", en: "The workers are back home" },
   "fb.noWorkers": { tr: "Çalışacak işçi yok", en: "No workers to send" },
-  "shelter.send": { tr: "İşçileri İşe Gönder", en: "Send Workers to Work" },
+  "shelter.send": { tr: "İşe Gönder", en: "Send to Work" },
   "shelter.working": { tr: "İşçiler çalışıyor · {time}", en: "Workers on the job · {time}" },
+  "shelter.workingCount": { tr: "{n} işçi çalışıyor", en: "{n} workers working" },
+  "shelter.remaining": { tr: "{time} kaldı", en: "{time} remaining" },
   "barracks.title": { tr: "Karargâh", en: "Barracks" },
   "barracks.empty": {
     tr: "Ordu boş — savaşçı eğit",

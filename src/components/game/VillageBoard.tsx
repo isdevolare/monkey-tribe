@@ -10,23 +10,19 @@ import {
 } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
-import { LivelyUnit } from "./LivelyUnit";
-import { PopIn, PulseRing, Sparkle } from "./Vfx";
+import { PopIn, PulseRing } from "./Vfx";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { buildingName } from "../../game/config/buildings";
-import type { Lang, Tile, Unit, VillageBuilding, VillageBuildingType } from "../../game/types/game";
+import type { Lang, Tile, VillageBuilding, VillageBuildingType } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type VillageBoardProps = {
   tiles: Tile[];
-  units: Unit[];
   buildings: VillageBuilding[];
   lang: Lang;
   maxSize?: number;
   feedbackText?: string;
   selectedType?: VillageBuildingType | null;
-  /** While a work shift runs, workers show up at the resource posts. */
-  workShiftActive?: boolean;
   onBuildingPress: (type: VillageBuildingType) => void;
 };
 
@@ -104,13 +100,11 @@ const FENCE_POSTS = [
 
 export function VillageBoard({
   tiles,
-  units,
   buildings,
   lang,
   maxSize = 430,
   feedbackText,
   selectedType,
-  workShiftActive = false,
   onBuildingPress
 }: VillageBoardProps) {
   const { width } = useWindowDimensions();
@@ -138,19 +132,10 @@ export function VillageBoard({
     return () => clearTimeout(timer);
   }, [upgradeFx]);
 
-  const workingUnits = workShiftActive
-    ? units.filter(
-        (unit) =>
-          unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
-      )
-    : [];
   const decorativeItems = useMemo(
     () => [...resourceItems(tiles), ...sceneryItems()].sort((a, b) => a.zIndex - b.zIndex),
     [tiles]
   );
-  const unitItems = workingUnits
-    .map((unit) => unitSceneItem(unit))
-    .sort((a, b) => a.zIndex - b.zIndex);
   const buildingSprites = buildings
     .map((building) => ({ building, layout: BUILDING_LAYOUT[building.type] }))
     .sort((a, b) => a.layout.point.y - b.layout.point.y);
@@ -163,12 +148,6 @@ export function VillageBoard({
 
       <View style={styles.decorLayer} pointerEvents="none">
         {decorativeItems.map((item) => (
-          <SceneSprite item={item} key={item.key} />
-        ))}
-      </View>
-
-      <View style={styles.unitLayer} pointerEvents="none">
-        {unitItems.map((item) => (
           <SceneSprite item={item} key={item.key} />
         ))}
       </View>
@@ -606,21 +585,6 @@ function sceneryItems(): SceneItem[] {
   ];
 }
 
-// Gathering posts next to the lumber trees, quarry rocks and banana grove.
-const WORK_POSTS: Point[] = [
-  { x: 21, y: 53 },
-  { x: 75, y: 51 },
-  { x: 28, y: 30 },
-  { x: 14, y: 45 },
-  { x: 82, y: 44 },
-  { x: 34, y: 26 }
-];
-
-function unitSceneItem(unit: Unit): SceneItem {
-  const center = WORK_POSTS[stableIndex(unit.id, WORK_POSTS.length)] ?? WORK_POSTS[0]!;
-  return item(unit.id, center, 14, 80 + center.y, <UnitArt unit={unit} />);
-}
-
 function pointForTile(position: { x: number; y: number }): Point {
   const mapped = TILE_POINTS[`${position.x},${position.y}`];
   if (mapped) {
@@ -657,35 +621,6 @@ function SceneSprite({ item }: { item: SceneItem }) {
   );
 }
 
-function stableIndex(value: string, modulo: number) {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash + value.charCodeAt(index) * (index + 1)) % 997;
-  }
-
-  return hash % modulo;
-}
-
-
-function UnitArt({ unit }: { unit: Unit }) {
-  const player = unit.owner === "player";
-
-  return (
-    <PopIn style={styles.unitWrap}>
-    <View style={styles.unitShadow} pointerEvents="none" />
-    <LivelyUnit seed={stableIndex(unit.id, 97)} amplitude={4} style={styles.full}>
-      <AssetImage
-        assetKey={unitAssetKey(unit)}
-        style={styles.unitAsset}
-        imageStyle={styles.unitImage}
-        fallback={<UnitFallback player={player} fighter={unit.type === "fighter"} />}
-      />
-      <Sparkle seed={stableIndex(unit.id, 13)} />
-    </LivelyUnit>
-    </PopIn>
-  );
-}
-
 // Newer generated art for some buildings; the Clan Hall changes with level.
 function assetForBuilding(building: VillageBuilding, fallback: GameAssetKey): GameAssetKey {
   if (building.type === "clanHall") {
@@ -704,20 +639,6 @@ function assetForBuilding(building: VillageBuilding, fallback: GameAssetKey): Ga
     return "buildingWarriorBarracks";
   }
   return fallback;
-}
-
-function unitAssetKey(unit: Unit): GameAssetKey {
-  if (unit.owner === "enemy") {
-    return unit.type === "archer" ? "unitEnemyArcher" : "unitEnemyWarrior";
-  }
-
-  if (unit.type === "archer") {
-    return "unitArcher";
-  }
-  if (unit.type === "fighter" || unit.type === "guardian") {
-    return "unitWarrior";
-  }
-  return "unitWorker";
 }
 
 function Campfire() {
@@ -773,28 +694,6 @@ function BushFallback() {
       <Circle cx="36" cy="34" r="17" fill="#3a8d4d" />
       <Circle cx="48" cy="41" r="12" fill="#236238" />
       <Circle cx="40" cy="30" r="3" fill="#f4d35e" />
-    </Svg>
-  );
-}
-
-function UnitFallback({ player, fighter }: { player: boolean; fighter: boolean }) {
-  const body = player ? "#8b5e35" : "#62321f";
-  const face = player ? "#d9a86c" : "#c38452";
-  return (
-    <Svg width="88%" height="88%" viewBox="0 0 64 64">
-      <Circle cx="20" cy="25" r="8" fill={body} />
-      <Circle cx="44" cy="25" r="8" fill={body} />
-      <Circle cx="32" cy="34" r="19" fill={body} />
-      <Ellipse cx="32" cy="40" rx="12" ry="9" fill={face} />
-      <Circle cx="25" cy="32" r="3" fill="#1d1612" />
-      <Circle cx="39" cy="32" r="3" fill="#1d1612" />
-      <Path d="M26 42 Q32 47 38 42" stroke="#1d1612" strokeWidth="3" fill="none" />
-      {fighter ? (
-        <>
-          <Rect x="17" y="15" width="30" height="8" rx="4" fill={player ? "#ef473a" : "#2b1a13"} />
-          <Line x1="47" y1="47" x2="59" y2="35" stroke="#efe3bb" strokeWidth="4" />
-        </>
-      ) : null}
     </Svg>
   );
 }
@@ -877,10 +776,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 300
   },
-  unitLayer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 250
-  },
   buildingLayer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 200
@@ -916,16 +811,6 @@ const styles = StyleSheet.create({
     height: "15%",
     borderRadius: 999,
     backgroundColor: "rgba(14, 22, 9, 0.3)"
-  },
-  unitShadow: {
-    position: "absolute",
-    left: "26%",
-    right: "26%",
-    top: "70%",
-    height: "12%",
-    borderRadius: 999,
-    backgroundColor: "rgba(14, 22, 9, 0.28)",
-    zIndex: 0
   },
   prestigeGlow: {
     position: "absolute",
@@ -1030,22 +915,6 @@ const styles = StyleSheet.create({
     height: "100%",
     alignItems: "center",
     justifyContent: "center"
-  },
-  unitWrap: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "visible"
-  },
-  unitAsset: {
-    width: "100%",
-    height: "100%",
-    zIndex: 1
-  },
-  unitImage: {
-    width: "100%",
-    height: "100%"
   },
   unbuiltAsset: {
     opacity: 0.46
