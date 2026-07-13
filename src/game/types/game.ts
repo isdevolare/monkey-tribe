@@ -102,10 +102,23 @@ export type RaidRewardSummary = {
 
 export type Lang = "tr" | "en";
 
+export type UnitCombatStats = {
+  maxHp: number;
+  attack: number;
+  range: number;
+};
+
 export type ProductionItem = {
   id: string;
   type: UnitType;
   finishAt: number;
+  /** Final combat stats fixed when this item enters the queue. */
+  combatStats?: UnitCombatStats;
+};
+
+export type PersistedUnit = UnitCombatStats & {
+  type: UnitType;
+  hp: number;
 };
 
 export type ActiveWorkTask = {
@@ -137,7 +150,9 @@ export type VillageSave = {
   lastSeenAt?: number;
   dailyStreak?: number;
   dailyLastClaim?: string | null;
-  /** Alive units by type; the army is respawned from this on load. */
+  /** Exact living roster used by current saves. */
+  unitRoster?: PersistedUnit[];
+  /** Legacy save field migrated once to unitRoster using the saved Nest level. */
   unitCounts?: Partial<Record<UnitType, number>>;
 };
 

@@ -1,5 +1,5 @@
-import type { Tile, TileType, Unit, UnitType } from "../types/game";
-import { BOARD_SIZE, ENEMY_CAMP, PLAYER_CAMP, UNIT_STATS } from "./constants";
+import type { Tile, TileType, Unit, UnitCombatStats, UnitType } from "../types/game";
+import { BOARD_SIZE, ENEMY_CAMP, PLAYER_CAMP, unitCombatStats } from "./constants";
 
 const specialTiles: Array<{ x: number; y: number; type: TileType }> = [
   { ...PLAYER_CAMP, type: "playerCamp" },
@@ -82,22 +82,18 @@ export function createUnit(
   x: number,
   y: number,
   now: number,
-  /** Training Nest buff for player troops; 1 = base stats. */
-  statMultiplier = 1
+  combatStats: UnitCombatStats = unitCombatStats(type, 1)
 ): Unit {
-  const stats = UNIT_STATS[type];
-  const hp = Math.round(stats.hp * statMultiplier);
-
   return {
     id,
     type,
     owner,
     x,
     y,
-    hp,
-    maxHp: hp,
-    attack: Math.round(stats.attack * statMultiplier),
-    range: stats.range,
+    hp: combatStats.maxHp,
+    maxHp: combatStats.maxHp,
+    attack: combatStats.attack,
+    range: combatStats.range,
     state: "idle",
     carriedResource: null,
     lastStepAt: now,

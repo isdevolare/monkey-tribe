@@ -19,7 +19,7 @@ import {
   VILLAGE_REGEN_PER_SEC,
   WATCH_TOWER_DAMAGE_REDUCTION,
   WORK_SHIFT_MS,
-  troopStatMultiplier,
+  unitCombatStats,
   unitCost
 } from "../config/constants";
 import {
@@ -52,10 +52,12 @@ import type {
   OfflineReport,
   Owner,
   Position,
+  PersistedUnit,
   ProductionItem,
   QuestMetric,
   Resources,
   Unit,
+  UnitCombatStats,
   UnitTarget,
   UnitType,
   VillageBuilding,
@@ -127,6 +129,53 @@ type MutableGame = {
 
 function buildingLevel(buildings: VillageBuilding[], type: VillageBuildingType) {
   return buildings.find((building) => building.type === type)?.level ?? 0;
+}
+
+const UNIT_TYPES: UnitType[] = ["worker", "fighter", "archer", "guardian"];
+
+function isUnitType(value: unknown): value is UnitType {
+  return typeof value === "string" && UNIT_TYPES.includes(value as UnitType);
+}
+
+function sanitizeCombatStats(
+  value: UnitCombatStats | null | undefined,
+  fallback: UnitCombatStats
+): UnitCombatStats {
+  if (
+    !value ||
+    !Number.isFinite(value.maxHp) ||
+    value.maxHp <= 0 ||
+    !Number.isFinite(value.attack) ||
+    value.attack < 0 ||
+    !Number.isFinite(value.range) ||
+    value.range <= 0
+  ) {
+    return { ...fallback };
+  }
+
+  return {
+    maxHp: Math.max(1, Math.round(value.maxHp)),
+    attack: Math.max(0, Math.round(value.attack)),
+    range: Math.max(1, Math.round(value.range))
+  };
+}
+
+function normalizeProductionQueue(
+  queue: ProductionItem[] | undefined,
+  nestLevel: number,
+  now: number
+) {
+  return (queue ?? [])
+    .filter((item) => isUnitType(item?.type))
+    .map((item, index) => ({
+      id: typeof item.id === "string" ? item.id : `migrated-prod-${now}-${index}`,
+      type: item.type,
+      finishAt: Number.isFinite(item.finishAt) ? item.finishAt : now,
+      combatStats: sanitizeCombatStats(
+        item.combatStats,
+        unitCombatStats(item.type, nestLevel)
+      )
+    })) satisfies ProductionItem[];
 }
 
 // Units that fight in a raid (as opposed to workers).
@@ -611,7 +660,8 @@ function createPlayerUnit(state: GameState, type: UnitType) {
     };
   }
 
-  const cost = unitCost(type, buildingLevel(state.buildings, "trainingNest"));
+  const nestLevel = buildingLevel(state.buildings, "trainingNest");
+  const cost = unitCost(type, nestLevel);
   if (!hasResources(state.resources, cost)) {
     return {
       ...state,
@@ -627,7 +677,8 @@ function createPlayerUnit(state: GameState, type: UnitType) {
   const queueItem: ProductionItem = {
     id: `prod-${type}-${now}-${unitSerial}`,
     type,
-    finishAt: now + PRODUCTION_DURATION_MS[type]
+    finishAt: now + PRODUCTION_DURATION_MS[type],
+    combatStats: unitCombatStats(type, nestLevel)
   };
 
   return {
@@ -715,15 +766,49 @@ export const useGameStore = create<GameState>((set) => ({
       }));
       const cap = storageCap(buildingLevel(buildings, "clanHall"));
 
-      // Rebuild the persisted army. Older saves have no unitCounts — they
-      // fall back to the fresh-village single worker. Troops respawn at the
-      // CURRENT nest level's strength (nest upgrades buff retroactively).
-      let units = createInitialUnits(now);
-      if (save.unitCounts) {
-        const troopBoost = troopStatMultiplier(buildingLevel(buildings, "trainingNest"));
-        units = [];
+      const nestLevel = buildingLevel(buildings, "trainingNest");
+
+      // Current saves preserve each living unit's exact combat stats and HP.
+      // Legacy unitCounts are migrated once at the saved Nest level.
+      let units: Unit[] = [];
+      if (Array.isArray(save.unitRoster)) {
+        for (const savedUnit of save.unitRoster) {
+          if (!isUnitType(savedUnit?.type)) {
+            continue;
+          }
+          const stats = sanitizeCombatStats(
+            savedUnit,
+            unitCombatStats(savedUnit.type, nestLevel)
+          );
+          const hp = Number.isFinite(savedUnit.hp)
+            ? Math.min(stats.maxHp, Math.max(0, savedUnit.hp))
+            : stats.maxHp;
+          if (hp <= 0) {
+            continue;
+          }
+          unitSerial += 1;
+          const spawn = findSpawnPosition(units, "player");
+          const unit = createUnit(
+            `player-${savedUnit.type}-${now}-${unitSerial}`,
+            savedUnit.type,
+            "player",
+            spawn.x,
+            spawn.y,
+            now,
+            stats
+          );
+          unit.hp = hp;
+          units.push(unit);
+        }
+      } else if (save.unitCounts) {
         for (const [type, count] of Object.entries(save.unitCounts) as [UnitType, number][]) {
-          for (let i = 0; i < Math.max(0, Math.floor(count)); i++) {
+          if (!isUnitType(type)) {
+            continue;
+          }
+          const safeCount = Number.isFinite(count)
+            ? Math.max(0, Math.floor(count))
+            : 0;
+          for (let i = 0; i < safeCount; i++) {
             unitSerial += 1;
             const spawn = findSpawnPosition(units, "player");
             units.push(
@@ -734,15 +819,20 @@ export const useGameStore = create<GameState>((set) => ({
                 spawn.x,
                 spawn.y,
                 now,
-                type === "worker" ? 1 : troopBoost
+                unitCombatStats(type, nestLevel)
               )
             );
           }
         }
-        if (units.length === 0) {
-          units = createInitialUnits(now);
-        }
       }
+      if (units.length === 0) {
+        units = createInitialUnits(now);
+      }
+      const productionQueue = normalizeProductionQueue(
+        save.productionQueue,
+        nestLevel,
+        now
+      );
       // Migration squeeze: stockpiles from the pre-cap economy clamp to the
       // new depot limit.
       const savedResources = {
@@ -782,7 +872,7 @@ export const useGameStore = create<GameState>((set) => ({
         offlineReport,
         maxPopulation: save.maxPopulation,
         gems: save.gems ?? state.gems,
-        productionQueue: save.productionQueue ?? [],
+        productionQueue,
         language: save.language ?? state.language,
         // Migration: older saves tracked the stronghold from Sv4; the ladder
         // now has handcrafted camps through Sv7, so lift stale levels to the
@@ -1217,10 +1307,16 @@ export const useGameStore = create<GameState>((set) => ({
       let productionQueue = state.productionQueue;
       const ready = productionQueue.filter((item) => item.finishAt <= now);
       if (ready.length > 0) {
-        const troopBoost = troopStatMultiplier(buildingLevel(game.buildings, "trainingNest"));
         for (const item of ready) {
           unitSerial += 1;
           const spawn = findSpawnPosition(game.units, "player");
+          const combatStats = sanitizeCombatStats(
+            item.combatStats,
+            unitCombatStats(
+              item.type,
+              buildingLevel(game.buildings, "trainingNest")
+            )
+          );
           game.units.push(
             createUnit(
               `player-${item.type}-${now}-${unitSerial}`,
@@ -1229,7 +1325,7 @@ export const useGameStore = create<GameState>((set) => ({
               spawn.x,
               spawn.y,
               now,
-              item.type === "worker" ? 1 : troopBoost
+              combatStats
             )
           );
         }
@@ -1304,11 +1400,18 @@ export const useGameStore = create<GameState>((set) => ({
 
 // Persist the village (buildings/resources/population/language).
 function persistVillage(state: GameState) {
-  // Persist the living roster so the army survives restarts.
-  const unitCounts: Partial<Record<UnitType, number>> = {};
+  // Persist exact living-unit stats and wounds so Nest upgrades and reloads
+  // cannot retroactively alter already-trained troops.
+  const unitRoster: PersistedUnit[] = [];
   for (const unit of state.units) {
     if (unit.owner === "player" && unit.state !== "dead" && unit.hp > 0) {
-      unitCounts[unit.type] = (unitCounts[unit.type] ?? 0) + 1;
+      unitRoster.push({
+        type: unit.type,
+        hp: unit.hp,
+        maxHp: unit.maxHp,
+        attack: unit.attack,
+        range: unit.range
+      });
     }
   }
 
@@ -1316,7 +1419,7 @@ function persistVillage(state: GameState) {
     buildings: state.buildings,
     resources: state.resources,
     maxPopulation: state.maxPopulation,
-    unitCounts,
+    unitRoster,
     gems: state.gems,
     productionQueue: state.productionQueue,
     language: state.language,

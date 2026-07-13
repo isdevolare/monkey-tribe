@@ -1,4 +1,4 @@
-import type { Position, Resources, UnitType } from "../types/game";
+import type { Position, Resources, UnitCombatStats, UnitType } from "../types/game";
 
 export const BOARD_SIZE = 10;
 
@@ -24,13 +24,17 @@ export const UNIT_COSTS: Record<UnitType, Resources> = {
   guardian: { bananas: 25, stones: 20, wood: 10 }
 };
 
-// Training Nest levels buff the troops they train: +10% hp/attack per
-// level past 1, and the stronger recruits cost +10% more to train.
-// This is the player's endless power curve against the scaling stronghold.
+// Training Nest levels buff newly queued troops by +10% hp/attack per
+// level past 1. Training cost grows more slowly at +5% per level.
 export const TROOP_BONUS_PER_NEST_LEVEL = 0.1;
+export const TROOP_COST_PER_NEST_LEVEL = 0.05;
 
 export function troopStatMultiplier(nestLevel: number) {
   return 1 + TROOP_BONUS_PER_NEST_LEVEL * Math.max(0, nestLevel - 1);
+}
+
+export function troopCostMultiplier(nestLevel: number) {
+  return 1 + TROOP_COST_PER_NEST_LEVEL * Math.max(0, nestLevel - 1);
 }
 
 /** Cost to train `type` at the given Training Nest level (workers exempt). */
@@ -39,7 +43,7 @@ export function unitCost(type: UnitType, nestLevel: number): Resources {
   if (type === "worker") {
     return base;
   }
-  const factor = troopStatMultiplier(nestLevel);
+  const factor = troopCostMultiplier(nestLevel);
   return {
     bananas: Math.round(base.bananas * factor),
     stones: Math.round(base.stones * factor),
@@ -77,6 +81,17 @@ export const UNIT_STATS: Record<
   // Tank: soaks damage up front, hits softly.
   guardian: { hp: 110, attack: 6, range: 1 }
 };
+
+/** Final unit stats fixed at queue time. Workers always use their base stats. */
+export function unitCombatStats(type: UnitType, nestLevel: number): UnitCombatStats {
+  const base = UNIT_STATS[type];
+  const factor = type === "worker" ? 1 : troopStatMultiplier(nestLevel);
+  return {
+    maxHp: Math.round(base.hp * factor),
+    attack: Math.round(base.attack * factor),
+    range: base.range
+  };
+}
 
 // Wounded units slowly recover while back home in the village.
 export const VILLAGE_REGEN_PER_SEC = 2;
