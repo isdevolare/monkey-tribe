@@ -15,7 +15,7 @@ import { LivelyUnit } from "./LivelyUnit";
 import { Confetti, SparkBurst } from "./Vfx";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { t } from "../../game/i18n";
-import type { Lang, RaidStatus, Resources, Unit } from "../../game/types/game";
+import type { Lang, RaidPenalty, RaidStatus, Resources, Unit } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type RaidBoardProps = {
@@ -25,6 +25,7 @@ type RaidBoardProps = {
   raidStatus: RaidStatus;
   stars: number;
   loot: Resources;
+  penalty: RaidPenalty | null;
   lang: Lang;
   feedbackText?: string;
   maxSize?: number;
@@ -33,6 +34,7 @@ type RaidBoardProps = {
   /** Camp tier — higher-level camps render visibly bigger. */
   campLevel?: number;
   onReturn: () => void;
+  onRetreat: () => void;
 };
 
 type Spot = { x: number; y: number };
@@ -68,12 +70,14 @@ export function RaidBoard({
   raidStatus,
   stars,
   loot,
+  penalty,
   lang,
   feedbackText,
   maxSize = 430,
   strongholdLevelUp,
   campLevel = 1,
-  onReturn
+  onReturn,
+  onRetreat
 }: RaidBoardProps) {
   const { width } = useWindowDimensions();
   const sceneWidth = Math.min(width - theme.spacing.lg * 2, maxSize);
@@ -89,8 +93,10 @@ export function RaidBoard({
     (unit) => unit.owner === "enemy" && unit.state !== "dead" && unit.hp > 0
   );
   const raidPower = fighters.reduce((total, unit) => total + unit.attack, 0);
-  const resultVisible = raidStatus === "victory" || raidStatus === "defeat";
+  const resultVisible =
+    raidStatus === "victory" || raidStatus === "defeat" || raidStatus === "retreat";
   const victory = raidStatus === "victory";
+  const retreated = raidStatus === "retreat";
 
   // Map each visible unit to its screen spot so damage feedback can be placed.
   const spotRef = useRef<Record<string, Spot>>({});
@@ -313,7 +319,13 @@ export function RaidBoard({
             <View style={[styles.resultEmblem, victory ? styles.resultEmblemWin : styles.resultEmblemLose]}>
               <Text style={styles.resultEmblemText}>{victory ? "★" : "!"}</Text>
             </View>
-            <Text style={styles.resultTitle}>{victory ? t("raid.victory", lang) : t("raid.defeat", lang)}</Text>
+            <Text style={styles.resultTitle}>
+              {victory
+                ? t("raid.victory", lang)
+                : retreated
+                  ? t("raid.retreatResult", lang)
+                  : t("raid.defeat", lang)}
+            </Text>
             {victory ? (
               <View style={styles.starRow}>
                 {[1, 2, 3].map((slot) => (
@@ -327,7 +339,11 @@ export function RaidBoard({
               <StrongholdCallout level={strongholdLevelUp} lang={lang} />
             ) : null}
             <Text style={styles.resultText}>
-              {victory ? t("raid.victoryText", lang) : t("raid.defeatText", lang)}
+              {victory
+                ? t("raid.victoryText", lang)
+                : retreated
+                  ? t("raid.retreatText", lang)
+                  : t("raid.defeatText", lang)}
             </Text>
             {victory ? (
               <View style={styles.rewardRow}>
@@ -335,6 +351,9 @@ export function RaidBoard({
                 <RewardChip assetKey="resourceWoodBundle" amount={loot.wood} />
                 <RewardChip assetKey="resourceStonePile" amount={loot.stones} />
               </View>
+            ) : null}
+            {!victory && penalty ? (
+              <PenaltySummary penalty={penalty} lang={lang} />
             ) : null}
             <View style={styles.returnButtonWrap}>
               <WoodButton label={t("raid.return", lang)} onPress={onReturn} primary />
@@ -345,7 +364,7 @@ export function RaidBoard({
         <SpringPressable
           accessibilityRole="button"
           sound="close"
-          onPress={onReturn}
+          onPress={onRetreat}
           style={styles.retreatButton}
         >
           <Text style={styles.retreatText}>{t("raid.retreat", lang)}</Text>
@@ -422,6 +441,38 @@ function RewardChip({ assetKey, amount }: { assetKey: GameAssetKey; amount: numb
     <View style={styles.rewardChip}>
       <AssetImage assetKey={assetKey} style={styles.rewardIcon} fallback={<View style={styles.rewardIconFallback} />} />
       <Text style={styles.rewardText}>+{amount}</Text>
+    </View>
+  );
+}
+
+function PenaltySummary({ penalty, lang }: { penalty: RaidPenalty; lang: Lang }) {
+  const entries = [
+    { key: "bananas" as const, assetKey: "resourceBananaPile" as const },
+    { key: "wood" as const, assetKey: "resourceWoodBundle" as const },
+    { key: "stones" as const, assetKey: "resourceStonePile" as const }
+  ].filter(({ key }) => penalty.amounts[key] > 0);
+
+  return (
+    <View style={styles.penaltyBlock}>
+      <Text style={styles.penaltyLabel}>
+        {entries.length > 0 ? t("raid.resourcesLost", lang) : t("raid.resourcesProtected", lang)}
+      </Text>
+      {entries.length > 0 ? (
+        <View style={styles.rewardRow}>
+          {entries.map(({ key, assetKey }) => (
+            <PenaltyChip key={key} assetKey={assetKey} amount={penalty.amounts[key]} />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function PenaltyChip({ assetKey, amount }: { assetKey: GameAssetKey; amount: number }) {
+  return (
+    <View style={[styles.rewardChip, styles.penaltyChip]}>
+      <AssetImage assetKey={assetKey} style={styles.rewardIcon} fallback={<View style={styles.rewardIconFallback} />} />
+      <Text style={styles.penaltyText}>-{amount}</Text>
     </View>
   );
 }
@@ -760,6 +811,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginTop: 14
+  },
+  penaltyBlock: {
+    alignItems: "center",
+    marginTop: 12
+  },
+  penaltyLabel: {
+    color: "#f2b29d",
+    fontSize: 12,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
+  },
+  penaltyChip: {
+    backgroundColor: "rgba(190, 72, 54, 0.18)"
+  },
+  penaltyText: {
+    color: "#ffb29d",
+    fontSize: 14,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
   },
   rewardChip: {
     flexDirection: "row",

@@ -355,6 +355,7 @@ export function GameScreen() {
               raidStatus={state.raidStatus}
               stars={state.raidStars}
               loot={activeCampLoot}
+              penalty={state.lastRaidPenalty}
               lang={lang}
               maxSize={Math.min(width - theme.spacing.md * 2, 404)}
               feedbackText={state.feedback?.text}
@@ -366,6 +367,7 @@ export function GameScreen() {
                   : null
               }
               onReturn={state.returnToVillage}
+              onRetreat={state.retreatFromRaid}
             />
           </FadeIn>
         ) : (

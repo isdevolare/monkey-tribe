@@ -169,6 +169,7 @@ const dict: Record<string, Entry> = {
   "raid.power": { tr: "Baskın Gücü", en: "Raid Power" },
   "raid.victory": { tr: "Zafer!", en: "Victory!" },
   "raid.defeat": { tr: "Baskın Başarısız", en: "Raid Failed" },
+  "raid.retreatResult": { tr: "Geri Çekildin", en: "Retreated" },
   "raid.victoryText": {
     tr: "Düşman kampı yıkıldı. Ganimet köyüne eklendi.",
     en: "The enemy camp is broken. Spoils were added to your stores."
@@ -176,6 +177,15 @@ const dict: Record<string, Entry> = {
   "raid.defeatText": {
     tr: "Baskın ekibin düştü. Daha çok savaşçı yetiştir ve tekrar dene.",
     en: "Your raid party fell. Train more fighters and try again."
+  },
+  "raid.retreatText": {
+    tr: "Baskın ekibi kayıpları büyümeden geri döndü.",
+    en: "The raid party returned before the losses grew."
+  },
+  "raid.resourcesLost": { tr: "Kaybedilen kaynaklar", en: "Resources lost" },
+  "raid.resourcesProtected": {
+    tr: "Temel savaşçı rezervi korundu; kaynak kaybı olmadı.",
+    en: "The base fighter reserve was protected; no resources were lost."
   },
   "raid.loot": { tr: "Kazanılan Ganimet", en: "Won Loot" },
   "raid.strongholdReturn": {
@@ -294,6 +304,10 @@ const dict: Record<string, Entry> = {
   "fb.raidFailed": {
     tr: "Baskın başarısız. Daha fazla savaşçı eğit.",
     en: "Raid failed. Train more fighters."
+  },
+  "fb.raidRetreated": {
+    tr: "Baskın ekibi geri çekildi.",
+    en: "The raid party retreated."
   },
   "fb.hitEnemy": { tr: "Savaşçı düşmana vurdu", en: "Fighter hit the enemy" },
   "fb.enemyCounter": { tr: "Düşman karşılık verdi", en: "Enemy struck back" },

@@ -38,6 +38,7 @@ import { SHOP_ITEMS } from "../config/shop";
 import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import { reconcileWorkProduction, sanitizeActiveWorkTask } from "./workProduction";
+import { applyRaidPenalty } from "./raidPenalty";
 import type {
   ActiveWorkTask,
   GameState,
@@ -154,6 +155,7 @@ function createFreshState(now: number) {
     activeCampId: null,
     raidStars: 0,
     raidLevel: STRONGHOLD_BASE_LEVEL,
+    lastRaidPenalty: null,
     activeWorkTask: null as ActiveWorkTask | null,
     workShiftUntil: null as number | null,
     questProgress: {} as Partial<Record<QuestMetric, number>>,
@@ -690,6 +692,7 @@ export const useGameStore = create<GameState>((set) => ({
       enemyCampHp: CAMP_MAX_HP,
       activeCampId: null,
       raidStars: 0,
+      lastRaidPenalty: null,
       lastProductionAt: Date.now(),
       feedback: null
     })),
@@ -833,6 +836,7 @@ export const useGameStore = create<GameState>((set) => ({
         enemyCampHp: camp.campHp,
         enemyCampMaxHp: camp.campHp,
         raidStars: 0,
+        lastRaidPenalty: null,
         units: deployRaidUnits(state.units, now, camp),
         lastProductionAt: now,
         feedback: {
@@ -841,12 +845,29 @@ export const useGameStore = create<GameState>((set) => ({
         }
       };
     }),
+  retreatFromRaid: () =>
+    set((state) => {
+      if (state.gameMode !== "raid" || state.raidStatus !== "active") {
+        return state;
+      }
+
+      const now = Date.now();
+      const penalized = applyRaidPenalty(state.resources, "retreat");
+      return {
+        ...state,
+        resources: penalized.resources,
+        raidStatus: "retreat",
+        lastRaidPenalty: { reason: "retreat", amounts: penalized.amounts },
+        feedback: { id: now, text: t("fb.raidRetreated", state.language) }
+      };
+    }),
   returnToVillage: () =>
     set((state) => ({
       ...state,
       gameMode: "village",
       raidStatus: "idle",
       activeCampId: null,
+      lastRaidPenalty: null,
       units: returnPlayerUnitsToVillage(state.units),
       lastProductionAt: Date.now(),
       feedback: { id: Date.now(), text: t("fb.returned", state.language) }
@@ -1112,6 +1133,7 @@ export const useGameStore = create<GameState>((set) => ({
             raidStars: stars,
             gems: state.gems + stars,
             questProgress: bumpQuest(state.questProgress, "winRaid"),
+            lastRaidPenalty: null,
             feedback: {
               id: now,
               text: t("fb.victoryLoot", state.language, {
@@ -1129,15 +1151,17 @@ export const useGameStore = create<GameState>((set) => ({
         }
 
         if (!raidFightersAlive) {
+          const penalized = applyRaidPenalty(game.resources, "defeat");
           return {
             ...state,
             units: game.units,
-            resources: game.resources,
+            resources: penalized.resources,
             activeWorkTask,
             workShiftUntil,
             enemyCampHp: game.enemyCampHp,
             feedback: { id: now, text: t("fb.raidFailed", state.language) },
-            raidStatus: "defeat"
+            raidStatus: "defeat",
+            lastRaidPenalty: { reason: "defeat", amounts: penalized.amounts }
           };
         }
 

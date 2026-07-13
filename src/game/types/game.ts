@@ -1,7 +1,7 @@
 export type ScreenId = "menu" | "game" | "result";
 export type GameStatus = "menu" | "playing" | "victory" | "defeat";
 export type GameMode = "village" | "raidMap" | "raid";
-export type RaidStatus = "idle" | "active" | "victory" | "defeat";
+export type RaidStatus = "idle" | "active" | "victory" | "defeat" | "retreat";
 export type Owner = "player" | "enemy";
 export type ResourceKind = "bananas" | "stones" | "wood";
 export type VillageBuildingType =
@@ -88,6 +88,13 @@ export type FeedbackMessage = {
   text: string;
 };
 
+export type RaidPenaltyReason = "retreat" | "defeat";
+
+export type RaidPenalty = {
+  reason: RaidPenaltyReason;
+  amounts: Resources;
+};
+
 export type Lang = "tr" | "en";
 
 export type ProductionItem = {
@@ -154,6 +161,7 @@ export type GameState = {
   activeCampId: string | null;
   raidStars: number;
   raidLevel: number;
+  lastRaidPenalty: RaidPenalty | null;
   activeWorkTask: ActiveWorkTask | null;
   /** UI compatibility projection of activeWorkTask.endsAt. */
   workShiftUntil: number | null;
@@ -181,6 +189,7 @@ export type GameState = {
   openRaidMap: () => void;
   closeRaidMap: () => void;
   startRaidOn: (campId: string) => void;
+  retreatFromRaid: () => void;
   returnToVillage: () => void;
   upgradeBuilding: (type: VillageBuildingType) => void;
   reconcileWorkTask: (now?: number) => void;
