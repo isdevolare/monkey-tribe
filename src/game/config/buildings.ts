@@ -43,6 +43,24 @@ export const BUILDING_PRODUCTION: Partial<
   stoneQuarry: { resource: "stones", perSecond: 1 / 60 }
 };
 
+export function productionLevelMultiplier(buildingLevel: number) {
+  const level = Number.isFinite(buildingLevel)
+    ? Math.max(1, Math.floor(buildingLevel))
+    : 1;
+  return 1 + 0.1 * (level - 1);
+}
+
+/** Per-worker production rate after applying the building's level bonus. */
+export function productionPerSecondAtLevel(
+  type: VillageBuildingType,
+  buildingLevel: number
+) {
+  const production = BUILDING_PRODUCTION[type];
+  return production
+    ? production.perSecond * productionLevelMultiplier(buildingLevel)
+    : 0;
+}
+
 /**
  * Distributes workers one per production building per round. This keeps
  * staffed buildings within one worker of each other whenever their slot
@@ -133,7 +151,8 @@ const RESOURCE_KEY: Record<ResourceKind, string> = {
 export function buildingEffect(type: VillageBuildingType, level: number, lang: Lang): string {
   const production = BUILDING_PRODUCTION[type];
   if (production) {
-    const perMinute = Math.round(production.perSecond * 60 * 10) / 10;
+    const perMinute =
+      Math.round(productionPerSecondAtLevel(type, level) * 60 * 100) / 100;
     return t("fx.workerProduction", lang, {
       rate: perMinute,
       res: t(RESOURCE_KEY[production.resource], lang),

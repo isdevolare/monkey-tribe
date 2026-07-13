@@ -34,6 +34,7 @@ import {
   BUILDING_PRODUCTION,
   buildingEffect,
   buildingName,
+  productionPerSecondAtLevel,
   upgradeCost
 } from "../game/config/buildings";
 import { getCamp } from "../game/config/camps";
@@ -540,16 +541,18 @@ function formatCountdown(ms: number) {
 
 function workingWorkersForBuilding(
   type: VillageBuildingType,
+  buildingLevel: number,
   activeWorkTask: ActiveWorkTask | null
 ) {
   const production = BUILDING_PRODUCTION[type];
-  if (!production || !activeWorkTask || production.perSecond <= 0) {
+  const perWorker = productionPerSecondAtLevel(type, buildingLevel);
+  if (!production || !activeWorkTask || perWorker <= 0) {
     return 0;
   }
 
   return Math.max(
     0,
-    Math.round(activeWorkTask.productionPerSecond[production.resource] / production.perSecond)
+    Math.round(activeWorkTask.productionPerSecond[production.resource] / perWorker)
   );
 }
 
@@ -601,7 +604,7 @@ function UpgradePanel({
     { fighters: 0, archers: 0, guardians: 0, workers: 0 }
   );
   const workingWorkers = BUILDING_PRODUCTION[type]
-    ? workingWorkersForBuilding(type, activeWorkTask)
+    ? workingWorkersForBuilding(type, level, activeWorkTask)
     : null;
 
   return (

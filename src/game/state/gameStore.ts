@@ -28,6 +28,7 @@ import {
   assignWorkers,
   buildingName,
   populationCap,
+  productionPerSecondAtLevel,
   storageCap,
   upgradeCost
 } from "../config/buildings";
@@ -82,7 +83,8 @@ function snapshotWorkProduction(
     const production = BUILDING_PRODUCTION[building.type];
     const workers = manned[building.type] ?? 0;
     if (production && workers > 0) {
-      productionPerSecond[production.resource] += production.perSecond * workers;
+      productionPerSecond[production.resource] +=
+        productionPerSecondAtLevel(building.type, building.level) * workers;
     }
   }
   return productionPerSecond;
