@@ -37,7 +37,7 @@ export type BackgroundLoopName = "main";
 // One background track for the whole game; the reconciler below owns
 // every play/pause on it (single instance, fades, AppState handling).
 const BACKGROUND_LOOP_FILES = {
-  main: require("../../../assets/game/audio/bgm_main.mp3")
+  main: require("../../../assets/game/audio/jungle_village_theme.mp3")
 } as const;
 
 const VOLUMES: Record<SoundName, number> = {
