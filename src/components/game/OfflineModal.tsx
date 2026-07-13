@@ -99,7 +99,7 @@ function Reward({
         fallback={<View style={styles.rewardIconFallback} />}
       />
       <Text style={styles.rewardText} maxFontSizeMultiplier={theme.maxFontScale}>
-        +{amount}
+        +{Math.floor(amount)}
       </Text>
     </View>
   );

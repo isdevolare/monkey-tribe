@@ -748,10 +748,13 @@ export const useGameStore = create<GameState>((set) => ({
       if (save.lastSeenAt != null) {
         const elapsed = Math.min(now - save.lastSeenAt, OFFLINE_CAP_MS);
         if (elapsed >= OFFLINE_MIN_MS) {
+          // Floor after clamping: live-tick production leaves fractional
+          // stockpiles, so the depot headroom (cap - current) is fractional
+          // too — without the floor the modal shows "+626.89210000..." .
           const earned = offlineEarnings(buildings, workerCount, elapsed);
-          earned.bananas = Math.min(earned.bananas, Math.max(0, cap - resources.bananas));
-          earned.stones = Math.min(earned.stones, Math.max(0, cap - resources.stones));
-          earned.wood = Math.min(earned.wood, Math.max(0, cap - resources.wood));
+          earned.bananas = Math.floor(Math.min(earned.bananas, Math.max(0, cap - resources.bananas)));
+          earned.stones = Math.floor(Math.min(earned.stones, Math.max(0, cap - resources.stones)));
+          earned.wood = Math.floor(Math.min(earned.wood, Math.max(0, cap - resources.wood)));
           if (earned.bananas + earned.stones + earned.wood > 0) {
             resources.bananas += earned.bananas;
             resources.stones += earned.stones;

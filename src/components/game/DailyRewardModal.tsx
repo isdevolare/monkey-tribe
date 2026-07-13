@@ -199,20 +199,27 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   grid: {
+    width: "100%",
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
     gap: 8,
     marginTop: theme.spacing.lg
   },
+  // Percentage cells lock the grid to 4 per row (4+3) on every width, so
+  // the modal never grows past the screen the way fixed 74px cells did
+  // when they wrapped 3-per-row on narrow devices.
   cell: {
-    width: 74,
+    width: "22.5%",
+    minHeight: 84,
     alignItems: "center",
+    justifyContent: "center",
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: "rgba(226, 177, 90, 0.22)",
     backgroundColor: "rgba(40, 34, 20, 0.7)",
-    paddingVertical: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 2,
     overflow: "hidden"
   },
   cellToday: {
