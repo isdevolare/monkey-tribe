@@ -5,6 +5,7 @@ import { AssetImage } from "../components/game/AssetImage";
 import { Confetti } from "../components/game/Vfx";
 import { WoodButton } from "../components/game/WoodButton";
 import { t } from "../game/i18n";
+import { getCosmeticAppearance } from "../game/config/profileMonkeys";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
 
@@ -31,6 +32,9 @@ export function ResultScreen() {
   const resetGame = useGameStore((state) => state.resetGame);
   const goToMenu = useGameStore((state) => state.goToMenu);
   const lang = useGameStore((state) => state.language);
+  const equippedMonkey = useGameStore((state) => state.equippedProfileMonkey);
+  const equippedSkin = useGameStore((state) => state.equippedProfileSkin);
+  const appearance = getCosmeticAppearance(equippedMonkey, equippedSkin);
   const victory = gameStatus === "victory";
   const { width, height } = useWindowDimensions();
   const heroReveal = useReveal(0);
@@ -52,7 +56,7 @@ export function ResultScreen() {
         <Animated.View style={heroReveal}>
           <View style={[styles.heroRing, victory ? styles.heroRingVictory : styles.heroRingDefeat]}>
             <AssetImage
-              assetKey={victory ? "unitFighter" : "unitWorker"}
+              assetKey={appearance.victoryAsset}
               style={styles.resultHero}
               fallback={<ResultFallback victory={victory} />}
             />

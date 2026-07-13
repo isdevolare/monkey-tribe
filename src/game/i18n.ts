@@ -268,6 +268,140 @@ const dict: Record<string, Entry> = {
   "shop.stonePack": { tr: "Taş Paketi", en: "Stone Pack" },
   "shop.woodPack": { tr: "Odun Paketi", en: "Wood Pack" },
   "shop.bountyChest": { tr: "Bereket Sandığı", en: "Bounty Chest" },
+  "collection.title": { tr: "🐵 Maymun Koleksiyonu", en: "🐵 Monkey Collection" },
+  "collection.subtitle": {
+    tr: "Kabile portrelerini topla ve favorini kuşan.",
+    en: "Collect tribe portraits and equip your favorite."
+  },
+  "collection.collected": { tr: "Toplanan", en: "Collected" },
+  "collection.monkeys": { tr: "Maymun", en: "Monkeys" },
+  "collection.completion": { tr: "%{percent} Tamamlandı", en: "{percent}% Complete" },
+  "collection.progress.monkeysOwned": {
+    tr: "Maymunlar: {owned} / {total}",
+    en: "Monkeys owned: {owned} / {total}"
+  },
+  "collection.progress.skinsOwned": {
+    tr: "Skinler: {owned} / {total}",
+    en: "Skins owned: {owned} / {total}"
+  },
+  "collection.skinsProgress": {
+    tr: "Skinler {owned}/{total} · %{percent}",
+    en: "Skins {owned}/{total} · {percent}%"
+  },
+  "collection.diamonds": { tr: "Elmaslar", en: "Diamonds" },
+  "collection.tab.monkeys": { tr: "Maymunlar", en: "Monkeys" },
+  "collection.tab.skins": { tr: "Skinler", en: "Skins" },
+  "collection.tab.shop": { tr: "Mağaza", en: "Shop" },
+  "collection.skinsTitle": { tr: "Skin Koleksiyonu", en: "Skin Collection" },
+  "collection.showMore": { tr: "Daha Fazla Göster", en: "Show More" },
+  "collection.filter.all": { tr: "Tümü", en: "All" },
+  "collection.filter.owned": { tr: "Sahip", en: "Owned" },
+  "collection.filter.locked": { tr: "Kilitli", en: "Locked" },
+  "collection.filter.allRarities": { tr: "Tüm Nadirlikler", en: "All Rarities" },
+  "collection.filter.empty": { tr: "Bu filtreye uygun kozmetik yok.", en: "No cosmetics match this filter." },
+  "collection.detail.villagePreview": { tr: "Köy Görünümü", en: "Village Appearance" },
+  "collection.detail.availableSkins": { tr: "Mevcut Skinler", en: "Available Skins" },
+  "collection.detail.close": { tr: "Kapat", en: "Close" },
+  "collection.detail.equipNow": { tr: "Şimdi Kuşan", en: "Equip Now" },
+  "collection.detail.tapToSkip": { tr: "Geçmek için dokun", en: "Tap to skip" },
+  "collection.detail.missing": { tr: "{amount} elmas eksik", en: "{amount} diamonds short" },
+  "collection.requiresMonkey": {
+    tr: "Bu skini açmadan önce ait olduğu maymunu koleksiyonuna eklemelisin.",
+    en: "Collect this skin's monkey before unlocking it."
+  },
+  "collection.requiresMonkeyShort": { tr: "Maymun gerekli", en: "Monkey required" },
+  "collection.shop.title": { tr: "Kozmetik Mağaza", en: "Cosmetic Shop" },
+  "collection.shop.featuredMonkey": { tr: "Öne Çıkan Maymun", en: "Featured Monkey" },
+  "collection.shop.featuredSkin": { tr: "Öne Çıkan Skin", en: "Featured Skin" },
+  "collection.shop.bestValue": { tr: "En İyi Değer", en: "Best Value" },
+  "collection.shop.featured": { tr: "Öne Çıkan", en: "Featured" },
+  "collection.shop.monkeys": { tr: "Maymunlar", en: "Monkeys" },
+  "collection.shop.skins": { tr: "Skinler", en: "Skins" },
+  "collection.shop.offers": { tr: "Özel Teklifler", en: "Special Offers" },
+  "collection.shop.futureReady": { tr: "Yakında", en: "Future collections" },
+  "collection.shop.seasonal": { tr: "Sezonluk", en: "Seasonal" },
+  "collection.shop.limited": { tr: "Sınırlı Süre", en: "Limited Time" },
+  "collection.shop.bundles": { tr: "Paketler", en: "Bundles" },
+  "collection.shop.new": { tr: "Yeni", en: "New" },
+  "collection.shop.comingSoon": { tr: "Çok Yakında", en: "Coming Soon" },
+  "collection.unlocked": { tr: "Açıldı!", en: "Unlocked!" },
+  "collection.profileLabel": {
+    tr: "Maymun Koleksiyonunu Aç",
+    en: "Open Monkey Collection"
+  },
+  "collection.locked": { tr: "🔒 Kilitli", en: "🔒 Locked" },
+  "collection.owned": { tr: "✓ Sahip", en: "✓ Owned" },
+  "collection.equipped": { tr: "✓ Kuşanıldı", en: "✓ Equipped" },
+  "collection.equip": { tr: "Kuşan", en: "Equip" },
+  "collection.cancel": { tr: "İptal", en: "Cancel" },
+  "collection.unlock": { tr: "Kilidi Aç", en: "Unlock" },
+  "collection.unlockPrompt": {
+    tr: "Bu kozmetiğin kilidini 💎 {price} karşılığında aç?",
+    en: "Unlock this cosmetic for 💎 {price}?"
+  },
+  "collection.notEnoughDiamonds": {
+    tr: "Yeterli elmas yok.",
+    en: "Not enough diamonds."
+  },
+  "collection.ok": { tr: "Tamam", en: "OK" },
+  "collection.rarity.common": { tr: "Yaygın", en: "Common" },
+  "collection.rarity.rare": { tr: "Nadir", en: "Rare" },
+  "collection.rarity.epic": { tr: "Epik", en: "Epic" },
+  "collection.rarity.legendary": { tr: "Efsanevi", en: "Legendary" },
+  "collection.rarity.mythic": { tr: "Mitik", en: "Mythic" },
+  "collection.monkey.scout.name": { tr: "Genç İzci Maymun", en: "Young Scout Monkey" },
+  "collection.monkey.scout.description": {
+    tr: "Her efsane bir yerden başlar.",
+    en: "Every legend starts somewhere."
+  },
+  "collection.monkey.worker.name": { tr: "Orman İşçisi Maymun", en: "Jungle Worker Monkey" },
+  "collection.monkey.worker.description": {
+    tr: "Her büyük kabilenin bel kemiği.",
+    en: "The backbone of every great tribe."
+  },
+  "collection.monkey.warrior.name": { tr: "Orman Savaşçısı Maymun", en: "Forest Warrior Monkey" },
+  "collection.monkey.warrior.description": {
+    tr: "Kadim ormanın koruyucusu.",
+    en: "Guardian of the ancient jungle."
+  },
+  "collection.monkey.hunter.name": { tr: "Kabile Avcısı Maymun", en: "Tribal Hunter Monkey" },
+  "collection.monkey.hunter.description": {
+    tr: "Her düşmanın izini şaşmadan sürer.",
+    en: "Tracks every enemy without fail."
+  },
+  "collection.monkey.chief.name": { tr: "Altın Şef Maymun", en: "Golden Chief Monkey" },
+  "collection.monkey.chief.description": {
+    tr: "Maymun Kabilesi'nin lideri.",
+    en: "Leader of the Monkey Tribe."
+  },
+  "collection.monkey.king.name": { tr: "Maymun Kral", en: "Monkey King" },
+  "collection.monkey.king.description": {
+    tr: "Ormanın korktuğu efsanevi hükümdar.",
+    en: "A legendary ruler feared across the jungle."
+  },
+  "collection.skin.default.name": { tr: "Varsayılan", en: "Default" },
+  "collection.skin.default.description": {
+    tr: "Maymunun özgün kabile görünümü.",
+    en: "The monkey's original tribe appearance."
+  },
+  "collection.skin.goldenKing.name": { tr: "Altın Kral", en: "Golden King" },
+  "collection.skin.goldenKing.description": { tr: "Orman tacının altın ihtişamı.", en: "Golden splendor of the jungle crown." },
+  "collection.skin.pirateKing.name": { tr: "Korsan Kral", en: "Pirate King" },
+  "collection.skin.pirateKing.description": { tr: "Yedi denizin muz hazinesini arar.", en: "Seeks the banana treasure of seven seas." },
+  "collection.skin.samuraiKing.name": { tr: "Samuray Kral", en: "Samurai King" },
+  "collection.skin.samuraiKing.description": { tr: "Onurla bilenmiş bir orman savaşçısı.", en: "A jungle warrior sharpened by honor." },
+  "collection.skin.vikingKing.name": { tr: "Viking Kral", en: "Viking King" },
+  "collection.skin.vikingKing.description": { tr: "Kuzey rüzgârıyla ormana geldi.", en: "Brought the northern wind to the jungle." },
+  "collection.skin.cyberKing.name": { tr: "Siber Kral", en: "Cyber King" },
+  "collection.skin.cyberKing.description": { tr: "Kabilenin geleceğinden gelen hükümdar.", en: "A ruler from the tribe's future." },
+  "collection.skin.lavaKing.name": { tr: "Lav Kralı", en: "Lava King" },
+  "collection.skin.lavaKing.description": { tr: "Volkanın sönmeyen ruhunu taşır.", en: "Carries the volcano's undying spirit." },
+  "collection.skin.pharaohKing.name": { tr: "Firavun Kral", en: "Pharaoh King" },
+  "collection.skin.pharaohKing.description": { tr: "Kayıp tapınakların ebedi hükümdarı.", en: "Eternal ruler of the lost temples." },
+  "collection.skin.christmasKing.name": { tr: "Yılbaşı Kralı", en: "Christmas King" },
+  "collection.skin.christmasKing.description": { tr: "Kabileye kış neşesi getirir.", en: "Brings winter cheer to the tribe." },
+  "collection.skin.spiritKing.name": { tr: "Ruh Kralı", en: "Spirit King" },
+  "collection.skin.spiritKing.description": { tr: "Kadim orman ruhlarıyla birlikte yürür.", en: "Walks with the ancient jungle spirits." },
   "time.hours": { tr: "{n} sa", en: "{n}h" },
   "time.minutes": { tr: "{n} dk", en: "{n}m" },
   "quests.title": { tr: "Görevler", en: "Quests" },

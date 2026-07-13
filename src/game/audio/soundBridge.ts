@@ -94,8 +94,12 @@ export function initGameSounds() {
         hapticImpact("light");
       }
 
-      // Gems spent on a rush.
-      if (state.gems < prev.gems) {
+      // Existing economy spends keep their coin cue. Cosmetic collection
+      // unlocks intentionally use only the shared button-click sound.
+      const unlockedProfileMonkey =
+        state.unlockedProfileMonkeys.length > prev.unlockedProfileMonkeys.length;
+      const unlockedProfileSkin = state.ownedProfileSkins.length > prev.ownedProfileSkins.length;
+      if (state.gems < prev.gems && !unlockedProfileMonkey && !unlockedProfileSkin) {
         playSound("coins");
       }
     }

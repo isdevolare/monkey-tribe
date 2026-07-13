@@ -27,6 +27,7 @@ type RaidBoardProps = {
   loot: Resources;
   rewardMultiplier: number;
   penalty: RaidPenalty | null;
+  playerIdentityAsset: GameAssetKey;
   lang: Lang;
   feedbackText?: string;
   maxSize?: number;
@@ -73,6 +74,7 @@ export function RaidBoard({
   loot,
   rewardMultiplier,
   penalty,
+  playerIdentityAsset,
   lang,
   feedbackText,
   maxSize = 430,
@@ -237,7 +239,7 @@ export function RaidBoard({
             {striking ? <View style={styles.strikeGlow} pointerEvents="none" /> : null}
             <LivelyUnit seed={index} amplitude={4} style={styles.full}>
               <AssetImage
-                assetKey={unit.type === "archer" ? "unitArcher" : "unitWarrior"}
+                assetKey={playerIdentityAsset}
                 style={styles.full}
                 fallback={<MonkeyFallback fighter />}
               />
@@ -319,7 +321,7 @@ export function RaidBoard({
             ]}
           >
             <View style={[styles.resultEmblem, victory ? styles.resultEmblemWin : styles.resultEmblemLose]}>
-              <Text style={styles.resultEmblemText}>{victory ? "★" : "!"}</Text>
+              <AssetImage assetKey={playerIdentityAsset} style={styles.resultIdentity} resizeMode="contain" fallback={<Text style={styles.resultEmblemText}>{victory ? "★" : "!"}</Text>} />
             </View>
             <Text style={styles.resultTitle}>
               {victory
@@ -786,6 +788,10 @@ const styles = StyleSheet.create({
     color: theme.colors.paper,
     fontSize: 22,
     fontWeight: "900", fontFamily: theme.fonts.heavy
+  },
+  resultIdentity: {
+    width: 39,
+    height: 39
   },
   resultTitle: {
     color: theme.colors.paper,

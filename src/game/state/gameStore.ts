@@ -36,6 +36,19 @@ import {
 import { STRONGHOLD_BASE_LEVEL, getCamp, campName, type RaidCamp } from "../config/camps";
 import { DAILY_REWARDS, dayDiff, todayKey } from "../config/dailyRewards";
 import { QUESTS, isQuestComplete } from "../config/quests";
+import {
+  DEFAULT_PROFILE_MONKEY_ID,
+  DEFAULT_PROFILE_SKIN_ID,
+  getDefaultSkinId,
+  getProfileMonkey,
+  getProfileSkin,
+  sanitizeEquippedProfileMonkey,
+  sanitizeEquippedProfileSkin,
+  sanitizeNewProfileMonkeys,
+  sanitizeNewProfileSkins,
+  sanitizeOwnedProfileSkins,
+  sanitizeUnlockedProfileMonkeys
+} from "../config/profileMonkeys";
 import { SHOP_ITEMS } from "../config/shop";
 import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
@@ -54,6 +67,9 @@ import type {
   Owner,
   Position,
   PersistedUnit,
+  ProfileMonkeyId,
+  ProfileMonkeyUnlockResult,
+  ProfileSkinId,
   ProductionItem,
   QuestMetric,
   Resources,
@@ -204,6 +220,12 @@ function createFreshState(now: number) {
     buildings: cloneBuildings(DEFAULT_BUILDINGS),
     maxPopulation: populationCap(1),
     gems: 0,
+    unlockedProfileMonkeys: [DEFAULT_PROFILE_MONKEY_ID] as ProfileMonkeyId[],
+    equippedProfileMonkey: DEFAULT_PROFILE_MONKEY_ID,
+    ownedProfileSkins: [DEFAULT_PROFILE_SKIN_ID] as ProfileSkinId[],
+    equippedProfileSkin: DEFAULT_PROFILE_SKIN_ID,
+    newProfileMonkeys: [] as ProfileMonkeyId[],
+    newProfileSkins: [] as ProfileSkinId[],
     productionQueue: [] as ProductionItem[],
     playerCampHp: CAMP_MAX_HP,
     enemyCampHp: CAMP_MAX_HP,
@@ -848,6 +870,30 @@ export const useGameStore = create<GameState>((set) => ({
         nestLevel,
         now
       );
+      const unlockedProfileMonkeys = sanitizeUnlockedProfileMonkeys(
+        save.unlockedProfileMonkeys
+      );
+      const equippedProfileMonkey = sanitizeEquippedProfileMonkey(
+        save.equippedProfileMonkey,
+        unlockedProfileMonkeys
+      );
+      const ownedProfileSkins = sanitizeOwnedProfileSkins(
+        save.ownedProfileSkins,
+        unlockedProfileMonkeys
+      );
+      const equippedProfileSkin = sanitizeEquippedProfileSkin(
+        save.equippedProfileSkin,
+        equippedProfileMonkey,
+        ownedProfileSkins
+      );
+      const newProfileMonkeys = sanitizeNewProfileMonkeys(
+        save.newProfileMonkeys,
+        unlockedProfileMonkeys
+      );
+      const newProfileSkins = sanitizeNewProfileSkins(
+        save.newProfileSkins,
+        ownedProfileSkins
+      );
       // Migration squeeze: stockpiles from the pre-cap economy clamp to the
       // new depot limit.
       const savedResources = {
@@ -887,6 +933,12 @@ export const useGameStore = create<GameState>((set) => ({
         offlineReport,
         maxPopulation: save.maxPopulation,
         gems: save.gems ?? state.gems,
+        unlockedProfileMonkeys,
+        equippedProfileMonkey,
+        ownedProfileSkins,
+        equippedProfileSkin,
+        newProfileMonkeys,
+        newProfileSkins,
         productionQueue,
         language: save.language ?? state.language,
         // Migration: older saves tracked the stronghold from Sv4; the ladder
@@ -1101,6 +1153,130 @@ export const useGameStore = create<GameState>((set) => ({
         },
         feedback: { id: now, text: t("shop.bought", state.language) }
       };
+    }),
+  unlockProfileMonkey: (id) => {
+    let result: ProfileMonkeyUnlockResult = "invalid";
+    set((state) => {
+      const monkey = getProfileMonkey(id);
+      if (!monkey) {
+        result = "invalid";
+        return state;
+      }
+      if (state.unlockedProfileMonkeys.includes(id)) {
+        result = "owned";
+        return state;
+      }
+      if (state.gems < monkey.price) {
+        result = "insufficient";
+        return state;
+      }
+
+      const next: GameState = {
+        ...state,
+        gems: Math.max(0, state.gems - monkey.price),
+        unlockedProfileMonkeys: [...state.unlockedProfileMonkeys, id],
+        ownedProfileSkins: Array.from(
+          new Set([...state.ownedProfileSkins, getDefaultSkinId(id)])
+        ),
+        newProfileMonkeys: [...state.newProfileMonkeys, id],
+        newProfileSkins: Array.from(
+          new Set([...state.newProfileSkins, getDefaultSkinId(id)])
+        )
+      };
+      result = "unlocked";
+      void persistVillage(next);
+      return next;
+    });
+    return result;
+  },
+  equipProfileMonkey: (id) =>
+    set((state) => {
+      const defaultSkinId = getDefaultSkinId(id);
+      if (
+        !state.unlockedProfileMonkeys.includes(id) ||
+        !getProfileMonkey(id) ||
+        (state.equippedProfileMonkey === id && state.equippedProfileSkin === defaultSkinId)
+      ) {
+        return state;
+      }
+      const next: GameState = {
+        ...state,
+        equippedProfileMonkey: id,
+        equippedProfileSkin: defaultSkinId
+      };
+      void persistVillage(next);
+      return next;
+    }),
+  unlockProfileSkin: (id) => {
+    let result: ProfileMonkeyUnlockResult = "invalid";
+    set((state) => {
+      const skin = getProfileSkin(id);
+      if (!skin) {
+        result = "invalid";
+        return state;
+      }
+      if (!state.unlockedProfileMonkeys.includes(skin.monkeyId)) {
+        result = "requires_monkey";
+        return state;
+      }
+      if (state.ownedProfileSkins.includes(id)) {
+        result = "owned";
+        return state;
+      }
+      if (state.gems < skin.price) {
+        result = "insufficient";
+        return state;
+      }
+      const next: GameState = {
+        ...state,
+        gems: Math.max(0, state.gems - skin.price),
+        ownedProfileSkins: [...state.ownedProfileSkins, id],
+        newProfileSkins: [...state.newProfileSkins, id]
+      };
+      result = "unlocked";
+      void persistVillage(next);
+      return next;
+    });
+    return result;
+  },
+  equipProfileSkin: (id) =>
+    set((state) => {
+      const skin = getProfileSkin(id);
+      if (
+        !skin ||
+        !state.ownedProfileSkins.includes(id) ||
+        !state.unlockedProfileMonkeys.includes(skin.monkeyId) ||
+        (state.equippedProfileMonkey === skin.monkeyId && state.equippedProfileSkin === id)
+      ) {
+        return state;
+      }
+      const next: GameState = {
+        ...state,
+        equippedProfileMonkey: skin.monkeyId,
+        equippedProfileSkin: id
+      };
+      void persistVillage(next);
+      return next;
+    }),
+  markProfileMonkeySeen: (id) =>
+    set((state) => {
+      if (!state.newProfileMonkeys.includes(id)) return state;
+      const next = {
+        ...state,
+        newProfileMonkeys: state.newProfileMonkeys.filter((entry) => entry !== id)
+      };
+      void persistVillage(next);
+      return next;
+    }),
+  markProfileSkinSeen: (id) =>
+    set((state) => {
+      if (!state.newProfileSkins.includes(id)) return state;
+      const next = {
+        ...state,
+        newProfileSkins: state.newProfileSkins.filter((entry) => entry !== id)
+      };
+      void persistVillage(next);
+      return next;
     }),
   claimDaily: () =>
     set((state) => {
@@ -1436,6 +1612,12 @@ function persistVillage(state: GameState) {
     maxPopulation: state.maxPopulation,
     unitRoster,
     gems: state.gems,
+    unlockedProfileMonkeys: state.unlockedProfileMonkeys,
+    equippedProfileMonkey: state.equippedProfileMonkey,
+    ownedProfileSkins: state.ownedProfileSkins,
+    equippedProfileSkin: state.equippedProfileSkin,
+    newProfileMonkeys: state.newProfileMonkeys,
+    newProfileSkins: state.newProfileSkins,
     productionQueue: state.productionQueue,
     language: state.language,
     raidLevel: state.raidLevel,

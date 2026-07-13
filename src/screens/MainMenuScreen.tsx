@@ -7,6 +7,7 @@ import { SettingsModal } from "../components/game/SettingsModal";
 import { WoodButton } from "../components/game/WoodButton";
 import { playSound } from "../game/audio/soundManager";
 import { t } from "../game/i18n";
+import { getCosmeticAppearance } from "../game/config/profileMonkeys";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
 
@@ -14,6 +15,9 @@ export function MainMenuScreen() {
   const startGame = useGameStore((state) => state.startGame);
   const setLanguage = useGameStore((state) => state.setLanguage);
   const lang = useGameStore((state) => state.language);
+  const equippedMonkey = useGameStore((state) => state.equippedProfileMonkey);
+  const equippedSkin = useGameStore((state) => state.equippedProfileSkin);
+  const appearance = getCosmeticAppearance(equippedMonkey, equippedSkin);
   const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
 
@@ -29,7 +33,7 @@ export function MainMenuScreen() {
         <View style={styles.bottomScrimB} />
         <View style={styles.bottomScrimC} />
         <AssetImage assetKey="menuTotem" resizeMode="contain" style={styles.totem} fallback={<View />} />
-        <AssetImage assetKey="menuChiefMascot" resizeMode="contain" style={styles.mascot} fallback={<View />} />
+        <AssetImage assetKey={appearance.villageAsset} resizeMode="contain" style={styles.mascot} fallback={<View />} />
         <View style={styles.bottomTag}>
           <Text style={styles.bottomTagText} maxFontSizeMultiplier={theme.maxFontScale}>
             {t("menu.bottomTag", lang)}

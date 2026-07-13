@@ -20,15 +20,15 @@ import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { DailyRewardModal } from "../components/game/DailyRewardModal";
 import { NineSliceFrame } from "../components/game/NineSliceFrame";
+import { MonkeyCollectionModal } from "../components/game/MonkeyCollectionModal";
 import { OfflineModal } from "../components/game/OfflineModal";
 import { QuestModal } from "../components/game/QuestModal";
 import { ShopModal } from "../components/game/ShopModal";
 import { SpringPressable } from "../components/game/SpringPressable";
-import { SpriteSheetImage } from "../components/game/SpriteSheetImage";
 import { PopIn, TapHint } from "../components/game/Vfx";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { playSound } from "../game/audio/soundManager";
-import { getGameAsset, type GameAssetKey } from "../game/assets/gameAssets";
+import type { GameAssetKey } from "../game/assets/gameAssets";
 import { RUSH_GEM_COST, unitCost } from "../game/config/constants";
 import {
   BUILDING_PRODUCTION,
@@ -40,6 +40,9 @@ import {
 import { getCamp } from "../game/config/camps";
 import { todayKey } from "../game/config/dailyRewards";
 import { claimableQuestCount } from "../game/config/quests";
+import {
+  getCosmeticAppearance
+} from "../game/config/profileMonkeys";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
 import type {
@@ -123,6 +126,7 @@ export function GameScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [showQuests, setShowQuests] = useState(false);
   const [showShop, setShowShop] = useState(false);
+  const [showCollection, setShowCollection] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
   const dailyAutoShown = useRef(false);
   const [selectedBuilding, setSelectedBuilding] = useState<VillageBuildingType | null>(null);
@@ -231,7 +235,10 @@ export function GameScreen() {
     nestLevel <= 0 ||
     population >= state.maxPopulation ||
     !hasResources(state.resources, troopCosts.guardian);
-  const sheet = getGameAsset("unitMonkeySheet");
+  const equippedAppearance = getCosmeticAppearance(
+    state.equippedProfileMonkey,
+    state.equippedProfileSkin
+  );
   const queuedTypes = new Set(state.productionQueue.map((item) => item.type));
   const compactHud = layoutWidth < 370;
   const workerCount = state.units.filter(
@@ -274,15 +281,21 @@ export function GameScreen() {
       >
         <View style={styles.topBar}>
           <View style={styles.heroBadge}>
-            <View style={styles.avatarMedallion}>
+            <SpringPressable
+              accessibilityRole="button"
+              accessibilityLabel={t("collection.profileLabel", lang)}
+              hitSlop={8}
+              onPress={() => setShowCollection(true)}
+              style={styles.avatarMedallion}
+            >
               <View style={styles.avatarClip}>
-                <SpriteSheetImage
-                  source={sheet.source}
-                  sheetWidth={1341}
-                  sheetHeight={1173}
-                  frame={{ x: 1084, y: 18, width: 230, height: 256 }}
+                <AssetImage
+                  assetKey={equippedAppearance.portraitAsset}
                   style={styles.avatar}
+                  imageStyle={styles.avatarArt}
+                  resizeMode="contain"
                   fallback={<AvatarFallback />}
+                  hideFallbackOnLoad
                 />
               </View>
               <View style={styles.levelSeal}>
@@ -290,7 +303,7 @@ export function GameScreen() {
                   {t("common.levelBadge", lang, { n: clanLevel })}
                 </Text>
               </View>
-            </View>
+            </SpringPressable>
             <View style={styles.namePlate}>
               <Text
                 style={styles.clanName}
@@ -361,6 +374,7 @@ export function GameScreen() {
               loot={activeCampLoot}
               rewardMultiplier={state.lastRaidReward?.multiplier ?? 1}
               penalty={state.lastRaidPenalty}
+              playerIdentityAsset={equippedAppearance.raidAsset}
               lang={lang}
               maxSize={Math.min(width - theme.spacing.md * 2, 404)}
               feedbackText={state.feedback?.text}
@@ -433,7 +447,7 @@ export function GameScreen() {
               <View style={styles.hintPanel}>
                 <View style={styles.hintAvatar}>
                   <AssetImage
-                    assetKey="menuChiefMascot"
+                    assetKey={equippedAppearance.villageAsset}
                     style={styles.hintAvatarArt}
                     fallback={<AvatarFallback />}
                   />
@@ -527,6 +541,12 @@ export function GameScreen() {
       <DailyRewardModal visible={showDaily} lang={lang} onClose={() => setShowDaily(false)} />
 
       <ShopModal visible={showShop} lang={lang} onClose={() => setShowShop(false)} />
+
+      <MonkeyCollectionModal
+        visible={showCollection}
+        lang={lang}
+        onClose={() => setShowCollection(false)}
+      />
     </View>
   );
 
@@ -1158,6 +1178,10 @@ const styles = StyleSheet.create({
   avatar: {
     width: 50,
     height: 50
+  },
+  avatarArt: {
+    top: 5,
+    transform: [{ scale: 1.55 }]
   },
   levelSeal: {
     position: "absolute",

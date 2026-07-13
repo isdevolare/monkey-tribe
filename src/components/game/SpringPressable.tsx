@@ -16,6 +16,8 @@ type SpringPressableProps = Omit<PressableProps, "style"> & {
   style?: StyleProp<ViewStyle>;
   /** Sound played on press-in; pass null to stay silent. Defaults to "tap". */
   sound?: SoundName | null;
+  /** Optional gentler press depth for large collectible cards. */
+  pressedScale?: number;
 };
 
 /**
@@ -25,6 +27,7 @@ type SpringPressableProps = Omit<PressableProps, "style"> & {
 export function SpringPressable({
   style,
   sound = "tap",
+  pressedScale = 0.92,
   onPressIn,
   onPressOut,
   ...rest
@@ -37,7 +40,7 @@ export function SpringPressable({
     }
     hapticSelect();
     Animated.spring(scale, {
-      toValue: 0.92,
+      toValue: pressedScale,
       speed: 50,
       bounciness: 4,
       useNativeDriver: true

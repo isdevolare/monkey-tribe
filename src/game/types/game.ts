@@ -102,6 +102,18 @@ export type RaidRewardSummary = {
 
 export type Lang = "tr" | "en";
 
+// Catalog-backed string ids keep save data stable while allowing hundreds of
+// future cosmetics without expanding a compile-time union on every release.
+export type ProfileMonkeyId = string;
+export type ProfileSkinId = string;
+
+export type ProfileMonkeyUnlockResult =
+  | "unlocked"
+  | "owned"
+  | "insufficient"
+  | "requires_monkey"
+  | "invalid";
+
 export type UnitCombatStats = {
   maxHp: number;
   attack: number;
@@ -138,6 +150,12 @@ export type VillageSave = {
   resources: Resources;
   maxPopulation: number;
   gems?: number;
+  unlockedProfileMonkeys?: ProfileMonkeyId[];
+  equippedProfileMonkey?: ProfileMonkeyId;
+  ownedProfileSkins?: ProfileSkinId[];
+  equippedProfileSkin?: ProfileSkinId;
+  newProfileMonkeys?: ProfileMonkeyId[];
+  newProfileSkins?: ProfileSkinId[];
   productionQueue?: ProductionItem[];
   language?: Lang;
   raidLevel?: number;
@@ -175,6 +193,12 @@ export type GameState = {
   buildings: VillageBuilding[];
   maxPopulation: number;
   gems: number;
+  unlockedProfileMonkeys: ProfileMonkeyId[];
+  equippedProfileMonkey: ProfileMonkeyId;
+  ownedProfileSkins: ProfileSkinId[];
+  equippedProfileSkin: ProfileSkinId;
+  newProfileMonkeys: ProfileMonkeyId[];
+  newProfileSkins: ProfileSkinId[];
   productionQueue: ProductionItem[];
   playerCampHp: number;
   enemyCampHp: number;
@@ -205,6 +229,12 @@ export type GameState = {
   dismissOfflineReport: () => void;
   claimDaily: () => void;
   buyShopItem: (id: string) => void;
+  unlockProfileMonkey: (id: ProfileMonkeyId) => ProfileMonkeyUnlockResult;
+  equipProfileMonkey: (id: ProfileMonkeyId) => void;
+  unlockProfileSkin: (id: ProfileSkinId) => ProfileMonkeyUnlockResult;
+  equipProfileSkin: (id: ProfileSkinId) => void;
+  markProfileMonkeySeen: (id: ProfileMonkeyId) => void;
+  markProfileSkinSeen: (id: ProfileSkinId) => void;
   trainFighter: () => void;
   trainArcher: () => void;
   trainGuardian: () => void;
