@@ -359,8 +359,8 @@ export function setBackgroundLoop(name: BackgroundLoopName | null) {
   reconcileBackgroundLoop();
 }
 
-// Pause music while the app is backgrounded; resume where the game left
-// off when it comes back (the reconciler restarts the desired loop).
+// Pause music while the app is backgrounded; resume the same player position
+// when it comes back.
 AppState.addEventListener("change", (status) => {
   const suspended = status !== "active";
   if (suspended === appSuspended) {
@@ -374,14 +374,24 @@ AppState.addEventListener("change", (status) => {
       clearFade(name);
     }
     const player = activeBackgroundLoop ? backgroundPlayers.get(activeBackgroundLoop) : null;
-    activeBackgroundLoop = null;
     try {
       player?.pause();
     } catch {
       // Audio is flavor, never let it break gameplay.
     }
   } else {
-    reconcileBackgroundLoop();
+    const resumableLoop = activeBackgroundLoop;
+    if (resumableLoop && resumableLoop === desiredBackgroundLoop && musicGain() > 0) {
+      const player = backgroundPlayers.get(resumableLoop);
+      try {
+        player?.play();
+        fadeVolume(resumableLoop, musicGain(), 120);
+      } catch {
+        // Audio is flavor, never let it break gameplay.
+      }
+    } else {
+      reconcileBackgroundLoop();
+    }
   }
 });
 

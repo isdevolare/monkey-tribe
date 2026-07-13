@@ -2,7 +2,7 @@ import { QUESTS, isQuestComplete } from "../config/quests";
 import { useGameStore } from "../state/gameStore";
 import type { GameState } from "../types/game";
 import { hapticImpact, hapticOutcome } from "./haptics";
-import { playBattleHit, playSound, setBackgroundLoop, type BackgroundLoopName } from "./soundManager";
+import { playBattleHit, playSound, setBackgroundLoop } from "./soundManager";
 
 // Live HP total of every unit plus both camps; any drop means damage landed.
 function totalHp(state: GameState) {
@@ -19,25 +19,8 @@ function buildingLevelSum(state: GameState) {
   return state.buildings.reduce((sum, building) => sum + building.level, 0);
 }
 
-function targetBackgroundLoop(state: GameState): BackgroundLoopName | null {
-  if (state.currentScreen !== "game" || state.gameStatus !== "playing") {
-    return null;
-  }
-
-  if (state.gameMode === "village") {
-    return "village";
-  }
-
-  // Raid map = preparation/waiting; the tense loop stops once combat starts.
-  if (state.gameMode === "raidMap") {
-    return "raidWaiting";
-  }
-
-  if (state.gameMode === "raid" && state.raidStatus === "active") {
-    return "raid";
-  }
-
-  return null;
+function targetBackgroundLoop(state: GameState) {
+  return state.currentScreen === "game" && state.gameStatus === "playing" ? "main" : null;
 }
 
 // Quest progress is cumulative, so a quest can only cross its goal once —
