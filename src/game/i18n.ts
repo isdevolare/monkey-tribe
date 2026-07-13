@@ -92,6 +92,14 @@ const dict: Record<string, Entry> = {
   "fx.capacity": { tr: "Kapasite", en: "Capacity" },
   "fx.fighterTraining": { tr: "Savaşçı eğitimi", en: "Fighter training" },
   "fx.defense": { tr: "Savunma", en: "Defense" },
+  "fx.campDamageReduction": {
+    tr: "Kamp hasar azaltımı {n}",
+    en: "Camp damage reduction {n}"
+  },
+  "fx.archerAttackBonus": {
+    tr: "Okçu saldırısı +%{pct}",
+    en: "Archer attack +{pct}%"
+  },
   "fx.villageLevel": { tr: "Köy seviyesi", en: "Village level" },
   "fx.perSec": { tr: "/sn", en: "/s" },
   "fx.workerProduction": {

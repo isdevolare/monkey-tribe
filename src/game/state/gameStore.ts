@@ -19,6 +19,7 @@ import {
   VILLAGE_REGEN_PER_SEC,
   WATCH_TOWER_DAMAGE_REDUCTION,
   WORK_SHIFT_MS,
+  effectiveRaidAttack,
   unitCombatStats,
   unitCost
 } from "../config/constants";
@@ -400,7 +401,12 @@ function damageUnit(units: Unit[], unitId: string, amount: number) {
   }
 }
 
-function processAttacking(unit: Unit, game: MutableGame, now: number) {
+function processAttacking(
+  unit: Unit,
+  game: MutableGame,
+  now: number,
+  raidCombat: boolean
+) {
   if (!unit.target) {
     unit.state = "idle";
     return;
@@ -422,8 +428,17 @@ function processAttacking(unit: Unit, game: MutableGame, now: number) {
     return;
   }
 
+  const attack =
+    raidCombat && unit.owner === "player"
+      ? effectiveRaidAttack(
+          unit.type,
+          unit.attack,
+          buildingLevel(game.buildings, "watchTower")
+        )
+      : unit.attack;
+
   if (unit.target.kind === "unit") {
-    damageUnit(game.units, unit.target.unitId, unit.attack);
+    damageUnit(game.units, unit.target.unitId, attack);
     game.feedbackText = t(unit.owner === "player" ? "fb.hitEnemy" : "fb.enemyCounter", game.lang);
   } else if (unit.target.kind === "camp") {
     if (unit.target.owner === "player") {
@@ -436,7 +451,7 @@ function processAttacking(unit: Unit, game: MutableGame, now: number) {
           ? t("fb.towerBlocked", game.lang, { n: blocked })
           : t("fb.enemyHitVillage", game.lang);
     } else {
-      game.enemyCampHp = Math.max(0, game.enemyCampHp - unit.attack);
+      game.enemyCampHp = Math.max(0, game.enemyCampHp - attack);
       game.feedbackText = t("fb.hitCamp", game.lang);
     }
   }
@@ -444,14 +459,14 @@ function processAttacking(unit: Unit, game: MutableGame, now: number) {
   unit.lastActionAt = now;
 }
 
-function processUnit(unit: Unit, game: MutableGame, now: number) {
+function processUnit(unit: Unit, game: MutableGame, now: number, raidCombat = false) {
   if (unit.state === "dead" || unit.hp <= 0) {
     unit.state = "dead";
     return;
   }
 
   if (unit.state === "attacking") {
-    processAttacking(unit, game, now);
+    processAttacking(unit, game, now, raidCombat);
   }
 }
 
@@ -1194,7 +1209,7 @@ export const useGameStore = create<GameState>((set) => ({
 
         for (const unit of units) {
           if (unit.owner === "enemy" || (unit.owner === "player" && isCombatant(unit))) {
-            processUnit(unit, game, now);
+            processUnit(unit, game, now, true);
           }
         }
 

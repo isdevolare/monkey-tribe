@@ -15,7 +15,28 @@ export const CAMP_MAX_HP = 120;
 export const MOVE_INTERVAL_MS = 380;
 export const ATTACK_INTERVAL_MS = 850;
 export const ENEMY_DETECTION_RANGE = 4;
-export const WATCH_TOWER_DAMAGE_REDUCTION = 2;
+export const WATCH_TOWER_DAMAGE_REDUCTION = 1;
+export const WATCH_TOWER_ARCHER_BONUS_PER_LEVEL = 0.05;
+
+export function watchTowerArcherBonusPercent(watchTowerLevel: number) {
+  const level = Number.isFinite(watchTowerLevel)
+    ? Math.max(1, Math.floor(watchTowerLevel))
+    : 1;
+  return Math.round((level - 1) * WATCH_TOWER_ARCHER_BONUS_PER_LEVEL * 100);
+}
+
+/** Raid-only derived attack; saved unit stats remain unchanged. */
+export function effectiveRaidAttack(
+  type: UnitType,
+  savedAttack: number,
+  watchTowerLevel: number
+) {
+  if (type !== "archer") {
+    return savedAttack;
+  }
+  const multiplier = 1 + watchTowerArcherBonusPercent(watchTowerLevel) / 100;
+  return Math.round(savedAttack * multiplier);
+}
 
 export const UNIT_COSTS: Record<UnitType, Resources> = {
   worker: { bananas: 10, stones: 0, wood: 0 },

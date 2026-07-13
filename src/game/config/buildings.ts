@@ -1,5 +1,10 @@
 import { t, type Lang } from "../i18n";
-import { STORAGE_PER_HALL_LEVEL, TROOP_BONUS_PER_NEST_LEVEL } from "./constants";
+import {
+  STORAGE_PER_HALL_LEVEL,
+  TROOP_BONUS_PER_NEST_LEVEL,
+  WATCH_TOWER_DAMAGE_REDUCTION,
+  watchTowerArcherBonusPercent
+} from "./constants";
 import type {
   ResourceKind,
   Resources,
@@ -170,7 +175,11 @@ export function buildingEffect(type: VillageBuildingType, level: number, lang: L
   }
 
   if (type === "watchTower") {
-    return `${t("fx.defense", lang)} +${level * 2}`;
+    return `${t("fx.campDamageReduction", lang, {
+      n: level * WATCH_TOWER_DAMAGE_REDUCTION
+    })} · ${t("fx.archerAttackBonus", lang, {
+      pct: watchTowerArcherBonusPercent(level)
+    })}`;
   }
 
   return `${t("fx.villageLevel", lang)} ${level} · ${t("fx.storage", lang)} ${storageCap(level)}`;
