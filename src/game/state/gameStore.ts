@@ -18,7 +18,6 @@ import {
   UNIT_COSTS,
   VILLAGE_REGEN_PER_SEC,
   WATCH_TOWER_DAMAGE_REDUCTION,
-  WORKER_BOOST,
   WORK_SHIFT_MS,
   troopStatMultiplier,
   unitCost
@@ -38,7 +37,9 @@ import { QUESTS, isQuestComplete } from "../config/quests";
 import { SHOP_ITEMS } from "../config/shop";
 import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
+import { reconcileWorkProduction, sanitizeActiveWorkTask } from "./workProduction";
 import type {
+  ActiveWorkTask,
   GameState,
   GatherTarget,
   Lang,
@@ -64,25 +65,22 @@ function bumpQuest(
   return { ...progress, [metric]: (progress[metric] ?? 0) + 1 };
 }
 
-// What the MANNED buildings would have produced over `elapsedMs` while the
-// game was closed — same worker-based rates as the live tick. No workers,
-// no offline income.
-function offlineEarnings(
+// Snapshot output at dispatch time. Later workers and building upgrades do
+// not alter an already-running task.
+function snapshotWorkProduction(
   buildings: VillageBuilding[],
-  workerCount: number,
-  elapsedMs: number
-): OfflineReport {
-  const seconds = elapsedMs / 1000;
-  const report: OfflineReport = { bananas: 0, stones: 0, wood: 0, durationMs: elapsedMs };
+  workerCount: number
+): Resources {
+  const productionPerSecond: Resources = { bananas: 0, stones: 0, wood: 0 };
   const manned = assignWorkers(buildings, workerCount);
   for (const building of buildings) {
     const production = BUILDING_PRODUCTION[building.type];
     const workers = manned[building.type] ?? 0;
     if (production && workers > 0) {
-      report[production.resource] += Math.floor(production.perSecond * workers * seconds);
+      productionPerSecond[production.resource] += production.perSecond * workers;
     }
   }
-  return report;
+  return productionPerSecond;
 }
 
 /**
@@ -156,6 +154,7 @@ function createFreshState(now: number) {
     activeCampId: null,
     raidStars: 0,
     raidLevel: STRONGHOLD_BASE_LEVEL,
+    activeWorkTask: null as ActiveWorkTask | null,
     workShiftUntil: null as number | null,
     questProgress: {} as Partial<Record<QuestMetric, number>>,
     questsClaimed: [] as string[],
@@ -686,7 +685,7 @@ export const useGameStore = create<GameState>((set) => ({
       gameStatus: "playing",
       gameMode: "village",
       raidStatus: "idle",
-      units: createInitialUnits(Date.now()),
+      units: returnPlayerUnitsToVillage(state.units),
       playerCampHp: CAMP_MAX_HP,
       enemyCampHp: CAMP_MAX_HP,
       activeCampId: null,
@@ -732,34 +731,34 @@ export const useGameStore = create<GameState>((set) => ({
           units = createInitialUnits(now);
         }
       }
-      const workerCount = units.filter((unit) => unit.type === "worker").length;
-
       // Migration squeeze: stockpiles from the pre-cap economy clamp to the
       // new depot limit.
-      const resources = {
+      const savedResources = {
         bananas: Math.min(save.resources.bananas, cap),
         stones: Math.min(save.resources.stones, cap),
         wood: Math.min(save.resources.wood, cap)
       };
 
-      // Award worker-driven production for the time the game was closed;
-      // the depot cap is the real ceiling, so the report shows only what fit.
+      // New saves reconcile the persisted task cursor. Legacy saves only have
+      // workShiftUntil; cancelling that field avoids replaying production that
+      // the old continuous-income model may already have banked.
+      const restoredTask = sanitizeActiveWorkTask(save.activeWorkTask);
+      const reconciledWork = reconcileWorkProduction(restoredTask, savedResources, cap, now);
+      const resources = reconciledWork.resources;
+
+      // Production is always banked, even for short absences. The modal keeps
+      // its existing minimum-away threshold and reports only what fit.
       let offlineReport: OfflineReport | null = null;
       if (save.lastSeenAt != null) {
-        const elapsed = Math.min(now - save.lastSeenAt, OFFLINE_CAP_MS);
+        const elapsed = Math.min(Math.max(0, now - save.lastSeenAt), OFFLINE_CAP_MS);
         if (elapsed >= OFFLINE_MIN_MS) {
-          // Floor after clamping: live-tick production leaves fractional
-          // stockpiles, so the depot headroom (cap - current) is fractional
-          // too — without the floor the modal shows "+626.89210000..." .
-          const earned = offlineEarnings(buildings, workerCount, elapsed);
-          earned.bananas = Math.floor(Math.min(earned.bananas, Math.max(0, cap - resources.bananas)));
-          earned.stones = Math.floor(Math.min(earned.stones, Math.max(0, cap - resources.stones)));
-          earned.wood = Math.floor(Math.min(earned.wood, Math.max(0, cap - resources.wood)));
+          const earned = {
+            bananas: Math.floor(reconciledWork.earned.bananas),
+            stones: Math.floor(reconciledWork.earned.stones),
+            wood: Math.floor(reconciledWork.earned.wood)
+          };
           if (earned.bananas + earned.stones + earned.wood > 0) {
-            resources.bananas += earned.bananas;
-            resources.stones += earned.stones;
-            resources.wood += earned.wood;
-            offlineReport = earned;
+            offlineReport = { ...earned, durationMs: elapsed };
           }
         }
       }
@@ -777,7 +776,8 @@ export const useGameStore = create<GameState>((set) => ({
         // now has handcrafted camps through Sv7, so lift stale levels to the
         // new base (higher progress is kept as-is).
         raidLevel: Math.max(save.raidLevel ?? STRONGHOLD_BASE_LEVEL, STRONGHOLD_BASE_LEVEL),
-        workShiftUntil: save.workShiftUntil ?? null,
+        activeWorkTask: reconciledWork.activeWorkTask,
+        workShiftUntil: reconciledWork.activeWorkTask?.endsAt ?? null,
         questProgress: save.questProgress ?? {},
         questsClaimed: save.questsClaimed ?? [],
         dailyStreak: save.dailyStreak ?? 0,
@@ -858,23 +858,52 @@ export const useGameStore = create<GameState>((set) => ({
         return state;
       }
       const now = Date.now();
-      if (state.workShiftUntil != null && now < state.workShiftUntil) {
-        return state;
+      const cap = storageCap(buildingLevel(state.buildings, "clanHall"));
+      // Worker production exists only inside the active task's uncredited
+      // interval. The task carries fixed crew/rates from dispatch time.
+      const reconciledWork = reconcileWorkProduction(
+        state.activeWorkTask,
+        state.resources,
+        cap,
+        now
+      );
+      if (reconciledWork.activeWorkTask) {
+        return {
+          ...state,
+          resources: reconciledWork.resources,
+          activeWorkTask: reconciledWork.activeWorkTask,
+          workShiftUntil: reconciledWork.activeWorkTask.endsAt
+        };
       }
       const workers = state.units.filter(
         (unit) =>
           unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
       ).length;
       if (workers <= 0) {
-        return { ...state, feedback: { id: now, text: t("fb.noWorkers", state.language) } };
+        return {
+          ...state,
+          resources: reconciledWork.resources,
+          activeWorkTask: null,
+          workShiftUntil: null,
+          feedback: { id: now, text: t("fb.noWorkers", state.language) }
+        };
       }
+      const activeWorkTask: ActiveWorkTask = {
+        startedAt: now,
+        endsAt: now + WORK_SHIFT_MS,
+        accruedUntil: now,
+        workerCount: workers,
+        productionPerSecond: snapshotWorkProduction(state.buildings, workers)
+      };
       return {
         ...state,
-        workShiftUntil: now + WORK_SHIFT_MS,
+        resources: reconciledWork.resources,
+        activeWorkTask,
+        workShiftUntil: activeWorkTask.endsAt,
         questProgress: bumpQuest(state.questProgress, "workShift"),
         feedback: {
           id: now,
-          text: t("fb.workersSent", state.language, { n: Math.round(WORKER_BOOST * 100 * workers) })
+          text: t("shelter.working", state.language, { time: "3:00" })
         }
       };
     }),
@@ -998,6 +1027,21 @@ export const useGameStore = create<GameState>((set) => ({
         feedbackText: null
       };
 
+      // Reconcile before mode-specific branches so the background task keeps
+      // advancing without changing raid behavior.
+      const reconciledWork = reconcileWorkProduction(
+        state.activeWorkTask,
+        game.resources,
+        storageCap(buildingLevel(game.buildings, "clanHall")),
+        now
+      );
+      game.resources = reconciledWork.resources;
+      const activeWorkTask = reconciledWork.activeWorkTask;
+      const workShiftUntil = activeWorkTask?.endsAt ?? null;
+      if (reconciledWork.completed) {
+        game.feedbackText = t("fb.workersReturned", state.language);
+      }
+
       if (state.gameMode === "raid" && state.raidStatus === "active") {
         assignRaidOrders(units);
 
@@ -1039,6 +1083,8 @@ export const useGameStore = create<GameState>((set) => ({
             ...state,
             units: game.units,
             resources: lootResources,
+            activeWorkTask,
+            workShiftUntil,
             enemyCampHp: 0,
             raidStars: stars,
             gems: state.gems + stars,
@@ -1063,6 +1109,9 @@ export const useGameStore = create<GameState>((set) => ({
           return {
             ...state,
             units: game.units,
+            resources: game.resources,
+            activeWorkTask,
+            workShiftUntil,
             enemyCampHp: game.enemyCampHp,
             feedback: { id: now, text: t("fb.raidFailed", state.language) },
             raidStatus: "defeat"
@@ -1072,6 +1121,9 @@ export const useGameStore = create<GameState>((set) => ({
         return {
           ...state,
           units: game.units,
+          resources: game.resources,
+          activeWorkTask,
+          workShiftUntil,
           enemyCampHp: game.enemyCampHp,
           feedback: game.feedbackText ? { id: now, text: game.feedbackText } : state.feedback
         };
@@ -1083,34 +1135,8 @@ export const useGameStore = create<GameState>((set) => ({
         }
       }
 
-      // Worker-driven production: each production building hosts up to its
-      // level in workers and only manned slots produce. A work shift
-      // boosts the whole crew's output for a while.
+      // Live elapsed time is still used for village healing.
       const elapsedSeconds = Math.max(0, (now - state.lastProductionAt) / 1000);
-      const workerCount = units.filter(
-        (unit) =>
-          unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
-      ).length;
-      let workShiftUntil = state.workShiftUntil;
-      const shiftActive = workShiftUntil != null && now < workShiftUntil;
-      const productionBoost = shiftActive ? 1 + WORKER_BOOST * workerCount : 1;
-      if (workShiftUntil != null && now >= workShiftUntil) {
-        workShiftUntil = null;
-        game.feedbackText = t("fb.workersReturned", state.language);
-      }
-      const storageLimit = storageCap(buildingLevel(game.buildings, "clanHall"));
-      const manned = assignWorkers(game.buildings, workerCount);
-      for (const building of game.buildings) {
-        const production = BUILDING_PRODUCTION[building.type];
-        const crew = manned[building.type] ?? 0;
-        if (production && crew > 0) {
-          game.resources[production.resource] = Math.min(
-            storageLimit,
-            game.resources[production.resource] +
-              production.perSecond * crew * elapsedSeconds * productionBoost
-          );
-        }
-      }
 
       // Units wounded in raids slowly heal while home in the village.
       for (const unit of game.units) {
@@ -1165,6 +1191,7 @@ export const useGameStore = create<GameState>((set) => ({
         playerCampHp: game.playerCampHp,
         enemyCampHp: game.enemyCampHp,
         productionQueue,
+        activeWorkTask,
         workShiftUntil,
         lastProductionAt: now
       };
@@ -1226,7 +1253,7 @@ function persistVillage(state: GameState) {
     productionQueue: state.productionQueue,
     language: state.language,
     raidLevel: state.raidLevel,
-    workShiftUntil: state.workShiftUntil,
+    activeWorkTask: state.activeWorkTask,
     questProgress: state.questProgress,
     questsClaimed: state.questsClaimed,
     dailyStreak: state.dailyStreak,

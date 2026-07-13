@@ -96,6 +96,14 @@ export type ProductionItem = {
   finishAt: number;
 };
 
+export type ActiveWorkTask = {
+  startedAt: number;
+  endsAt: number;
+  accruedUntil: number;
+  workerCount: number;
+  productionPerSecond: Resources;
+};
+
 // What a quest counts toward; cumulative per metric so tiered quests
 // (train 3 / train 10) share one counter.
 export type QuestMetric = "trainAny" | "upgradeAny" | "winRaid" | "workShift";
@@ -108,6 +116,8 @@ export type VillageSave = {
   productionQueue?: ProductionItem[];
   language?: Lang;
   raidLevel?: number;
+  activeWorkTask?: ActiveWorkTask | null;
+  /** Legacy save field. Hydration cancels it instead of replaying old production. */
   workShiftUntil?: number | null;
   questProgress?: Partial<Record<QuestMetric, number>>;
   questsClaimed?: string[];
@@ -144,6 +154,8 @@ export type GameState = {
   activeCampId: string | null;
   raidStars: number;
   raidLevel: number;
+  activeWorkTask: ActiveWorkTask | null;
+  /** UI compatibility projection of activeWorkTask.endsAt. */
   workShiftUntil: number | null;
   questProgress: Partial<Record<QuestMetric, number>>;
   questsClaimed: string[];
