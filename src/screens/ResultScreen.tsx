@@ -49,13 +49,6 @@ export function ResultScreen() {
       <View style={[styles.overlay, victory ? styles.overlayVictory : styles.overlayDefeat]} />
 
       <View style={styles.card}>
-        <AssetImage
-          assetKey="uiPanelDark"
-          resizeMode="stretch"
-          style={styles.cardTexture}
-          fallback={<View style={styles.cardTextureFallback} />}
-        />
-
         <Animated.View style={heroReveal}>
           <View style={[styles.heroRing, victory ? styles.heroRingVictory : styles.heroRingDefeat]}>
             <AssetImage
@@ -156,13 +149,6 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 14
-  },
-  cardTexture: {
-    ...StyleSheet.absoluteFillObject
-  },
-  cardTextureFallback: {
-    flex: 1,
-    backgroundColor: "rgba(17, 20, 14, 0.92)"
   },
   heroRing: {
     width: 132,

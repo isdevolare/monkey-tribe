@@ -33,13 +33,6 @@ export function DailyRewardModal({ visible, lang, onClose }: DailyRewardModalPro
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.scrim}>
         <View style={styles.card}>
-          <AssetImage
-            assetKey="uiPanelDark"
-            resizeMode="stretch"
-            style={styles.cardTexture}
-            fallback={<View style={styles.cardTextureFallback} />}
-          />
-
           <Text style={styles.title} maxFontSizeMultiplier={theme.maxFontScale}>
             {t("daily.title", lang)}
           </Text>
@@ -177,13 +170,6 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 10 },
     elevation: 14
-  },
-  cardTexture: {
-    ...StyleSheet.absoluteFillObject
-  },
-  cardTextureFallback: {
-    flex: 1,
-    backgroundColor: "rgba(17, 20, 14, 0.96)"
   },
   title: {
     color: theme.colors.paper,
