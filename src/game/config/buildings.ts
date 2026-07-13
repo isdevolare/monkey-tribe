@@ -44,27 +44,45 @@ export const BUILDING_PRODUCTION: Partial<
 };
 
 /**
- * Distributes idle workers across production buildings in BUILDING_ORDER
- * priority (grove first). Each building offers `level` slots. Returns
- * manned slot counts keyed by building type.
+ * Distributes workers one per production building per round. This keeps
+ * staffed buildings within one worker of each other whenever their slot
+ * capacities allow it, while preserving deterministic tie-breaking.
  */
 export function assignWorkers(
   buildings: VillageBuilding[],
   workerCount: number
 ): Partial<Record<VillageBuildingType, number>> {
   const assigned: Partial<Record<VillageBuildingType, number>> = {};
+  const productionTypes = BUILDING_ORDER.filter((type) => BUILDING_PRODUCTION[type]);
+  const capacity = new Map<VillageBuildingType, number>();
+
+  for (const type of productionTypes) {
+    const rawLevel = buildings.find((building) => building.type === type)?.level ?? 0;
+    capacity.set(type, Number.isFinite(rawLevel) ? Math.max(0, Math.floor(rawLevel)) : 0);
+  }
+
   let remaining = Math.max(0, Math.floor(workerCount));
-  for (const type of BUILDING_ORDER) {
-    if (!BUILDING_PRODUCTION[type]) {
-      continue;
+  while (remaining > 0) {
+    let assignedThisRound = false;
+    for (const type of productionTypes) {
+      const current = assigned[type] ?? 0;
+      if (current >= (capacity.get(type) ?? 0)) {
+        continue;
+      }
+
+      assigned[type] = current + 1;
+      remaining -= 1;
+      assignedThisRound = true;
+      if (remaining === 0) {
+        break;
+      }
     }
-    const level = buildings.find((building) => building.type === type)?.level ?? 0;
-    const slots = Math.min(level, remaining);
-    if (slots > 0) {
-      assigned[type] = slots;
-      remaining -= slots;
+
+    if (!assignedThisRound) {
+      break;
     }
   }
+
   return assigned;
 }
 
