@@ -183,6 +183,7 @@ export type GameState = {
   startRaidOn: (campId: string) => void;
   returnToVillage: () => void;
   upgradeBuilding: (type: VillageBuildingType) => void;
+  reconcileWorkTask: (now?: number) => void;
   tickGame: (now?: number) => void;
   resetGame: () => void;
   goToMenu: () => void;

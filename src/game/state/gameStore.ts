@@ -1009,6 +1009,29 @@ export const useGameStore = create<GameState>((set) => ({
         feedback: { id: now, text: t("fb.rushed", state.language) }
       };
     }),
+  reconcileWorkTask: (now = Date.now()) =>
+    set((state) => {
+      if (state.gameStatus !== "playing" || !state.activeWorkTask) {
+        return state;
+      }
+
+      const reconciledWork = reconcileWorkProduction(
+        state.activeWorkTask,
+        state.resources,
+        storageCap(buildingLevel(state.buildings, "clanHall")),
+        now
+      );
+
+      return {
+        ...state,
+        resources: reconciledWork.resources,
+        activeWorkTask: reconciledWork.activeWorkTask,
+        workShiftUntil: reconciledWork.activeWorkTask?.endsAt ?? null,
+        feedback: reconciledWork.completed
+          ? { id: now, text: t("fb.workersReturned", state.language) }
+          : state.feedback
+      };
+    }),
   tickGame: (now = Date.now()) =>
     set((state) => {
       if (state.gameStatus !== "playing") {
@@ -1260,7 +1283,16 @@ function persistVillage(state: GameState) {
     dailyLastClaim: state.dailyLastClaim,
     lastSeenAt: Date.now()
   };
-  void AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+  return AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+}
+
+/** Flushes the latest reconciled village snapshot before the app is suspended. */
+export function flushVillageSave() {
+  const state = useGameStore.getState();
+  if (state.gameStatus !== "playing") {
+    return Promise.resolve();
+  }
+  return persistVillage(state);
 }
 
 // Save as the village changes, throttled.
@@ -1274,5 +1306,5 @@ useGameStore.subscribe((state) => {
     return;
   }
   lastSaveAt = now;
-  persistVillage(state);
+  void persistVillage(state);
 });

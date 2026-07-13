@@ -7,11 +7,15 @@ import {
 } from "@expo-google-fonts/baloo-2";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { StatusBar, StyleSheet, View } from "react-native";
+import { AppState, StatusBar, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { FadeIn } from "./src/components/game/FadeIn";
 import { initGameSounds } from "./src/game/audio/soundBridge";
-import { SAVE_KEY, useGameStore } from "./src/game/state/gameStore";
+import {
+  flushVillageSave,
+  SAVE_KEY,
+  useGameStore
+} from "./src/game/state/gameStore";
 import { MainMenuScreen } from "./src/screens/MainMenuScreen";
 import { GameScreen } from "./src/screens/GameScreen";
 import { ResultScreen } from "./src/screens/ResultScreen";
@@ -65,6 +69,30 @@ export default function App() {
       setHydrated(true);
     })();
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    let previousState = AppState.currentState;
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const now = Date.now();
+      const leftForeground = previousState === "active" && nextState !== "active";
+      const enteredForeground = previousState !== "active" && nextState === "active";
+
+      if (leftForeground) {
+        useGameStore.getState().reconcileWorkTask(now);
+        void flushVillageSave();
+      } else if (enteredForeground) {
+        useGameStore.getState().reconcileWorkTask(now);
+      }
+
+      previousState = nextState;
+    });
+
+    return () => subscription.remove();
+  }, [hydrated]);
 
   useEffect(() => {
     if (fontsLoaded && __DEV__) {
