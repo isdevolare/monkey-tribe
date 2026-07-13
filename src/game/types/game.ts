@@ -95,6 +95,11 @@ export type RaidPenalty = {
   amounts: Resources;
 };
 
+export type RaidRewardSummary = {
+  loot: Resources;
+  multiplier: number;
+};
+
 export type Lang = "tr" | "en";
 
 export type ProductionItem = {
@@ -123,6 +128,7 @@ export type VillageSave = {
   productionQueue?: ProductionItem[];
   language?: Lang;
   raidLevel?: number;
+  raidVictoryCounts?: Record<string, number>;
   activeWorkTask?: ActiveWorkTask | null;
   /** Legacy save field. Hydration cancels it instead of replaying old production. */
   workShiftUntil?: number | null;
@@ -161,6 +167,8 @@ export type GameState = {
   activeCampId: string | null;
   raidStars: number;
   raidLevel: number;
+  raidVictoryCounts: Record<string, number>;
+  lastRaidReward: RaidRewardSummary | null;
   lastRaidPenalty: RaidPenalty | null;
   activeWorkTask: ActiveWorkTask | null;
   /** UI compatibility projection of activeWorkTask.endsAt. */

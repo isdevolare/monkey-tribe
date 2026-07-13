@@ -25,6 +25,7 @@ type RaidBoardProps = {
   raidStatus: RaidStatus;
   stars: number;
   loot: Resources;
+  rewardMultiplier: number;
   penalty: RaidPenalty | null;
   lang: Lang;
   feedbackText?: string;
@@ -70,6 +71,7 @@ export function RaidBoard({
   raidStatus,
   stars,
   loot,
+  rewardMultiplier,
   penalty,
   lang,
   feedbackText,
@@ -346,11 +348,20 @@ export function RaidBoard({
                   : t("raid.defeatText", lang)}
             </Text>
             {victory ? (
-              <View style={styles.rewardRow}>
-                <RewardChip assetKey="resourceBananaPile" amount={loot.bananas} />
-                <RewardChip assetKey="resourceWoodBundle" amount={loot.wood} />
-                <RewardChip assetKey="resourceStonePile" amount={loot.stones} />
-              </View>
+              <>
+                <Text style={styles.rewardMultiplier}>
+                  {rewardMultiplier === 1
+                    ? t("raid.firstVictoryReward", lang)
+                    : t("raid.repeatReward", lang, {
+                        percent: Math.round(rewardMultiplier * 100)
+                      })}
+                </Text>
+                <View style={styles.rewardRow}>
+                  <RewardChip assetKey="resourceBananaPile" amount={loot.bananas} />
+                  <RewardChip assetKey="resourceWoodBundle" amount={loot.wood} />
+                  <RewardChip assetKey="resourceStonePile" amount={loot.stones} />
+                </View>
+              </>
             ) : null}
             {!victory && penalty ? (
               <PenaltySummary penalty={penalty} lang={lang} />
@@ -811,6 +822,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginTop: 14
+  },
+  rewardMultiplier: {
+    color: "#f7dda0",
+    fontFamily: theme.fonts.bold,
+    fontSize: 13,
+    marginTop: 12,
+    textAlign: "center"
   },
   penaltyBlock: {
     alignItems: "center",

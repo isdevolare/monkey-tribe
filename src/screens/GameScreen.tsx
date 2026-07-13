@@ -138,7 +138,8 @@ export function GameScreen() {
       unit.hp > 0
   ).length;
   const activeCamp = getCamp(state.activeCampId ?? "");
-  const activeCampLoot = activeCamp?.loot ?? { bananas: 0, stones: 0, wood: 0 };
+  const activeCampLoot =
+    state.lastRaidReward?.loot ?? activeCamp?.loot ?? { bananas: 0, stones: 0, wood: 0 };
   // Cap by height too so board + panel + dock fit ~667pt phones without
   // pushing the dock off-screen.
   const boardMaxSize = Math.max(260, Math.min(layoutWidth - 20, 404, Math.round(height * 0.52)));
@@ -357,6 +358,7 @@ export function GameScreen() {
               raidStatus={state.raidStatus}
               stars={state.raidStars}
               loot={activeCampLoot}
+              rewardMultiplier={state.lastRaidReward?.multiplier ?? 1}
               penalty={state.lastRaidPenalty}
               lang={lang}
               maxSize={Math.min(width - theme.spacing.md * 2, 404)}

@@ -190,6 +190,8 @@ const dict: Record<string, Entry> = {
     en: "The base fighter reserve was protected; no resources were lost."
   },
   "raid.loot": { tr: "Kazanılan Ganimet", en: "Won Loot" },
+  "raid.firstVictoryReward": { tr: "İlk zafer ödülü", en: "First victory reward" },
+  "raid.repeatReward": { tr: "Tekrar ödülü · %{percent}", en: "Repeat reward · {percent}%" },
   "raid.strongholdReturn": {
     tr: "Korsan Kalesi güçlenerek geri döndü!",
     en: "The Pirate Stronghold returns stronger!"

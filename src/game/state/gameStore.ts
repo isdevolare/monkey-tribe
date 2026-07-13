@@ -39,6 +39,10 @@ import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import { reconcileWorkProduction, sanitizeActiveWorkTask } from "./workProduction";
 import { applyRaidPenalty } from "./raidPenalty";
+import {
+  resolveRaidVictoryReward,
+  sanitizeRaidVictoryCounts
+} from "./raidRewards";
 import type {
   ActiveWorkTask,
   GameState,
@@ -155,6 +159,8 @@ function createFreshState(now: number) {
     activeCampId: null,
     raidStars: 0,
     raidLevel: STRONGHOLD_BASE_LEVEL,
+    raidVictoryCounts: {} as Record<string, number>,
+    lastRaidReward: null,
     lastRaidPenalty: null,
     activeWorkTask: null as ActiveWorkTask | null,
     workShiftUntil: null as number | null,
@@ -692,6 +698,7 @@ export const useGameStore = create<GameState>((set) => ({
       enemyCampHp: CAMP_MAX_HP,
       activeCampId: null,
       raidStars: 0,
+      lastRaidReward: null,
       lastRaidPenalty: null,
       lastProductionAt: Date.now(),
       feedback: null
@@ -779,6 +786,8 @@ export const useGameStore = create<GameState>((set) => ({
         // now has handcrafted camps through Sv7, so lift stale levels to the
         // new base (higher progress is kept as-is).
         raidLevel: Math.max(save.raidLevel ?? STRONGHOLD_BASE_LEVEL, STRONGHOLD_BASE_LEVEL),
+        raidVictoryCounts: sanitizeRaidVictoryCounts(save.raidVictoryCounts),
+        lastRaidReward: null,
         activeWorkTask: reconciledWork.activeWorkTask,
         workShiftUntil: reconciledWork.activeWorkTask?.endsAt ?? null,
         questProgress: save.questProgress ?? {},
@@ -836,6 +845,7 @@ export const useGameStore = create<GameState>((set) => ({
         enemyCampHp: camp.campHp,
         enemyCampMaxHp: camp.campHp,
         raidStars: 0,
+        lastRaidReward: null,
         lastRaidPenalty: null,
         units: deployRaidUnits(state.units, now, camp),
         lastProductionAt: now,
@@ -867,6 +877,7 @@ export const useGameStore = create<GameState>((set) => ({
       gameMode: "village",
       raidStatus: "idle",
       activeCampId: null,
+      lastRaidReward: null,
       lastRaidPenalty: null,
       units: returnPlayerUnitsToVillage(state.units),
       lastProductionAt: Date.now(),
@@ -1102,7 +1113,20 @@ export const useGameStore = create<GameState>((set) => ({
 
         if (game.enemyCampHp <= 0) {
           const camp = getCamp(state.activeCampId ?? "");
-          const loot = camp ? camp.loot : RAID_REWARD;
+          const baseLoot = camp ? camp.loot : RAID_REWARD;
+          const previousVictories = camp
+            ? state.raidVictoryCounts[camp.id] ?? 0
+            : 0;
+          const reward = resolveRaidVictoryReward(
+            game.resources,
+            baseLoot,
+            storageCap(buildingLevel(state.buildings, "clanHall")),
+            previousVictories
+          );
+          const { loot, multiplier: rewardMultiplier } = reward;
+          const raidVictoryCounts = camp
+            ? { ...state.raidVictoryCounts, [camp.id]: previousVictories + 1 }
+            : state.raidVictoryCounts;
           const fighters = units.filter(
             (unit) => unit.owner === "player" && isCombatant(unit)
           );
@@ -1116,21 +1140,16 @@ export const useGameStore = create<GameState>((set) => ({
                 ? 2
                 : 1;
 
-          const lootResources = { ...game.resources };
-          addResourcesCapped(
-            lootResources,
-            loot,
-            storageCap(buildingLevel(state.buildings, "clanHall"))
-          );
-
           return {
             ...state,
             units: game.units,
-            resources: lootResources,
+            resources: reward.resources,
             activeWorkTask,
             workShiftUntil,
             enemyCampHp: 0,
             raidStars: stars,
+            raidVictoryCounts,
+            lastRaidReward: { loot, multiplier: rewardMultiplier },
             gems: state.gems + stars,
             questProgress: bumpQuest(state.questProgress, "winRaid"),
             lastRaidPenalty: null,
@@ -1300,6 +1319,7 @@ function persistVillage(state: GameState) {
     productionQueue: state.productionQueue,
     language: state.language,
     raidLevel: state.raidLevel,
+    raidVictoryCounts: state.raidVictoryCounts,
     activeWorkTask: state.activeWorkTask,
     questProgress: state.questProgress,
     questsClaimed: state.questsClaimed,
