@@ -32,14 +32,12 @@ const SOUND_FILES = {
 } as const;
 
 export type SoundName = keyof typeof SOUND_FILES;
-export type BackgroundLoopName = "village" | "raidWaiting" | "raid";
+export type BackgroundLoopName = "main";
 
-// Exactly one background context may sound at a time; the reconciler
-// below owns every play/pause on these.
+// One background track for the whole game; the reconciler below owns
+// every play/pause on it (single instance, fades, AppState handling).
 const BACKGROUND_LOOP_FILES = {
-  village: require("../../../assets/game/audio/village_music_loop.mp3"),
-  raidWaiting: require("../../../assets/game/audio/raid_waiting_music_loop.mp3"),
-  raid: require("../../../assets/game/audio/jungle_raid_ambient_loop.mp3")
+  main: require("../../../assets/game/audio/bgm_main.mp3")
 } as const;
 
 const VOLUMES: Record<SoundName, number> = {
