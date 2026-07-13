@@ -1,4 +1,4 @@
-import { memo, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   View,
+  type GestureResponderEvent,
   useWindowDimensions
 } from "react-native";
 import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
@@ -13,6 +14,12 @@ import { AssetImage } from "./AssetImage";
 import { PopIn, PulseRing } from "./Vfx";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { buildingName } from "../../game/config/buildings";
+import { t } from "../../game/i18n";
+import {
+  BUILDING_GEOMETRY,
+  createBuildingHitTargets,
+  selectBuildingAtPoint
+} from "../../game/ui/buildingHitboxes";
 import type { Lang, Tile, VillageBuilding, VillageBuildingType } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
@@ -74,13 +81,13 @@ const BUILDING_LAYOUT: Record<
   VillageBuildingType,
   { point: Point; size: number; asset: GameAssetKey }
 > = {
-  clanHall: { point: { x: 47, y: 38 }, size: 30, asset: "buildingPlayerCamp" },
-  bananaGrove: { point: { x: 24, y: 26 }, size: 17, asset: "terrainBananaTree" },
-  lumberCamp: { point: { x: 17, y: 49 }, size: 21, asset: "terrainWoodTree" },
-  stoneQuarry: { point: { x: 78, y: 47 }, size: 15, asset: "terrainRock" },
-  watchTower: { point: { x: 73, y: 27 }, size: 20, asset: "buildingWatchPost" },
-  workerShelter: { point: { x: 30, y: 63 }, size: 22, asset: "buildingHut" },
-  trainingNest: { point: { x: 65, y: 61 }, size: 21, asset: "buildingTrainingNest" }
+  clanHall: { ...BUILDING_GEOMETRY.clanHall, asset: "buildingPlayerCamp" },
+  bananaGrove: { ...BUILDING_GEOMETRY.bananaGrove, asset: "terrainBananaTree" },
+  lumberCamp: { ...BUILDING_GEOMETRY.lumberCamp, asset: "terrainWoodTree" },
+  stoneQuarry: { ...BUILDING_GEOMETRY.stoneQuarry, asset: "terrainRock" },
+  watchTower: { ...BUILDING_GEOMETRY.watchTower, asset: "buildingWatchPost" },
+  workerShelter: { ...BUILDING_GEOMETRY.workerShelter, asset: "buildingHut" },
+  trainingNest: { ...BUILDING_GEOMETRY.trainingNest, asset: "buildingTrainingNest" }
 };
 
 const FENCE_POSTS = [
@@ -139,6 +146,28 @@ export function VillageBoard({
   const buildingSprites = buildings
     .map((building) => ({ building, layout: BUILDING_LAYOUT[building.type] }))
     .sort((a, b) => a.layout.point.y - b.layout.point.y);
+  const hitTargets = useMemo(
+    () =>
+      createBuildingHitTargets(
+        buildings.map((building) => building.type),
+        sceneWidth,
+        sceneHeight
+      ),
+    [buildings, sceneHeight, sceneWidth]
+  );
+  const handleBoardPress = useCallback(
+    (event: GestureResponderEvent) => {
+      const type = selectBuildingAtPoint(
+        hitTargets,
+        event.nativeEvent.locationX,
+        event.nativeEvent.locationY
+      );
+      if (type) {
+        onBuildingPress(type);
+      }
+    },
+    [hitTargets, onBuildingPress]
+  );
 
   return (
     <View style={[styles.scene, { width: sceneWidth, height: sceneHeight }]}>
@@ -152,7 +181,7 @@ export function VillageBoard({
         ))}
       </View>
 
-      <View style={styles.buildingLayer}>
+      <View style={styles.buildingLayer} pointerEvents="none">
         {buildingSprites.map(({ building, layout }) => (
           <MemoBuildingSprite
             key={building.type}
@@ -160,10 +189,16 @@ export function VillageBoard({
             layout={layout}
             lang={lang}
             selected={selectedType === building.type}
-            onPress={() => onBuildingPress(building.type)}
+            onAccessibilityPress={() => onBuildingPress(building.type)}
           />
         ))}
       </View>
+
+      <Pressable
+        accessible={false}
+        onPress={handleBoardPress}
+        style={styles.hitLayer}
+      />
 
       {upgradeFx ? (
         <View
@@ -302,16 +337,8 @@ const MemoBuildingSprite = memo(
     a.lang === b.lang
 );
 
-// ---- Upgrade tiers: every level visibly changes the building ----------
-// Continuous growth per level so each single upgrade is observable...
-const GROWTH_PER_LEVEL = 0.045;
-const GROWTH_CAP_LEVELS = 7;
-
-function visualSize(baseSize: number, level: number) {
-  return baseSize * (1 + Math.min(Math.max(level - 1, 0), GROWTH_CAP_LEVELS) * GROWTH_PER_LEVEL);
-}
-
-// ...plus function-themed props at tier thresholds. Offsets/sizes are in
+// Upgrade tiers add function-themed props without changing the sprite size.
+// Offsets/sizes are in
 // percent of the building's sprite box.
 type TierProp = {
   minLevel: number;
@@ -369,21 +396,24 @@ function BuildingSprite({
   layout,
   lang,
   selected,
-  onPress
+  onAccessibilityPress
 }: {
   building: VillageBuilding;
   layout: { point: Point; size: number; asset: GameAssetKey };
   lang: Lang;
   selected: boolean;
-  onPress: () => void;
+  onAccessibilityPress: () => void;
 }) {
   const { point, asset } = layout;
-  const size = visualSize(layout.size, building.level);
+  const size = layout.size;
   const art = assetForBuilding(building, asset);
   const props = TIER_PROPS[building.type].filter((prop) => building.level >= prop.minLevel);
   return (
-    <Pressable
-      onPress={onPress}
+    <View
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={`${buildingName(building.type, lang)}, ${t("common.levelBadge", lang, { n: building.level })}`}
+      onAccessibilityTap={onAccessibilityPress}
       style={[
         styles.buildingSprite,
         {
@@ -431,14 +461,14 @@ function BuildingSprite({
         </View>
       ) : null}
 
-      {selected || building.level >= 2 ? (
-        <View style={styles.levelBadgeWrap} pointerEvents="none">
-          <View style={styles.levelBadge}>
-            <Text style={styles.levelBadgeText} maxFontSizeMultiplier={theme.maxFontScale}>{building.level}</Text>
-          </View>
+      <View style={styles.levelBadgeWrap} pointerEvents="none">
+        <View style={styles.levelBadge}>
+          <Text style={styles.levelBadgeText} maxFontSizeMultiplier={theme.maxFontScale}>
+            {t("common.levelBadge", lang, { n: building.level })}
+          </Text>
         </View>
-      ) : null}
-    </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -834,30 +864,34 @@ const styles = StyleSheet.create({
   },
   buildingSelected: {
     position: "absolute",
-    left: "8%",
-    right: "8%",
-    bottom: "2%",
-    height: "30%",
+    left: "-2%",
+    right: "-2%",
+    bottom: "-2%",
+    height: "38%",
     borderRadius: 999,
-    borderWidth: 2,
-    borderColor: "rgba(150, 255, 105, 0.95)",
-    backgroundColor: "rgba(49, 198, 67, 0.18)"
+    borderWidth: 3,
+    borderColor: "#b9ff79",
+    backgroundColor: "rgba(49, 198, 67, 0.24)",
+    shadowColor: "#9dff62",
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 }
   },
   // Wider than the sprite so long names don't get squeezed into ellipsis.
   nameTagWrap: {
     position: "absolute",
-    top: "-10%",
+    top: "-16%",
     left: "-70%",
     right: "-70%",
     alignItems: "center"
   },
   nameTag: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingHorizontal: 11,
+    paddingVertical: 4,
     borderRadius: 9,
     borderWidth: 1.5,
-    borderColor: "rgba(255, 214, 130, 0.6)",
-    backgroundColor: "rgba(20, 16, 9, 0.9)",
+    borderColor: "rgba(255, 224, 151, 0.9)",
+    backgroundColor: "rgba(13, 14, 9, 0.96)",
     shadowColor: "#000",
     shadowOpacity: 0.5,
     shadowRadius: 5,
@@ -865,20 +899,20 @@ const styles = StyleSheet.create({
   },
   nameTagText: {
     color: "#ffe9ad",
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: theme.fonts.heavy
   },
   levelBadgeWrap: {
     position: "absolute",
-    bottom: "-3%",
+    bottom: "-5%",
     left: 0,
     right: 0,
     alignItems: "center"
   },
   levelBadge: {
-    minWidth: 17,
-    height: 17,
-    paddingHorizontal: 3,
+    minWidth: 35,
+    height: 18,
+    paddingHorizontal: 5,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 9,
@@ -892,8 +926,8 @@ const styles = StyleSheet.create({
   },
   levelBadgeText: {
     color: "#fff4d6",
-    fontSize: theme.type.small,
-    lineHeight: 13,
+    fontSize: 9.5,
+    lineHeight: 12,
     fontFamily: theme.fonts.heavy
   },
   sprite: {

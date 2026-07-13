@@ -284,7 +284,9 @@ export function GameScreen() {
                 />
               </View>
               <View style={styles.levelSeal}>
-                <Text style={styles.levelSealText} maxFontSizeMultiplier={theme.maxFontScale}>{clanLevel}</Text>
+                <Text style={styles.levelSealText} maxFontSizeMultiplier={theme.maxFontScale}>
+                  {t("common.levelBadge", lang, { n: clanLevel })}
+                </Text>
               </View>
             </View>
             <View style={styles.namePlate}>
@@ -604,12 +606,29 @@ function UpgradePanel({
     <View style={styles.upgradePanel}>
       <View style={styles.upgradeMain}>
       <View style={styles.upgradeInfo}>
-        <Text style={styles.upgradeName} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
-          {buildingName(type, lang)}
-        </Text>
-        <Text style={styles.upgradeMeta} maxFontSizeMultiplier={theme.maxFontScale}>
-          {t("common.level", lang)} {level} · {buildingEffect(type, level, lang)}
-        </Text>
+        <View style={styles.upgradeTitleRow}>
+          <Text style={styles.upgradeName} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
+            {buildingName(type, lang)}
+          </Text>
+          <View style={styles.upgradeLevelChip}>
+            <Text style={styles.upgradeLevelChipText} maxFontSizeMultiplier={theme.maxFontScale}>
+              {t("common.levelBadge", lang, { n: level })}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.effectComparison}>
+          <Text style={styles.effectLine} maxFontSizeMultiplier={theme.maxFontScale}>
+            <Text style={styles.effectLabel}>{t("upgrade.current", lang)}: </Text>
+            {buildingEffect(type, level, lang)}
+          </Text>
+          <View style={styles.nextEffectRow}>
+            <Text style={styles.effectArrow}>→</Text>
+            <Text style={styles.nextEffectLine} maxFontSizeMultiplier={theme.maxFontScale}>
+              <Text style={styles.nextEffectLabel}>{t("upgrade.next", lang)}: </Text>
+              {buildingEffect(type, level + 1, lang)}
+            </Text>
+          </View>
+        </View>
         {workingWorkers != null ? (
           <Text
             style={[styles.upgradeMeta, workingWorkers === 0 ? styles.upgradeMetaWarn : null]}
@@ -618,9 +637,6 @@ function UpgradePanel({
             {t("fx.workersHint", lang)}: {workingWorkers}
           </Text>
         ) : null}
-        <Text style={styles.upgradeNext} maxFontSizeMultiplier={theme.maxFontScale}>
-          {t("upgrade.next", lang)}: {buildingEffect(type, level + 1, lang)}
-        </Text>
       </View>
       <SpringPressable
         accessibilityRole="button"
@@ -1142,11 +1158,11 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: -5,
     bottom: -5,
-    minWidth: 23,
+    minWidth: 38,
     height: 23,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 12,
+    borderRadius: 11,
     borderWidth: 2,
     borderColor: "#e2b15a",
     backgroundColor: "#4f8f3a",
@@ -1154,8 +1170,8 @@ const styles = StyleSheet.create({
   },
   levelSealText: {
     color: theme.colors.paper,
-    fontSize: theme.type.label,
-    lineHeight: 15,
+    fontSize: 9.5,
+    lineHeight: 13,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   namePlate: {
@@ -1708,10 +1724,70 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0
   },
+  upgradeTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7
+  },
   upgradeName: {
+    flexShrink: 1,
     color: theme.colors.paper,
     fontSize: 15,
     fontWeight: "900", fontFamily: theme.fonts.heavy
+  },
+  upgradeLevelChip: {
+    minWidth: 38,
+    height: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#f3d27a",
+    backgroundColor: "#6b3f16",
+    paddingHorizontal: 5
+  },
+  upgradeLevelChipText: {
+    color: "#fff4d6",
+    fontSize: 9.5,
+    lineHeight: 12,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
+  },
+  effectComparison: {
+    marginTop: 4,
+    gap: 2
+  },
+  effectLine: {
+    color: "#c8edaa",
+    fontSize: 11,
+    fontWeight: "800",
+    fontFamily: theme.fonts.bold
+  },
+  effectLabel: {
+    color: "#8bc76a"
+  },
+  nextEffectRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 4
+  },
+  effectArrow: {
+    color: "#f3d27a",
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
+  },
+  nextEffectLine: {
+    flex: 1,
+    color: "#e7ddc4",
+    fontSize: 11,
+    fontWeight: "700",
+    fontFamily: theme.fonts.regular
+  },
+  nextEffectLabel: {
+    color: "#f3d27a",
+    fontFamily: theme.fonts.bold
   },
   upgradeMeta: {
     marginTop: 2,
@@ -1721,12 +1797,6 @@ const styles = StyleSheet.create({
   },
   upgradeMetaWarn: {
     color: "#f0a381"
-  },
-  upgradeNext: {
-    marginTop: 1,
-    color: "#d8ccb0",
-    fontSize: 11,
-    fontWeight: "700", fontFamily: theme.fonts.regular
   },
   upgradeButton: {
     minWidth: 108,

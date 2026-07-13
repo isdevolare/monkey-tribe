@@ -35,9 +35,11 @@ const dict: Record<string, Entry> = {
     en: "Tap a building to upgrade it"
   },
   "upgrade.button": { tr: "Geliştir", en: "Upgrade" },
+  "upgrade.current": { tr: "Mevcut", en: "Current" },
   "upgrade.next": { tr: "Sonraki", en: "Next" },
   "upgrade.needClanHall": { tr: "Klan Salonu gerek", en: "Need Clan Hall" },
   "common.level": { tr: "Seviye", en: "Level" },
+  "common.levelBadge": { tr: "Sv. {n}", en: "Lv. {n}" },
 
   // Settings
   "settings.title": { tr: "Ayarlar", en: "Settings" },
