@@ -29,8 +29,12 @@ export type GameAssetKey =
   | "terrainMudPathTile"
   | "terrainWaterTile"
   | "unitWorker"
+  | "workerBananaDelivery"
+  | "workerMasterBuilder"
   | "unitFighter"
   | "unitScout"
+  | "scoutJunglePathfinder"
+  | "scoutMoonlightTracker"
   | "unitChief"
   | "unitEnemyFighter"
   | "buildingPlayerCamp"
@@ -62,7 +66,11 @@ export type GameAssetKey =
   | "buildingArcherTower"
   | "buildingWarriorBarracks"
   | "unitWarrior"
+  | "warriorSavageRaider"
+  | "warriorAncientWarChief"
   | "unitArcher"
+  | "hunterEmeraldRanger"
+  | "hunterRoyalEagleArcher"
   | "unitEnemyWarrior"
   | "unitEnemyArcher"
   | "resourceBananaPile"
@@ -147,6 +155,14 @@ export const gameAssets = {
     ...asset("unitWorker", "units", "unit_worker.png", "512x512 transparent unit"),
     source: require("../../../assets/game/units/unit_worker.png") as ImageSourcePropType
   },
+  workerBananaDelivery: {
+    ...asset("workerBananaDelivery", "units", "worker_banana_delivery.png", "1024x1024 transparent cosmetic unit"),
+    source: require("../../../assets/game/units/worker_banana_delivery.png") as ImageSourcePropType
+  },
+  workerMasterBuilder: {
+    ...asset("workerMasterBuilder", "units", "worker_master_builder.png", "1024x1024 transparent cosmetic unit"),
+    source: require("../../../assets/game/units/worker_master_builder.png") as ImageSourcePropType
+  },
   unitFighter: {
     ...asset("unitFighter", "units", "unit_fighter.png", "512x512 transparent unit"),
     source: require("../../../assets/game/units/unit_fighter.png") as ImageSourcePropType
@@ -154,6 +170,14 @@ export const gameAssets = {
   unitScout: {
     ...asset("unitScout", "units", "unit_scout.png", "512x512 transparent unit"),
     source: require("../../../assets/game/units/unit_scout.png") as ImageSourcePropType
+  },
+  scoutJunglePathfinder: {
+    ...asset("scoutJunglePathfinder", "units", "scout_jungle_pathfinder.png", "1024x1024 transparent cosmetic unit"),
+    source: require("../../../assets/game/units/scout_jungle_pathfinder.png") as ImageSourcePropType
+  },
+  scoutMoonlightTracker: {
+    ...asset("scoutMoonlightTracker", "units", "scout_moonlight_tracker.png", "1024x1024 transparent cosmetic unit"),
+    source: require("../../../assets/game/units/scout_moonlight_tracker.png") as ImageSourcePropType
   },
   unitChief: {
     ...asset("unitChief", "units", "unit_chief.png", "512x512 transparent unit"),
@@ -272,9 +296,25 @@ export const gameAssets = {
     ...asset("unitWarrior", "units", "unit_warrior_monkey.png", "generated warrior unit"),
     source: require("../../../assets/game/generated/units/unit_warrior_monkey.png") as ImageSourcePropType
   },
+  warriorSavageRaider: {
+    ...asset("warriorSavageRaider", "units", "warrior_savage_raider.png", "1024x1024 transparent cosmetic unit"),
+    source: require("../../../assets/game/units/warrior_savage_raider.png") as ImageSourcePropType
+  },
+  warriorAncientWarChief: {
+    ...asset("warriorAncientWarChief", "units", "warrior_ancient_warchief.png", "1024x1024 transparent cosmetic unit"),
+    source: require("../../../assets/game/units/warrior_ancient_warchief.png") as ImageSourcePropType
+  },
   unitArcher: {
     ...asset("unitArcher", "units", "unit_archer_monkey.png", "generated archer unit"),
     source: require("../../../assets/game/generated/units/unit_archer_monkey.png") as ImageSourcePropType
+  },
+  hunterEmeraldRanger: {
+    ...asset("hunterEmeraldRanger", "units", "hunter_emerald_ranger.png", "1024x1024 transparent cosmetic unit"),
+    source: require("../../../assets/game/units/hunter_emerald_ranger.png") as ImageSourcePropType
+  },
+  hunterRoyalEagleArcher: {
+    ...asset("hunterRoyalEagleArcher", "units", "hunter_royal_eagle_archer.png", "1024x1024 transparent cosmetic unit"),
+    source: require("../../../assets/game/units/hunter_royal_eagle_archer.png") as ImageSourcePropType
   },
   unitEnemyWarrior: {
     ...asset("unitEnemyWarrior", "units", "unit_enemy_warrior_monkey.png", "generated enemy warrior"),

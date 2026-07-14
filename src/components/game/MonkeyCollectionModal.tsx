@@ -123,7 +123,7 @@ export function MonkeyCollectionModal({
   const [pending, setPending] = useState<ProfileMonkey | null>(null);
   const [pendingSkin, setPendingSkin] = useState<ProfileSkin | null>(null);
   const [showInsufficient, setShowInsufficient] = useState(false);
-  const [showRequiresMonkey, setShowRequiresMonkey] = useState(false);
+  const [requiredMonkeyId, setRequiredMonkeyId] = useState<ProfileMonkey["id"] | null>(null);
   const [celebratingId, setCelebratingId] = useState<ProfileMonkey["id"] | null>(null);
   const [detailSelection, setDetailSelection] = useState<CosmeticDetailSelection | null>(null);
   const [unlockFeedback, setUnlockFeedback] = useState<CosmeticDetailSelection | null>(null);
@@ -150,7 +150,7 @@ export function MonkeyCollectionModal({
     setPending(null);
     setPendingSkin(null);
     setShowInsufficient(false);
-    setShowRequiresMonkey(false);
+    setRequiredMonkeyId(null);
     setCelebratingId(null);
     setDetailSelection(null);
     setUnlockFeedback(null);
@@ -186,11 +186,12 @@ export function MonkeyCollectionModal({
 
   function confirmSkinUnlock() {
     if (!pendingSkin) return;
+    const parentMonkeyId = pendingSkin.monkeyId;
     const result = unlockSkin(pendingSkin.id);
     const skinId = pendingSkin.id;
     setPendingSkin(null);
     if (result === "insufficient") setShowInsufficient(true);
-    if (result === "requires_monkey") setShowRequiresMonkey(true);
+    if (result === "requires_monkey") setRequiredMonkeyId(parentMonkeyId);
     if (result === "unlocked") {
       setCelebratingId(skinId);
       setUnlockFeedback({ kind: "skin", item: pendingSkin, wasNew: true });
@@ -204,7 +205,7 @@ export function MonkeyCollectionModal({
     matchesCosmeticFilter(ownedSkins.includes(item.id), item.rarity, ownershipFilter, rarityFilter)
   );
   const featuredMonkeys = PROFILE_MONKEYS.filter((item) => item.featured).slice(0, 2);
-  const featuredSkins = PROFILE_SKINS.filter((item) => item.featured).slice(0, 2);
+  const featuredSkins = PROFILE_SKINS.filter((item) => item.featured).slice(0, 4);
   const bestValueMonkeys = PROFILE_MONKEYS.filter((item) => item.id === "profile_monkey_scout" || item.id === "profile_monkey_warrior");
 
   const detailOwned = detailSelection?.kind === "monkey"
@@ -466,13 +467,22 @@ export function MonkeyCollectionModal({
         </View>
       </Modal>
 
-      <Modal visible={showRequiresMonkey} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setShowRequiresMonkey(false)}>
+      <Modal visible={requiredMonkeyId != null} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setRequiredMonkeyId(null)}>
         <View style={styles.dialogScrim}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowRequiresMonkey(false)} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setRequiredMonkeyId(null)} />
           <View style={styles.notice}>
             <Text style={styles.dialogIcon}>🔒</Text>
-            <Text style={styles.dialogMessage}>{t("collection.requiresMonkey", lang)}</Text>
-            <SpringPressable onPress={() => setShowRequiresMonkey(false)} style={[styles.dialogButton, styles.unlockButton, styles.noticeButton]}><Text style={styles.unlockText}>{t("collection.ok", lang)}</Text></SpringPressable>
+            <Text style={styles.dialogMessage}>
+              {t(
+                requiredMonkeyId === "profile_monkey_scout"
+                  ? "collection.requiresScout"
+                  : requiredMonkeyId === "profile_monkey_warrior"
+                    ? "collection.requiresWarrior"
+                    : "collection.requiresMonkey",
+                lang
+              )}
+            </Text>
+            <SpringPressable onPress={() => setRequiredMonkeyId(null)} style={[styles.dialogButton, styles.unlockButton, styles.noticeButton]}><Text style={styles.unlockText}>{t("collection.ok", lang)}</Text></SpringPressable>
           </View>
         </View>
       </Modal>
@@ -914,6 +924,7 @@ function SkinCard({
   onPress: () => void;
 }) {
   const rarity = RARITY_THEME[skin.rarity];
+  const presentationGlow = skin.presentationGlow ?? rarity.glow;
   const appearance = getCosmeticAppearance(skin.monkeyId, skin.id);
   const monkey = getProfileMonkey(skin.monkeyId);
   const unlockAnim = useRef(new Animated.Value(1)).current;
@@ -934,12 +945,12 @@ function SkinCard({
       accessibilityState={{ selected: equipped, disabled: !monkeyOwned }}
       onPress={onPress}
       pressedScale={0.975}
-      style={[styles.skinCard, compact ? styles.skinCardCompact : null, { borderColor: rarity.border, backgroundColor: rarity.surface, shadowColor: rarity.glow }, equipped ? styles.monkeyCardEquipped : null]}
+      style={[styles.skinCard, compact ? styles.skinCardCompact : null, { borderColor: rarity.border, backgroundColor: rarity.surface, shadowColor: presentationGlow }, equipped ? styles.monkeyCardEquipped : null]}
     >
       {isNew ? <View pointerEvents="none" style={styles.newCorner}><Text style={styles.newCornerText}>NEW</Text></View> : null}
-      <AnimatedRarityFx rarity={skin.rarity} color={rarity.glow} />
+      <AnimatedRarityFx rarity={skin.rarity} color={presentationGlow} />
       <Animated.View style={[styles.skinArtFrame, { borderColor: rarity.border, transform: [{ rotateY: cardFlip }] }]}>
-        <View style={[styles.artHalo, { backgroundColor: rarity.glow }]} />
+        <View style={[styles.artHalo, { backgroundColor: presentationGlow }]} />
         <AssetImage assetKey={appearance.portraitAsset} style={styles.skinArt} resizeMode="contain" fallback={<Text style={styles.artFallback}>🐵</Text>} hideFallbackOnLoad />
         {!owned ? <View style={styles.lockShade} pointerEvents="none" /> : null}
       </Animated.View>

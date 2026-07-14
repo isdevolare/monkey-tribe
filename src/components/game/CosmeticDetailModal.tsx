@@ -79,6 +79,7 @@ export function CosmeticDetailModal({
   const appearance = getCosmeticAppearance(monkey.id, skin?.id ?? getDefaultSkinId(monkey.id));
   const rarity = skin?.rarity ?? monkey.rarity;
   const colors = RARITY[rarity];
+  const presentationGlow = skin?.presentationGlow ?? colors.glow;
   const price = skin?.price ?? monkey.price;
   const availableSkins = skinsForMonkey(monkey.id);
   const title = t((skin ?? monkey).nameKey, lang);
@@ -87,8 +88,18 @@ export function CosmeticDetailModal({
   return (
       <View style={styles.detailLayer}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={[styles.panel, { width: Math.min(width - 24, 402), maxHeight: Math.min(height - 38, 760), borderColor: colors.border, shadowColor: colors.glow }]}>
-          <View style={[styles.glowLine, { backgroundColor: colors.glow }]} pointerEvents="none" />
+        <View
+          style={[
+            styles.panel,
+            {
+              width: Math.min(width - 24, 402),
+              maxHeight: Math.min(height - 38, 760),
+              borderColor: colors.border,
+              shadowColor: presentationGlow
+            }
+          ]}
+        >
+          <View style={[styles.glowLine, { backgroundColor: presentationGlow }]} pointerEvents="none" />
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} bounces={false}>
             <View style={styles.topRow}>
               <View style={[styles.rarityBadge, { backgroundColor: colors.badge }]}>
@@ -98,8 +109,8 @@ export function CosmeticDetailModal({
               <SpringPressable accessibilityRole="button" onPress={onClose} style={styles.closeButton}><Text style={styles.closeText}>×</Text></SpringPressable>
             </View>
 
-            <View style={[styles.heroFrame, { borderColor: colors.border, shadowColor: colors.glow }]}>
-              <View style={[styles.heroHalo, { backgroundColor: colors.glow }]} />
+            <View style={[styles.heroFrame, { borderColor: colors.border, shadowColor: presentationGlow }]}>
+              <View style={[styles.heroHalo, { backgroundColor: presentationGlow }]} />
               <AssetImage assetKey={appearance.portraitAsset} resizeMode="contain" style={styles.heroArt} fallback={<Text style={styles.heroFallback}>🐵</Text>} hideFallbackOnLoad />
             </View>
 
@@ -120,6 +131,7 @@ export function CosmeticDetailModal({
               <AssetImage assetKey="bgJungleGame" resizeMode="cover" style={StyleSheet.absoluteFill} fallback={<View style={styles.previewFallback} />} hideFallbackOnLoad />
               <View style={styles.previewShade} />
               <View style={styles.previewGround} />
+              {skin?.presentationGlow ? <View style={[styles.previewAura, { backgroundColor: presentationGlow }]} /> : null}
               <AssetImage assetKey={appearance.villageAsset} resizeMode="contain" style={styles.previewMonkey} fallback={<Text style={styles.previewEmoji}>🐵</Text>} hideFallbackOnLoad />
             </View>
 
@@ -231,6 +243,7 @@ const styles = StyleSheet.create({
   preview: { width: "100%", height: 120, marginTop: 6, overflow: "hidden", borderRadius: 14, borderWidth: 1, borderColor: "rgba(229,190,101,0.42)", backgroundColor: "#24452b" },
   previewFallback: { flex: 1, backgroundColor: "#315c37" }, previewShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(7,22,12,0.18)" },
   previewGround: { position: "absolute", left: 0, right: 0, bottom: 0, height: 34, backgroundColor: "rgba(75,52,28,0.62)" },
+  previewAura: { position: "absolute", width: 104, height: 104, left: "50%", bottom: 4, marginLeft: -52, borderRadius: 52, opacity: 0.2 },
   previewMonkey: { position: "absolute", width: 128, height: 112, bottom: 1, alignSelf: "center", left: "50%", marginLeft: -64 },
   previewEmoji: { fontSize: 50 },
   sectionHeadingRow: { width: "100%", flexDirection: "row", alignItems: "center" }, skinCount: { marginLeft: "auto", marginTop: 13, color: "#aebc92", fontSize: 10, fontFamily: theme.fonts.heavy },

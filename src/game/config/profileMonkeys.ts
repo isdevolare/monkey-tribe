@@ -39,6 +39,7 @@ export type ProfileSkin = {
   raidAsset?: GameAssetKey;
   victoryAsset?: GameAssetKey;
   effect: CosmeticVisualEffect;
+  presentationGlow?: string;
   featured?: boolean;
   specialOffer?: boolean;
   /** Stable future asset slot; the base appearance is used until art ships. */
@@ -66,6 +67,84 @@ const DEFAULT_SKINS: readonly ProfileSkin[] = [
   defaultSkin("profile_monkey_hunter", "skin_hunter_default"),
   defaultSkin("profile_monkey_chief", "skin_chief_default"),
   defaultSkin("profile_monkey_king", "skin_king_default")
+];
+
+const JUNGLE_WORKER_SKINS: readonly ProfileSkin[] = [
+  workerSkin(
+    "skin_worker_banana_delivery",
+    "collection.skin.bananaDeliveryWorker",
+    "rare",
+    50,
+    "silver_sheen",
+    "workerBananaDelivery"
+  ),
+  workerSkin(
+    "skin_worker_master_builder",
+    "collection.skin.masterJungleBuilder",
+    "epic",
+    100,
+    "purple_glow",
+    "workerMasterBuilder"
+  )
+];
+
+const YOUNG_SCOUT_SKINS: readonly ProfileSkin[] = [
+  scoutSkin(
+    "skin_scout_jungle_pathfinder",
+    "collection.skin.junglePathfinder",
+    "rare",
+    50,
+    "silver_sheen",
+    "scoutJunglePathfinder"
+  ),
+  scoutSkin(
+    "skin_scout_moonlight_tracker",
+    "collection.skin.moonlightTracker",
+    "epic",
+    100,
+    "purple_glow",
+    "scoutMoonlightTracker"
+  )
+];
+
+const FOREST_WARRIOR_SKINS: readonly ProfileSkin[] = [
+  warriorSkin(
+    "warrior_savage_raider",
+    "collection.skin.savageJungleRaider",
+    "rare",
+    50,
+    "silver_sheen",
+    "warriorSavageRaider"
+  ),
+  warriorSkin(
+    "warrior_ancient_warchief",
+    "collection.skin.ancientWarChief",
+    "epic",
+    100,
+    "ember_glow",
+    "warriorAncientWarChief",
+    "#ff6538"
+  )
+];
+
+const TRIBAL_HUNTER_SKINS: readonly ProfileSkin[] = [
+  hunterSkin(
+    "hunter_emerald_ranger",
+    "collection.skin.emeraldRanger",
+    "epic",
+    50,
+    "purple_glow",
+    "hunterEmeraldRanger"
+  ),
+  hunterSkin(
+    "hunter_royal_eagle_archer",
+    "collection.skin.royalEagleArcher",
+    "legendary",
+    100,
+    "gold_glow",
+    "hunterRoyalEagleArcher",
+    "#ffd86a"
+  )
 ];
 
 const MONKEY_KING_SKINS: readonly ProfileSkin[] = [
@@ -124,16 +203,48 @@ const MONKEY_KING_SKINS: readonly ProfileSkin[] = [
 
 export const PROFILE_SKINS: readonly ProfileSkin[] = [
   ...DEFAULT_SKINS,
+  ...JUNGLE_WORKER_SKINS,
+  ...YOUNG_SCOUT_SKINS,
+  ...FOREST_WARRIOR_SKINS,
+  ...TRIBAL_HUNTER_SKINS,
   ...MONKEY_KING_SKINS
 ];
 
 // One catalog entry owns every visual surface. Adding a monkey later is data
 // only; no store, save, raid or screen switch needs another id-specific branch.
 export const PROFILE_MONKEYS: readonly ProfileMonkey[] = [
-  monkey("profile_monkey_scout", "scout", "common", 50, "unitScout", ["skin_scout_default"]),
-  monkey("profile_monkey_worker", "worker", "common", 0, "unitWorker", ["skin_worker_default"]),
-  monkey("profile_monkey_warrior", "warrior", "rare", 100, "unitWarrior", ["skin_warrior_default"]),
-  monkey("profile_monkey_hunter", "hunter", "epic", 250, "unitArcher", ["skin_hunter_default"]),
+  monkey(
+    "profile_monkey_worker",
+    "worker",
+    "common",
+    0,
+    "unitWorker",
+    ["skin_worker_default", ...JUNGLE_WORKER_SKINS.map((entry) => entry.id)]
+  ),
+  monkey(
+    "profile_monkey_scout",
+    "scout",
+    "rare",
+    50,
+    "unitScout",
+    ["skin_scout_default", ...YOUNG_SCOUT_SKINS.map((entry) => entry.id)]
+  ),
+  monkey(
+    "profile_monkey_warrior",
+    "warrior",
+    "rare",
+    100,
+    "unitWarrior",
+    ["skin_warrior_default", ...FOREST_WARRIOR_SKINS.map((entry) => entry.id)]
+  ),
+  monkey(
+    "profile_monkey_hunter",
+    "hunter",
+    "epic",
+    250,
+    "unitArcher",
+    ["skin_hunter_default", ...TRIBAL_HUNTER_SKINS.map((entry) => entry.id)]
+  ),
   monkey("profile_monkey_chief", "chief", "legendary", 400, "menuChiefMascot", ["skin_chief_default"], true),
   monkey(
     "profile_monkey_king",
@@ -299,6 +410,104 @@ function skin(
     price,
     effect,
     ...options
+  };
+}
+
+function workerSkin(
+  id: ProfileSkinId,
+  key: string,
+  rarity: CosmeticRarity,
+  price: number,
+  effect: CosmeticVisualEffect,
+  assetKey: GameAssetKey
+): ProfileSkin {
+  return {
+    id,
+    monkeyId: "profile_monkey_worker",
+    nameKey: `${key}.name`,
+    descriptionKey: `${key}.description`,
+    rarity,
+    price,
+    effect,
+    portraitAsset: assetKey,
+    villageAsset: assetKey,
+    raidAsset: assetKey,
+    victoryAsset: assetKey,
+    featured: true
+  };
+}
+
+function scoutSkin(
+  id: ProfileSkinId,
+  key: string,
+  rarity: CosmeticRarity,
+  price: number,
+  effect: CosmeticVisualEffect,
+  assetKey: GameAssetKey
+): ProfileSkin {
+  return {
+    id,
+    monkeyId: "profile_monkey_scout",
+    nameKey: `${key}.name`,
+    descriptionKey: `${key}.description`,
+    rarity,
+    price,
+    effect,
+    portraitAsset: assetKey,
+    villageAsset: assetKey,
+    raidAsset: assetKey,
+    victoryAsset: assetKey,
+    featured: true
+  };
+}
+
+function warriorSkin(
+  id: ProfileSkinId,
+  key: string,
+  rarity: CosmeticRarity,
+  price: number,
+  effect: CosmeticVisualEffect,
+  assetKey: GameAssetKey,
+  presentationGlow?: string
+): ProfileSkin {
+  return {
+    id,
+    monkeyId: "profile_monkey_warrior",
+    nameKey: `${key}.name`,
+    descriptionKey: `${key}.description`,
+    rarity,
+    price,
+    effect,
+    presentationGlow,
+    portraitAsset: assetKey,
+    villageAsset: assetKey,
+    raidAsset: assetKey,
+    victoryAsset: assetKey
+  };
+}
+
+function hunterSkin(
+  id: ProfileSkinId,
+  key: string,
+  rarity: CosmeticRarity,
+  price: number,
+  effect: CosmeticVisualEffect,
+  assetKey: GameAssetKey,
+  presentationGlow?: string
+): ProfileSkin {
+  return {
+    id,
+    monkeyId: "profile_monkey_hunter",
+    nameKey: `${key}.name`,
+    descriptionKey: `${key}.description`,
+    rarity,
+    price,
+    effect,
+    presentationGlow,
+    portraitAsset: assetKey,
+    villageAsset: assetKey,
+    raidAsset: assetKey,
+    victoryAsset: assetKey
   };
 }
 

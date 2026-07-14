@@ -309,6 +309,14 @@ const dict: Record<string, Entry> = {
     tr: "Bu skini açmadan önce ait olduğu maymunu koleksiyonuna eklemelisin.",
     en: "Collect this skin's monkey before unlocking it."
   },
+  "collection.requiresScout": {
+    tr: "Önce Genç İzci Maymunu'nun kilidini aç.",
+    en: "Unlock Young Scout Monkey first."
+  },
+  "collection.requiresWarrior": {
+    tr: "Önce Orman Savaşçısı Maymunu'nun kilidini aç.",
+    en: "Unlock Forest Warrior Monkey first."
+  },
   "collection.requiresMonkeyShort": { tr: "Maymun gerekli", en: "Monkey required" },
   "collection.shop.title": { tr: "Kozmetik Mağaza", en: "Cosmetic Shop" },
   "collection.shop.featuredMonkey": { tr: "Öne Çıkan Maymun", en: "Featured Monkey" },
@@ -383,6 +391,70 @@ const dict: Record<string, Entry> = {
   "collection.skin.default.description": {
     tr: "Maymunun özgün kabile görünümü.",
     en: "The monkey's original tribe appearance."
+  },
+  "collection.skin.bananaDeliveryWorker.name": {
+    tr: "Muz Teslimat İşçisi",
+    en: "Banana Delivery Worker"
+  },
+  "collection.skin.bananaDeliveryWorker.description": {
+    tr: "Kabilenin muzlarını neşeyle ve tam zamanında ulaştırır.",
+    en: "Delivers the tribe's bananas cheerfully and right on time."
+  },
+  "collection.skin.masterJungleBuilder.name": {
+    tr: "Usta Orman Yapıcısı",
+    en: "Master Jungle Builder"
+  },
+  "collection.skin.masterJungleBuilder.description": {
+    tr: "En büyük kabile yapılarını ince işçilikle yükseltir.",
+    en: "Raises the tribe's greatest structures with master craftsmanship."
+  },
+  "collection.skin.junglePathfinder.name": {
+    tr: "Orman Yol Bulucusu",
+    en: "Jungle Pathfinder"
+  },
+  "collection.skin.junglePathfinder.description": {
+    tr: "En sık ormanlarda bile kabilenin yolunu bulur.",
+    en: "Finds the tribe's path through even the wildest jungle."
+  },
+  "collection.skin.moonlightTracker.name": {
+    tr: "Ay Işığı Takipçisi",
+    en: "Moonlight Tracker"
+  },
+  "collection.skin.moonlightTracker.description": {
+    tr: "Ay ışığında sessizce ilerler ve hiçbir izi kaçırmaz.",
+    en: "Moves silently by moonlight and never misses a trail."
+  },
+  "collection.skin.savageJungleRaider.name": {
+    tr: "Vahşi Orman Akıncısı",
+    en: "Savage Jungle Raider"
+  },
+  "collection.skin.savageJungleRaider.description": {
+    tr: "Savaş izlerini gururla taşıyan korkusuz bir orman akıncısı.",
+    en: "A fearless jungle raider who wears every battle mark with pride."
+  },
+  "collection.skin.ancientWarChief.name": {
+    tr: "Kadim Savaş Şefi",
+    en: "Ancient War Chief"
+  },
+  "collection.skin.ancientWarChief.description": {
+    tr: "Kadim rünlerle kabilesini zafere taşıyan seçkin bir komutan.",
+    en: "An elite commander who leads the tribe with ancient runes."
+  },
+  "collection.skin.emeraldRanger.name": {
+    tr: "Zümrüt Korucu",
+    en: "Emerald Ranger"
+  },
+  "collection.skin.emeraldRanger.description": {
+    tr: "Ormanın kalbini sessiz adımlarla koruyan seçkin bir korucu.",
+    en: "An elite ranger who guards the jungle's heart with silent steps."
+  },
+  "collection.skin.royalEagleArcher.name": {
+    tr: "Kraliyet Kartal Okçusu",
+    en: "Royal Eagle Archer"
+  },
+  "collection.skin.royalEagleArcher.description": {
+    tr: "Kristal okları ve asil duruşuyla kraliyet avcılarının en seçkini.",
+    en: "The finest royal hunter, armed with crystal arrows and noble poise."
   },
   "collection.skin.goldenKing.name": { tr: "Altın Kral", en: "Golden King" },
   "collection.skin.goldenKing.description": { tr: "Orman tacının altın ihtişamı.", en: "Golden splendor of the jungle crown." },
