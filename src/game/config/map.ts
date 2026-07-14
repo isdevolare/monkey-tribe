@@ -102,9 +102,7 @@ export function createUnit(
 }
 
 export function createInitialUnits(now: number): Unit[] {
-  return [
-    createUnit("player-worker-1", "worker", "player", 1, 7, now)
-  ];
+  return [];
 }
 
 export function findTile(tiles: Tile[], x: number, y: number): Tile | undefined {

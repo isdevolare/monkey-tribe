@@ -141,6 +141,46 @@ export type ActiveWorkTask = {
   productionPerSecond: Resources;
 };
 
+export type WorkerClass = "gatherer" | "skilled" | "master";
+export type WorkerExpeditionStatus = "active" | "returning" | "completed";
+export type WorkerExpeditionOutcome = "success" | "half" | "empty";
+
+export type WorkerProductionItem = {
+  id: string;
+  workerId: string;
+  workerClass: WorkerClass;
+  startedAt: number;
+  finishesAt: number;
+};
+
+export type IdleWorker = {
+  id: string;
+  workerClass: WorkerClass;
+  producedAt: number;
+};
+
+export type WorkerExpedition = {
+  id: string;
+  workerId: string;
+  workerClass: WorkerClass;
+  resource: ResourceKind;
+  startedAt: number;
+  returnsAt: number;
+  expectedReward: number;
+  reward: number;
+  outcome: WorkerExpeditionOutcome;
+};
+
+export type WorkerCollectionSummary = {
+  expeditionId: string;
+  workerClass: WorkerClass;
+  resource: ResourceKind;
+  expectedReward: number;
+  reward: number;
+  collected: number;
+  outcome: WorkerExpeditionOutcome;
+};
+
 // What a quest counts toward; cumulative per metric so tiered quests
 // (train 3 / train 10) share one counter.
 export type QuestMetric = "trainAny" | "upgradeAny" | "winRaid" | "workShift";
@@ -163,6 +203,9 @@ export type VillageSave = {
   activeWorkTask?: ActiveWorkTask | null;
   /** Legacy save field. Hydration cancels it instead of replaying old production. */
   workShiftUntil?: number | null;
+  workerProductionQueue?: WorkerProductionItem[];
+  idleWorkers?: IdleWorker[];
+  workerExpeditions?: WorkerExpedition[];
   questProgress?: Partial<Record<QuestMetric, number>>;
   questsClaimed?: string[];
   lastSeenAt?: number;
@@ -200,6 +243,9 @@ export type GameState = {
   newProfileMonkeys: ProfileMonkeyId[];
   newProfileSkins: ProfileSkinId[];
   productionQueue: ProductionItem[];
+  workerProductionQueue: WorkerProductionItem[];
+  idleWorkers: IdleWorker[];
+  workerExpeditions: WorkerExpedition[];
   playerCampHp: number;
   enemyCampHp: number;
   enemyCampMaxHp: number;
@@ -209,9 +255,6 @@ export type GameState = {
   raidVictoryCounts: Record<string, number>;
   lastRaidReward: RaidRewardSummary | null;
   lastRaidPenalty: RaidPenalty | null;
-  activeWorkTask: ActiveWorkTask | null;
-  /** UI compatibility projection of activeWorkTask.endsAt. */
-  workShiftUntil: number | null;
   questProgress: Partial<Record<QuestMetric, number>>;
   questsClaimed: string[];
   offlineReport: OfflineReport | null;
@@ -223,8 +266,9 @@ export type GameState = {
   startGame: () => void;
   hydrate: (save: VillageSave) => void;
   setLanguage: (lang: Lang) => void;
-  createWorker: () => void;
-  sendWorkersToWork: () => void;
+  queueWorker: (workerClass: WorkerClass) => void;
+  sendWorkerExpedition: (workerId: string, resource: ResourceKind) => void;
+  collectWorkerExpedition: (expeditionId: string) => WorkerCollectionSummary | null;
   claimQuest: (id: string) => void;
   dismissOfflineReport: () => void;
   claimDaily: () => void;

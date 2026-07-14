@@ -32,20 +32,20 @@ export const BUILDING_NAMES: Record<VillageBuildingType, string> = {
   bananaGrove: "Muz Bahçesi",
   lumberCamp: "Oduncu Kampı",
   stoneQuarry: "Taş Ocağı",
-  workerShelter: "İşçi Barınağı",
+  workerShelter: "İşçi Locası",
   trainingNest: "Eğitim Yuvası",
   watchTower: "Gözetleme Kulesi"
 };
 
-// Production per WORKER per second; a building hosts up to `level`
-// workers, so output = rate × manned slots. Unmanned buildings produce
-// nothing — resources come from monkeys, not thin air.
+// Resource buildings define the destination type for Lodge expeditions.
+// Their existing linear level multiplier is now snapshotted into expedition
+// rewards when a worker departs.
 export const BUILDING_PRODUCTION: Partial<
-  Record<VillageBuildingType, { resource: ResourceKind; perSecond: number }>
+  Record<VillageBuildingType, { resource: ResourceKind }>
 > = {
-  bananaGrove: { resource: "bananas", perSecond: 2 / 60 },
-  lumberCamp: { resource: "wood", perSecond: 1.4 / 60 },
-  stoneQuarry: { resource: "stones", perSecond: 1 / 60 }
+  bananaGrove: { resource: "bananas" },
+  lumberCamp: { resource: "wood" },
+  stoneQuarry: { resource: "stones" }
 };
 
 export function productionLevelMultiplier(buildingLevel: number) {
@@ -53,60 +53,6 @@ export function productionLevelMultiplier(buildingLevel: number) {
     ? Math.max(1, Math.floor(buildingLevel))
     : 1;
   return 1 + 0.1 * (level - 1);
-}
-
-/** Per-worker production rate after applying the building's level bonus. */
-export function productionPerSecondAtLevel(
-  type: VillageBuildingType,
-  buildingLevel: number
-) {
-  const production = BUILDING_PRODUCTION[type];
-  return production
-    ? production.perSecond * productionLevelMultiplier(buildingLevel)
-    : 0;
-}
-
-/**
- * Distributes workers one per production building per round. This keeps
- * staffed buildings within one worker of each other whenever their slot
- * capacities allow it, while preserving deterministic tie-breaking.
- */
-export function assignWorkers(
-  buildings: VillageBuilding[],
-  workerCount: number
-): Partial<Record<VillageBuildingType, number>> {
-  const assigned: Partial<Record<VillageBuildingType, number>> = {};
-  const productionTypes = BUILDING_ORDER.filter((type) => BUILDING_PRODUCTION[type]);
-  const capacity = new Map<VillageBuildingType, number>();
-
-  for (const type of productionTypes) {
-    const rawLevel = buildings.find((building) => building.type === type)?.level ?? 0;
-    capacity.set(type, Number.isFinite(rawLevel) ? Math.max(0, Math.floor(rawLevel)) : 0);
-  }
-
-  let remaining = Math.max(0, Math.floor(workerCount));
-  while (remaining > 0) {
-    let assignedThisRound = false;
-    for (const type of productionTypes) {
-      const current = assigned[type] ?? 0;
-      if (current >= (capacity.get(type) ?? 0)) {
-        continue;
-      }
-
-      assigned[type] = current + 1;
-      remaining -= 1;
-      assignedThisRound = true;
-      if (remaining === 0) {
-        break;
-      }
-    }
-
-    if (!assignedThisRound) {
-      break;
-    }
-  }
-
-  return assigned;
 }
 
 // Clan Hall level caps how much of each resource the village can stockpile.
@@ -156,12 +102,10 @@ const RESOURCE_KEY: Record<ResourceKind, string> = {
 export function buildingEffect(type: VillageBuildingType, level: number, lang: Lang): string {
   const production = BUILDING_PRODUCTION[type];
   if (production) {
-    const perMinute =
-      Math.round(productionPerSecondAtLevel(type, level) * 60 * 100) / 100;
-    return t("fx.workerProduction", lang, {
-      rate: perMinute,
-      res: t(RESOURCE_KEY[production.resource], lang),
-      slots: level
+    const pct = Math.round((productionLevelMultiplier(level) - 1) * 100);
+    return t("fx.expeditionYield", lang, {
+      pct,
+      res: t(RESOURCE_KEY[production.resource], lang)
     });
   }
 

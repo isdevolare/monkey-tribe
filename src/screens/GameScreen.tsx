@@ -27,14 +27,13 @@ import { ShopModal } from "../components/game/ShopModal";
 import { SpringPressable } from "../components/game/SpringPressable";
 import { PopIn, TapHint } from "../components/game/Vfx";
 import { VillageBoard } from "../components/game/VillageBoard";
+import { WorkerLodgeModal } from "../components/game/WorkerLodgeModal";
 import { playSound } from "../game/audio/soundManager";
 import type { GameAssetKey } from "../game/assets/gameAssets";
 import { RUSH_GEM_COST, unitCost } from "../game/config/constants";
 import {
-  BUILDING_PRODUCTION,
   buildingEffect,
   buildingName,
-  productionPerSecondAtLevel,
   upgradeCost
 } from "../game/config/buildings";
 import { getCamp } from "../game/config/camps";
@@ -46,7 +45,6 @@ import {
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
 import type {
-  ActiveWorkTask,
   Lang,
   ProductionItem,
   Resources,
@@ -127,6 +125,7 @@ export function GameScreen() {
   const [showQuests, setShowQuests] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [showCollection, setShowCollection] = useState(false);
+  const [showWorkerLodge, setShowWorkerLodge] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
   const dailyAutoShown = useRef(false);
   const [selectedBuilding, setSelectedBuilding] = useState<VillageBuildingType | null>(null);
@@ -216,13 +215,10 @@ export function GameScreen() {
   // Troop prices climb with the Training Nest (stronger recruits cost more).
   const nestLevel = levelOf(state.buildings, "trainingNest");
   const troopCosts = {
-    worker: unitCost("worker", nestLevel),
     fighter: unitCost("fighter", nestLevel),
     archer: unitCost("archer", nestLevel),
     guardian: unitCost("guardian", nestLevel)
   };
-  const createWorkerDisabled =
-    population >= state.maxPopulation || !hasResources(state.resources, troopCosts.worker);
   const trainFighterDisabled =
     nestLevel <= 0 ||
     population >= state.maxPopulation ||
@@ -241,10 +237,6 @@ export function GameScreen() {
   );
   const queuedTypes = new Set(state.productionQueue.map((item) => item.type));
   const compactHud = layoutWidth < 370;
-  const workerCount = state.units.filter(
-    (unit) =>
-      unit.owner === "player" && unit.type === "worker" && unit.state !== "dead" && unit.hp > 0
-  ).length;
   const claimableQuests = claimableQuestCount(state.questProgress, state.questsClaimed);
   const dailyAvailable = state.dailyLastClaim !== todayKey();
 
@@ -422,7 +414,12 @@ export function GameScreen() {
                   selectedType={selectedBuilding}
                   onBuildingPress={(type) => {
                     playSound("tap");
-                    setSelectedBuilding(type);
+                    if (type === "workerShelter") {
+                      setSelectedBuilding(null);
+                      setShowWorkerLodge(true);
+                    } else {
+                      setSelectedBuilding(type);
+                    }
                   }}
                 />
               </View>
@@ -435,10 +432,7 @@ export function GameScreen() {
                 type={selectedBuilding}
                 lang={lang}
                 units={state.units}
-                activeWorkTask={state.activeWorkTask}
-                workerCount={workerCount}
                 guardianDisabled={trainGuardianDisabled}
-                onSendWorkers={state.sendWorkersToWork}
                 onTrainGuardian={state.trainGuardian}
                 onUpgrade={() => state.upgradeBuilding(selectedBuilding)}
                 onClose={() => setSelectedBuilding(null)}
@@ -468,15 +462,6 @@ export function GameScreen() {
 
             <View style={styles.bottomDock}>
               <View style={styles.actionCards}>
-                <ActionCard
-                  title={t("unit.worker", lang)}
-                  cost={troopCosts.worker}
-                  glyph="M"
-                  assetKey="unitWorker"
-                  disabled={createWorkerDisabled}
-                  active={queuedTypes.has("worker")}
-                  onPress={state.createWorker}
-                />
                 <ActionCard
                   title={t("unit.fighter", lang)}
                   cost={troopCosts.fighter}
@@ -547,33 +532,15 @@ export function GameScreen() {
         lang={lang}
         onClose={() => setShowCollection(false)}
       />
+
+      <WorkerLodgeModal
+        visible={showWorkerLodge}
+        lang={lang}
+        onClose={() => setShowWorkerLodge(false)}
+      />
     </View>
   );
 
-}
-
-function formatCountdown(ms: number) {
-  const total = Math.max(0, Math.ceil(ms / 1000));
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function workingWorkersForBuilding(
-  type: VillageBuildingType,
-  buildingLevel: number,
-  activeWorkTask: ActiveWorkTask | null
-) {
-  const production = BUILDING_PRODUCTION[type];
-  const perWorker = productionPerSecondAtLevel(type, buildingLevel);
-  if (!production || !activeWorkTask || perWorker <= 0) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    Math.round(activeWorkTask.productionPerSecond[production.resource] / perWorker)
-  );
 }
 
 function UpgradePanel({
@@ -582,10 +549,7 @@ function UpgradePanel({
   type,
   lang,
   units,
-  activeWorkTask,
-  workerCount,
   guardianDisabled,
-  onSendWorkers,
   onTrainGuardian,
   onUpgrade,
   onClose
@@ -595,10 +559,7 @@ function UpgradePanel({
   type: VillageBuildingType;
   lang: Lang;
   units: Unit[];
-  activeWorkTask: ActiveWorkTask | null;
-  workerCount: number;
   guardianDisabled: boolean;
-  onSendWorkers: () => void;
   onTrainGuardian: () => void;
   onUpgrade: () => void;
   onClose: () => void;
@@ -608,24 +569,17 @@ function UpgradePanel({
   const cost = upgradeCost(type, level);
   const gated = type !== "clanHall" && level >= clanLevel;
   const disabled = gated || !hasResources(resources, cost);
-  const now = Date.now();
-  const shiftRemaining = activeWorkTask ? activeWorkTask.endsAt - now : 0;
-  const shiftActive = activeWorkTask != null;
   const armyCounts = units.reduce(
     (acc, unit) => {
       if (unit.owner === "player" && unit.state !== "dead" && unit.hp > 0) {
         if (unit.type === "fighter") acc.fighters += 1;
         if (unit.type === "archer") acc.archers += 1;
         if (unit.type === "guardian") acc.guardians += 1;
-        if (unit.type === "worker") acc.workers += 1;
       }
       return acc;
     },
-    { fighters: 0, archers: 0, guardians: 0, workers: 0 }
+    { fighters: 0, archers: 0, guardians: 0 }
   );
-  const workingWorkers = BUILDING_PRODUCTION[type]
-    ? workingWorkersForBuilding(type, level, activeWorkTask)
-    : null;
 
   return (
     <View style={styles.upgradePanel}>
@@ -654,14 +608,6 @@ function UpgradePanel({
             </Text>
           </View>
         </View>
-        {workingWorkers != null ? (
-          <Text
-            style={[styles.upgradeMeta, workingWorkers === 0 ? styles.upgradeMetaWarn : null]}
-            maxFontSizeMultiplier={theme.maxFontScale}
-          >
-            {t("fx.workersHint", lang)}: {workingWorkers}
-          </Text>
-        ) : null}
       </View>
       <SpringPressable
         accessibilityRole="button"
@@ -691,40 +637,6 @@ function UpgradePanel({
         <Text style={styles.upgradeCloseText}>×</Text>
       </Pressable>
       </View>
-
-      {type === "workerShelter" ? (
-        <View style={styles.panelFooter}>
-          <SpringPressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: shiftActive || workerCount <= 0 }}
-            disabled={shiftActive || workerCount <= 0}
-            onPress={onSendWorkers}
-            style={[
-              styles.workButton,
-              shiftActive ? styles.workButtonActive : null,
-              !shiftActive && workerCount <= 0 ? styles.workButtonDisabled : null
-            ]}
-          >
-            <AssetImage
-              assetKey="unitWorker"
-              style={styles.footerUnitIcon}
-              fallback={<View style={styles.footerUnitIconFallback} />}
-            />
-            <View style={styles.workButtonCopy}>
-              <Text style={styles.workButtonText} maxFontSizeMultiplier={theme.maxFontScale}>
-                {shiftActive
-                  ? t("shelter.workingCount", lang, { n: activeWorkTask.workerCount })
-                  : t("shelter.send", lang)}
-              </Text>
-              {shiftActive ? (
-                <Text style={styles.workButtonSubtext} maxFontSizeMultiplier={theme.maxFontScale}>
-                  {t("shelter.remaining", lang, { time: formatCountdown(shiftRemaining) })}
-                </Text>
-              ) : null}
-            </View>
-          </SpringPressable>
-        </View>
-      ) : null}
 
       {type === "trainingNest" ? (
         <View style={styles.barracksFooter}>
@@ -1636,15 +1548,6 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     minHeight: 56
   },
-  panelFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 248, 217, 0.12)"
-  },
   footerUnitIcon: {
     width: 22,
     height: 22
@@ -1654,38 +1557,6 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     backgroundColor: "rgba(255, 224, 151, 0.25)"
-  },
-  workButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    minHeight: 48,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "rgba(198, 238, 137, 0.5)",
-    backgroundColor: "rgba(68, 101, 45, 0.92)",
-    paddingHorizontal: theme.spacing.md
-  },
-  workButtonDisabled: {
-    opacity: 0.55
-  },
-  workButtonActive: {
-    borderColor: "rgba(226, 177, 90, 0.4)",
-    backgroundColor: "rgba(74, 56, 28, 0.72)"
-  },
-  workButtonCopy: {
-    flex: 1,
-    justifyContent: "center"
-  },
-  workButtonText: {
-    color: theme.colors.paper,
-    fontSize: 13,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
-  },
-  workButtonSubtext: {
-    color: "#ffe9ad",
-    fontSize: 12,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
   },
   barracksFooter: {
     gap: theme.spacing.sm,
@@ -1817,15 +1688,6 @@ const styles = StyleSheet.create({
   nextEffectLabel: {
     color: "#f3d27a",
     fontFamily: theme.fonts.bold
-  },
-  upgradeMeta: {
-    marginTop: 2,
-    color: "#a7df80",
-    fontSize: 12,
-    fontWeight: "800", fontFamily: theme.fonts.bold
-  },
-  upgradeMetaWarn: {
-    color: "#f0a381"
   },
   upgradeButton: {
     minWidth: 108,

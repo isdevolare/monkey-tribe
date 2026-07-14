@@ -61,8 +61,8 @@ const dict: Record<string, Entry> = {
     en: "You need at least one trained fighter before you can RAID."
   },
   "support.help3": {
-    tr: "İşçi Barınağı'na dokunup işçileri işe gönderirsen üretim hızlanır.",
-    en: "Tap the Worker Shelter and send workers to work to boost production."
+    tr: "İşçi Locası'nda işçi üret, ardından bir kaynak seferine gönder.",
+    en: "Produce a worker at the Worker Lodge, then send them on a resource expedition."
   },
   "support.reportHeader": { tr: "Sorun Bildir", en: "Report a Problem" },
   "support.notePlaceholder": { tr: "İstersen kısaca anlat...", en: "Optionally add details..." },
@@ -84,7 +84,7 @@ const dict: Record<string, Entry> = {
   "b.lumberCamp": { tr: "Oduncu Kampı", en: "Lumber Camp" },
   "b.stoneQuarry": { tr: "Taş Ocağı", en: "Stone Quarry" },
   "b.bananaGrove": { tr: "Muz Bahçesi", en: "Banana Grove" },
-  "b.workerShelter": { tr: "İşçi Barınağı", en: "Worker Shelter" },
+  "b.workerShelter": { tr: "İşçi Locası", en: "Worker Lodge" },
   "b.trainingNest": { tr: "Eğitim Yuvası", en: "Training Nest" },
   "b.watchTower": { tr: "Gözetleme Kulesi", en: "Watch Tower" },
 
@@ -102,13 +102,12 @@ const dict: Record<string, Entry> = {
   },
   "fx.villageLevel": { tr: "Köy seviyesi", en: "Village level" },
   "fx.perSec": { tr: "/sn", en: "/s" },
-  "fx.workerProduction": {
-    tr: "İşçi başına {rate}/dk {res} · {slots} işçi yuvası",
-    en: "{rate}/min {res} per worker · {slots} worker slots"
+  "fx.expeditionYield": {
+    tr: "{res} seferi getirisi +%{pct}",
+    en: "{res} expedition yield +{pct}%"
   },
   "fx.storage": { tr: "Depo", en: "Storage" },
   "fx.troopPower": { tr: "Asker gücü", en: "Troop power" },
-  "fx.workersHint": { tr: "Çalışan", en: "Working" },
   "fb.storageFull": {
     tr: "Depo dolu! Klan Salonu'nu geliştir.",
     en: "Storage full! Upgrade the Clan Hall."
@@ -127,8 +126,8 @@ const dict: Record<string, Entry> = {
     en: "Tap a building and use Upgrade to raise its level."
   },
   "tut.2": {
-    tr: "İşçi ve savaşçı üret; Eğitim Yuvası savaşçıları açar.",
-    en: "Make workers and fighters; the Training Nest unlocks fighters."
+    tr: "İşçi Locası'nda işçi üretip kaynak seferine gönder.",
+    en: "Produce workers at the Worker Lodge and send them on resource expeditions."
   },
   "tut.3": {
     tr: "Savaşçın hazır olunca BASKIN ile düşman kampına saldır.",
@@ -487,16 +486,96 @@ const dict: Record<string, Entry> = {
   "quest.train12": { tr: "12 birim üret", en: "Train 12 units" },
   "quest.upgrade5": { tr: "5 kez bina geliştir", en: "Upgrade buildings 5 times" },
   "quest.raid5": { tr: "5 baskın kazan", en: "Win 5 raids" },
-  "fb.workersSent": {
-    tr: "İşçiler işe koyuldu! Üretim +%{n}",
-    en: "Workers set off! Production +{n}%"
+  "workerLodge.eyebrow": { tr: "İŞÇİ YÖNETİMİ", en: "WORKER MANAGEMENT" },
+  "workerLodge.capacity": {
+    tr: "Loca kapasitesi · {used}/{max}",
+    en: "Lodge capacity · {used}/{max}"
   },
-  "fb.workersReturned": { tr: "İşçiler işten döndü", en: "The workers are back home" },
-  "fb.noWorkers": { tr: "Çalışacak işçi yok", en: "No workers to send" },
-  "shelter.send": { tr: "İşe Gönder", en: "Send to Work" },
-  "shelter.working": { tr: "İşçiler çalışıyor · {time}", en: "Workers on the job · {time}" },
-  "shelter.workingCount": { tr: "{n} işçi çalışıyor", en: "{n} workers working" },
-  "shelter.remaining": { tr: "{time} kaldı", en: "{time} remaining" },
+  "workerLodge.idle": { tr: "Boşta", en: "Idle" },
+  "workerLodge.producing": { tr: "Üretiliyor", en: "Producing" },
+  "workerLodge.away": { tr: "Seferde", en: "Away" },
+  "workerLodge.ready": { tr: "Hazır", en: "Ready" },
+  "workerLodge.produceTitle": { tr: "İşçi Üret", en: "Produce Workers" },
+  "workerLodge.produceSubtitle": {
+    tr: "İşçiler tek seferliktir; ödül alınınca locadan ayrılır.",
+    en: "Workers are single-use and leave after their reward is collected."
+  },
+  "workerLodge.produce": { tr: "Üret", en: "Produce" },
+  "workerLodge.returns": { tr: "Getiri", en: "Returns" },
+  "workerLodge.queueTitle": { tr: "Üretim Kuyruğu", en: "Production Queue" },
+  "workerLodge.queueSubtitle": {
+    tr: "Kuyruk sırayla ilerler ve çevrimdışıyken de tamamlanır.",
+    en: "The queue runs in order and completes while offline."
+  },
+  "workerLodge.queueEmpty": { tr: "Üretim kuyruğu boş.", en: "The production queue is empty." },
+  "workerLodge.producingStatus": { tr: "Üretiliyor", en: "Producing" },
+  "workerLodge.queuedStatus": { tr: "Kuyruk · {n}. sıra", en: "Queue · position {n}" },
+  "workerLodge.idleTitle": { tr: "Boştaki İşçiler", en: "Idle Workers" },
+  "workerLodge.idleSubtitle": {
+    tr: "Bir işçi ve tek bir kaynak hedefi seç.",
+    en: "Choose one worker and one resource destination."
+  },
+  "workerLodge.idleEmpty": { tr: "Gönderilmeye hazır işçi yok.", en: "No worker is ready to depart." },
+  "workerLodge.expeditionsTitle": { tr: "Aktif Seferler", en: "Active Expeditions" },
+  "workerLodge.expeditionsSubtitle": {
+    tr: "Dönen ve tamamlanan işçileri buradan takip et.",
+    en: "Track departing, returning, and completed workers here."
+  },
+  "workerLodge.expeditionsEmpty": { tr: "Aktif sefer yok.", en: "There are no active expeditions." },
+  "workerLodge.expected": { tr: "Beklenen ödül: {amount}", en: "Expected reward: {amount}" },
+  "workerLodge.collect": { tr: "Topla", en: "Collect" },
+  "workerLodge.upgradeTitle": { tr: "İşçi Locası · Sv. {level}", en: "Worker Lodge · Lv. {level}" },
+  "workerLodge.capacityUpgrade": {
+    tr: "Kapasite {current} → {next}",
+    en: "Capacity {current} → {next}"
+  },
+  "workerLodge.riskNote": {
+    tr: "Seferlerin %97'si tam başarıyla döner; nadir aksilikler ödülü azaltabilir.",
+    en: "97% of expeditions return in full; rare mishaps may reduce the reward."
+  },
+  "workerLodge.storageNote": {
+    tr: "Toplanan ödüller mevcut {n} kaynak depo tavanına uyar.",
+    en: "Collected rewards respect the current storage cap of {n} per resource."
+  },
+  "workerLodge.complete": { tr: "Sefer Tamamlandı", en: "Expedition Complete" },
+  "workerLodge.returned": { tr: "{name} geri döndü.", en: "{name} returned." },
+  "workerLodge.workerLeaves": {
+    tr: "Ödül toplandıktan sonra işçi locadan kalıcı olarak ayrıldı.",
+    en: "After collection, the worker permanently left the lodge."
+  },
+  "workerLodge.continue": { tr: "Harika!", en: "Great!" },
+  "worker.gatherer.name": { tr: "Toplayıcı", en: "Gatherer" },
+  "worker.skilled.name": { tr: "Yetenekli İşçi", en: "Skilled Worker" },
+  "worker.master.name": { tr: "Usta İşçi", en: "Master Worker" },
+  "worker.status.active": { tr: "Yolda", en: "On expedition" },
+  "worker.status.returning": { tr: "Dönüyor", en: "Returning" },
+  "worker.status.completed": { tr: "Tamamlandı", en: "Completed" },
+  "worker.outcome.success": {
+    tr: "Sefer sorunsuz tamamlandı.",
+    en: "The expedition was completed successfully."
+  },
+  "worker.outcome.half": {
+    tr: "Yolda bir aksilik oldu; işçi ödülün yarısıyla döndü.",
+    en: "A mishap on the trail reduced the reward by half."
+  },
+  "worker.outcome.empty": {
+    tr: "İşçi yolunu kaybetti ve eli boş döndü.",
+    en: "The worker got lost and returned empty-handed."
+  },
+  "worker.capacityFull": {
+    tr: "İşçi Locası kapasitesi dolu.",
+    en: "The Worker Lodge is at capacity."
+  },
+  "worker.queued": { tr: "{name} üretim kuyruğuna alındı.", en: "{name} entered production." },
+  "worker.productionReady": { tr: "Yeni işçi sefere hazır!", en: "A new worker is ready!" },
+  "worker.expeditionSent": {
+    tr: "{name}, {resource} seferine çıktı.",
+    en: "{name} left on a {resource} expedition."
+  },
+  "worker.collected": {
+    tr: "+{amount} {resource} toplandı.",
+    en: "+{amount} {resource} collected."
+  },
   "barracks.title": { tr: "Karargâh", en: "Barracks" },
   "barracks.empty": {
     tr: "Ordu boş — savaşçı eğit",
