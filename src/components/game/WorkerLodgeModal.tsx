@@ -17,11 +17,15 @@ import { playSound } from "../../game/audio/soundManager";
 import {
   WORKER_CLASSES,
   WORKER_CLASS_ORDER,
+  LUMBER_WORKER_ORDER,
+  STONE_WORKER_ORDER,
   WORKER_RESOURCE_ORDER,
   BANANA_GROVE_MAX_WORKERS,
   bananaGroveCapacity,
   expeditionStatus,
   managedWorkerCount,
+  isLumberWorkerClass,
+  isStoneWorkerClass,
   workerCapacity
 } from "../../game/state/workerExpeditions";
 import { useGameStore } from "../../game/state/gameStore";
@@ -29,6 +33,9 @@ import type {
   ResourceKind,
   Resources,
   WorkerClass,
+  BananaWorkerClass,
+  LumberWorkerClass,
+  StoneWorkerClass,
   WorkerCollectionSummary,
   WorkerExpeditionStatus
 } from "../../game/types/game";
@@ -55,7 +62,13 @@ const RESOURCE_ASSETS: Record<
 const WORKER_ACCENTS: Record<WorkerClass, string> = {
   gatherer: "#d8b36a",
   skilled: "#80c9aa",
-  master: "#c79cff"
+  master: "#c79cff",
+  worker_lumber_apprentice: "#d4a35f",
+  worker_lumber_skilled: "#78b17a",
+  worker_lumber_master: "#d59b48",
+  worker_stone_apprentice: "#aeb7bd",
+  worker_stone_experienced: "#87939b",
+  worker_stone_master: "#c7a15a"
 };
 
 function levelOf(
@@ -100,10 +113,28 @@ function workerName(workerClass: WorkerClass, lang: Lang) {
   return t(`worker.${workerClass}.name`, lang);
 }
 
-export const BANANA_WORKER_ASSETS: Record<WorkerClass, GameAssetKey> = {
+export const BANANA_WORKER_ASSETS: Record<BananaWorkerClass, GameAssetKey> = {
   gatherer: "bananaWorkerYoung",
   skilled: "bananaWorkerExperienced",
   master: "bananaWorkerMaster"
+};
+
+export const LUMBER_WORKER_ASSETS: Record<LumberWorkerClass, GameAssetKey> = {
+  worker_lumber_apprentice: "lumberWorkerApprentice",
+  worker_lumber_skilled: "lumberWorkerSkilled",
+  worker_lumber_master: "lumberWorkerMaster"
+};
+
+export const STONE_WORKER_ASSETS: Record<StoneWorkerClass, GameAssetKey> = {
+  worker_stone_apprentice: "stoneWorkerApprentice",
+  worker_stone_experienced: "stoneWorkerExperienced",
+  worker_stone_master: "stoneWorkerMaster"
+};
+
+export const WORKER_ASSETS: Record<WorkerClass, GameAssetKey> = {
+  ...BANANA_WORKER_ASSETS,
+  ...LUMBER_WORKER_ASSETS,
+  ...STONE_WORKER_ASSETS
 };
 
 function resourceName(resource: ResourceKind, lang: Lang) {
@@ -145,7 +176,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
     !hasResources(state.resources, cost);
   const idleByClass = useMemo(
     () =>
-      WORKER_CLASS_ORDER.map((workerClass) => ({
+      [...WORKER_CLASS_ORDER, ...LUMBER_WORKER_ORDER, ...STONE_WORKER_ORDER].map((workerClass) => ({
         workerClass,
         workers: state.idleWorkers.filter((worker) => worker.workerClass === workerClass)
       })),
@@ -275,8 +306,8 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                       {formatTime(definition.productionMs)} · {formatTime(definition.expeditionMs)}
                     </Text>
                     <View style={styles.rewardLine}>
-                      <Text style={styles.rewardLabel}>{t("workerLodge.returns", lang)}</Text>
-                      <Text style={styles.rewardValue}>≈ {definition.reward}</Text>
+                      <Text style={styles.rewardLabel}>{t("workerLodge.baseYield", lang)}</Text>
+                      <Text style={styles.rewardValue}>{definition.baseYield}</Text>
                     </View>
                     <ResourceCost cost={definition.cost} />
                     <SpringPressable
@@ -286,6 +317,66 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                       style={[styles.produceButton, disabled ? styles.disabledButton : null]}
                     >
                       <Text style={styles.produceButtonText}>{t("workerLodge.produce", lang)}</Text>
+                    </SpringPressable>
+                  </View>
+                );
+              })}
+            </View>
+
+            <SectionTitle
+              title={t("workerLodge.lumberTitle", lang)}
+              subtitle={t("workerLodge.lumberSubtitle", lang)}
+            />
+            <View style={styles.workerCards}>
+              {LUMBER_WORKER_ORDER.map((workerClass, index) => {
+                const definition = WORKER_CLASSES[workerClass];
+                const requiredLevel = definition.unlockLodgeLevel ?? 1;
+                const locked = lodgeLevel < requiredLevel;
+                const disabled = locked || managed >= capacity || !hasResources(state.resources, definition.cost);
+                return (
+                  <View key={workerClass} style={[styles.workerCard, { borderColor: WORKER_ACCENTS[workerClass] }]}>
+                    <View style={styles.workerPortraitWrap}>
+                      <AssetImage assetKey={LUMBER_WORKER_ASSETS[workerClass]} style={styles.workerPortrait} resizeMode="contain" fallback={<Text style={styles.workerFallback}>🐵</Text>} hideFallbackOnLoad />
+                      <View style={[styles.classBadge, { backgroundColor: WORKER_ACCENTS[workerClass] }]}>
+                        <Text style={styles.classBadgeText}>{["I", "II", "III"][index]}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.workerName} numberOfLines={2} adjustsFontSizeToFit>{workerName(workerClass, lang)}</Text>
+                    <Text style={styles.workerMeta}>{formatTime(definition.productionMs)} · {buildingName("lumberCamp", lang)}</Text>
+                    <View style={styles.rewardLine}><Text style={styles.rewardLabel}>{t("workerLodge.baseYield", lang)}</Text><Text style={styles.rewardValue}>{definition.baseYield}</Text></View>
+                    <ResourceCost cost={definition.cost} />
+                    <SpringPressable accessibilityRole="button" accessibilityState={{ disabled }} onPress={() => state.queueWorker(workerClass)} style={[styles.produceButton, disabled ? styles.disabledButton : null]}>
+                      <Text style={styles.produceButtonText}>{locked ? t("workerLodge.unlockLevel", lang, { level: requiredLevel }) : t("workerLodge.produce", lang)}</Text>
+                    </SpringPressable>
+                  </View>
+                );
+              })}
+            </View>
+
+            <SectionTitle
+              title={t("workerLodge.stoneTitle", lang)}
+              subtitle={t("workerLodge.stoneSubtitle", lang)}
+            />
+            <View style={styles.workerCards}>
+              {STONE_WORKER_ORDER.map((workerClass, index) => {
+                const definition = WORKER_CLASSES[workerClass];
+                const requiredLevel = definition.unlockLodgeLevel ?? 1;
+                const locked = lodgeLevel < requiredLevel;
+                const disabled = locked || managed >= capacity || !hasResources(state.resources, definition.cost);
+                return (
+                  <View key={workerClass} style={[styles.workerCard, { borderColor: WORKER_ACCENTS[workerClass] }]}>
+                    <View style={styles.workerPortraitWrap}>
+                      <AssetImage assetKey={STONE_WORKER_ASSETS[workerClass]} style={styles.workerPortrait} resizeMode="contain" fallback={<Text style={styles.workerFallback}>🐵</Text>} hideFallbackOnLoad />
+                      <View style={[styles.classBadge, { backgroundColor: WORKER_ACCENTS[workerClass] }]}>
+                        <Text style={styles.classBadgeText}>{["I", "II", "III"][index]}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.workerName} numberOfLines={2} adjustsFontSizeToFit>{workerName(workerClass, lang)}</Text>
+                    <Text style={styles.workerMeta}>{formatTime(definition.productionMs)} · {buildingName("stoneQuarry", lang)}</Text>
+                    <View style={styles.rewardLine}><Text style={styles.rewardLabel}>{t("workerLodge.baseYield", lang)}</Text><Text style={styles.rewardValue}>{definition.baseYield}</Text></View>
+                    <ResourceCost cost={definition.cost} />
+                    <SpringPressable accessibilityRole="button" accessibilityState={{ disabled }} onPress={() => state.queueWorker(workerClass)} style={[styles.produceButton, disabled ? styles.disabledButton : null]}>
+                      <Text style={styles.produceButtonText}>{locked ? t("workerLodge.unlockLevel", lang, { level: requiredLevel }) : t("workerLodge.produce", lang)}</Text>
                     </SpringPressable>
                   </View>
                 );
@@ -334,7 +425,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                       <View key={group.workerClass} style={styles.idleGroup}>
                         <View style={styles.idleHeader}>
                           <AssetImage
-                            assetKey={BANANA_WORKER_ASSETS[group.workerClass]}
+                            assetKey={WORKER_ASSETS[group.workerClass]}
                             style={styles.smallPortrait}
                             resizeMode="contain"
                             fallback={<Text>🐵</Text>}
@@ -345,7 +436,12 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                           </Text>
                         </View>
                         <View style={styles.destinationRow}>
-                          <SpringPressable
+                          {isLumberWorkerClass(group.workerClass) || isStoneWorkerClass(group.workerClass) ? (
+                            <View style={styles.destinationButton}>
+                              <AssetImage assetKey={isStoneWorkerClass(group.workerClass) ? "resourceStone" : "resourceWood"} style={styles.destinationIcon} fallback={<View />} />
+                              <Text style={styles.destinationText} numberOfLines={2}>{t(isStoneWorkerClass(group.workerClass) ? "stoneQuarry.assignThere" : "lumberCamp.assignThere", lang)}</Text>
+                            </View>
+                          ) : <SpringPressable
                             accessibilityRole="button"
                             accessibilityState={{
                               disabled:
@@ -363,7 +459,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                             <Text style={styles.destinationText} numberOfLines={1}>
                               {t("bananaGrove.send", lang)}
                             </Text>
-                          </SpringPressable>
+                          </SpringPressable>}
                         </View>
                       </View>
                     );
@@ -403,7 +499,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                           {t("workerLodge.expected", lang, { amount: expedition.expectedReward })}
                         </Text>
                       </View>
-                      {status === "completed" && expedition.resource !== "bananas" ? (
+                      {status === "completed" && expedition.resource !== "bananas" && expedition.resource !== "wood" && expedition.resource !== "stones" ? (
                         <SpringPressable
                           accessibilityRole="button"
                           onPress={() => collect(expedition.id)}
@@ -412,7 +508,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                           <Text style={styles.collectButtonText}>{t("workerLodge.collect", lang)}</Text>
                         </SpringPressable>
                       ) : status === "completed" ? (
-                        <Text style={styles.groveCollectHint}>{t("bananaGrove.collectThere", lang)}</Text>
+                        <Text style={styles.groveCollectHint}>{t(expedition.resource === "wood" ? "lumberCamp.collectThere" : expedition.resource === "stones" ? "stoneQuarry.collectThere" : "bananaGrove.collectThere", lang)}</Text>
                       ) : (
                         <Text style={styles.timer}>{formatTime(expedition.returnsAt - now)}</Text>
                       )}
@@ -619,7 +715,7 @@ function WorkerMotion({
   return (
     <Animated.View style={[styles.motionPortrait, { transform: [{ translateX }, { scale }] }]}>
       <AssetImage
-        assetKey={BANANA_WORKER_ASSETS[workerClass]}
+        assetKey={WORKER_ASSETS[workerClass]}
         style={styles.motionPortraitArt}
         resizeMode="contain"
         fallback={<Text>🐵</Text>}
@@ -656,7 +752,7 @@ function CollectionPopup({
         <Text style={styles.resultKicker}>✓ {t("workerLodge.complete", lang)}</Text>
         <View style={styles.resultWorker}>
           <AssetImage
-            assetKey={BANANA_WORKER_ASSETS[summary.workerClass]}
+            assetKey={WORKER_ASSETS[summary.workerClass]}
             style={styles.resultWorkerArt}
             resizeMode="contain"
             fallback={<Text style={styles.workerFallback}>🐵</Text>}

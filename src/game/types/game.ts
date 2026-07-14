@@ -141,7 +141,18 @@ export type ActiveWorkTask = {
   productionPerSecond: Resources;
 };
 
-export type WorkerClass = "gatherer" | "skilled" | "master";
+export type BananaWorkerClass = "gatherer" | "skilled" | "master";
+export type LumberWorkerClass =
+  | "worker_lumber_apprentice"
+  | "worker_lumber_skilled"
+  | "worker_lumber_master";
+export type StoneWorkerClass =
+  | "worker_stone_apprentice"
+  | "worker_stone_experienced"
+  | "worker_stone_master";
+export type WorkerClass = BananaWorkerClass | LumberWorkerClass | StoneWorkerClass;
+export type WorkerMissionTier = "safe" | "risky" | "dangerous";
+export type LumberMissionTier = WorkerMissionTier;
 export type WorkerExpeditionStatus = "active" | "returning" | "completed";
 export type WorkerExpeditionOutcome = "success" | "half" | "empty";
 
@@ -171,12 +182,35 @@ export type WorkerExpedition = {
   outcome: WorkerExpeditionOutcome;
   /** Banana reward credited into the Grove's local storage exactly once. */
   storedReward?: number;
+  /** Mission selection where the current building UI supports it. */
+  missionTier?: WorkerMissionTier;
+  /** Shared reward snapshots; reloads never recalculate an active mission. */
+  missionMultiplier?: number;
+  buildingBonus?: number;
 };
 
 export type BananaGroveCollectionSummary = {
   collected: number;
   remainingStorage: number;
   workerClasses: WorkerClass[];
+};
+
+export type LumberCampCollectionSummary = {
+  collected: number;
+  remainingStorage: number;
+  workerClass?: LumberWorkerClass;
+  outcome?: WorkerExpeditionOutcome;
+  reward: number;
+  storedReward: number;
+};
+
+export type StoneQuarryCollectionSummary = {
+  collected: number;
+  remainingStorage: number;
+  workerClass?: StoneWorkerClass;
+  outcome?: WorkerExpeditionOutcome;
+  reward: number;
+  storedReward: number;
 };
 
 export type WorkerLodgeUpgrade = {
@@ -224,6 +258,9 @@ export type VillageSave = {
   idleWorkers?: IdleWorker[];
   workerExpeditions?: WorkerExpedition[];
   bananaGroveStorage?: number;
+  lumberCampStorage?: number;
+  /** Quarry-local stone storage. Missing legacy values migrate to zero. */
+  stoneQuarryStorage?: number;
   activeWorkerLodgeUpgrade?: WorkerLodgeUpgrade | null;
   questProgress?: Partial<Record<QuestMetric, number>>;
   questsClaimed?: string[];
@@ -266,6 +303,8 @@ export type GameState = {
   idleWorkers: IdleWorker[];
   workerExpeditions: WorkerExpedition[];
   bananaGroveStorage: number;
+  lumberCampStorage: number;
+  stoneQuarryStorage: number;
   activeWorkerLodgeUpgrade: WorkerLodgeUpgrade | null;
   playerCampHp: number;
   enemyCampHp: number;
@@ -284,13 +323,16 @@ export type GameState = {
   lastProductionAt: number;
   language: Lang;
   feedback: FeedbackMessage | null;
+  dismissFeedback: (id: number) => void;
   startGame: () => void;
   hydrate: (save: VillageSave) => void;
   setLanguage: (lang: Lang) => void;
   queueWorker: (workerClass: WorkerClass) => void;
-  sendWorkerExpedition: (workerId: string, resource: ResourceKind) => void;
+  sendWorkerExpedition: (workerId: string, resource: ResourceKind, missionTier?: WorkerMissionTier) => void;
   collectWorkerExpedition: (expeditionId: string) => WorkerCollectionSummary | null;
   collectBananaGrove: () => BananaGroveCollectionSummary | null;
+  collectLumberCamp: () => LumberCampCollectionSummary | null;
+  collectStoneQuarry: () => StoneQuarryCollectionSummary | null;
   claimQuest: (id: string) => void;
   dismissOfflineReport: () => void;
   claimDaily: () => void;

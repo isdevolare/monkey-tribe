@@ -24,37 +24,37 @@ export const MIN_BUILDING_HITBOX_PT = 48;
 /** Fixed art geometry plus independently tunable touch geometry, in scene percentages. */
 export const BUILDING_GEOMETRY: Record<VillageBuildingType, BuildingGeometry> = {
   clanHall: {
-    point: { x: 47, y: 38 },
+    point: { x: 50, y: 39 },
     size: 30,
     hitbox: { width: 28, height: 28, offsetY: -5.4 }
   },
   bananaGrove: {
-    point: { x: 24, y: 26 },
+    point: { x: 25, y: 22 },
     size: 17,
     hitbox: { width: 16.5, height: 22, offsetY: -3.1 }
   },
   lumberCamp: {
-    point: { x: 17, y: 49 },
+    point: { x: 28, y: 69 },
     size: 21,
     hitbox: { width: 24, height: 24, offsetY: -3.8 }
   },
   stoneQuarry: {
-    point: { x: 78, y: 47 },
+    point: { x: 79, y: 49 },
     size: 15,
     hitbox: { width: 20, height: 18, offsetY: -2.7 }
   },
   watchTower: {
-    point: { x: 73, y: 27 },
+    point: { x: 74, y: 22 },
     size: 20,
     hitbox: { width: 22, height: 22, offsetY: -3.6 }
   },
   workerShelter: {
-    point: { x: 30, y: 63 },
+    point: { x: 21, y: 49 },
     size: 22,
     hitbox: { width: 24, height: 23, offsetY: -4 }
   },
   trainingNest: {
-    point: { x: 65, y: 61 },
+    point: { x: 69, y: 69 },
     size: 21,
     hitbox: { width: 24, height: 23, offsetY: -3.8 }
   }

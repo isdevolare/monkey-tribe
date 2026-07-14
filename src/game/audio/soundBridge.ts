@@ -2,7 +2,7 @@ import { QUESTS, isQuestComplete } from "../config/quests";
 import { useGameStore } from "../state/gameStore";
 import type { GameState } from "../types/game";
 import { hapticImpact, hapticOutcome } from "./haptics";
-import { playBattleHit, playSound, setBackgroundLoop } from "./soundManager";
+import { playBattleHit, playSound, setBackgroundLoop, setVillageAmbience } from "./soundManager";
 
 // Live HP total of every unit plus both camps; any drop means damage landed.
 function totalHp(state: GameState) {
@@ -21,6 +21,10 @@ function buildingLevelSum(state: GameState) {
 
 function targetBackgroundLoop(state: GameState) {
   return state.currentScreen === "game" && state.gameStatus === "playing" ? "main" : null;
+}
+
+function targetVillageAmbience(state: GameState) {
+  return state.currentScreen === "game" && state.gameStatus === "playing" && state.gameMode === "village";
 }
 
 // Quest progress is cumulative, so a quest can only cross its goal once —
@@ -46,11 +50,13 @@ export function initGameSounds() {
   let prevHp = totalHp(prev);
   let prevLevels = buildingLevelSum(prev);
   setBackgroundLoop(targetBackgroundLoop(prev));
+  setVillageAmbience(targetVillageAmbience(prev));
 
   useGameStore.subscribe((state) => {
     const hp = totalHp(state);
     const levels = buildingLevelSum(state);
     setBackgroundLoop(targetBackgroundLoop(state));
+    setVillageAmbience(targetVillageAmbience(state));
 
     // Raid lifecycle: horn on attack, jingle + loot coins on the outcome.
     if (state.raidStatus !== prev.raidStatus) {

@@ -8,3 +8,9 @@ All sound effects are CC0 (public domain) from [Kenney](https://kenney.nl), conv
 - `raid`, `victory`, `defeat` — Music Jingles pack
 
 License: Creative Commons Zero (CC0). No attribution required; credited with thanks.
+
+Village ambience:
+
+- `ambient_forest_cc0.mp3` — “Forest Ambience” by TinyWorlds, OpenGameArt.org
+- Source: https://opengameart.org/content/forest-ambience
+- License: Creative Commons Zero (CC0)

@@ -13,12 +13,13 @@ import { theme } from "../../theme/theme";
 type RaidMapScreenProps = {
   fighterCount: number;
   raidLevel: number;
+  watchTowerLevel: number;
   lang: Lang;
   onAttack: (campId: string) => void;
   onClose: () => void;
 };
 
-export function RaidMapScreen({ fighterCount, raidLevel, lang, onAttack, onClose }: RaidMapScreenProps) {
+export function RaidMapScreen({ fighterCount, raidLevel, watchTowerLevel, lang, onAttack, onClose }: RaidMapScreenProps) {
   const noFighters = fighterCount <= 0;
   // The endless stronghold sits after the handcrafted camps and levels up
   // every time the player razes it.
@@ -82,11 +83,13 @@ export function RaidMapScreen({ fighterCount, raidLevel, lang, onAttack, onClose
                   {t("raidmap.endless", lang)}
                 </Text>
               ) : null}
-              <View style={styles.lootRow}>
+              {watchTowerLevel >= 3 ? <Text style={styles.scoutingLine}>{t("raidmap.recommendedPower", lang, { n: Math.round(camp.campHp + camp.enemyCount * camp.enemyHp) })}</Text> : null}
+              {watchTowerLevel >= 5 ? <Text style={styles.scoutingLine}>{t("raidmap.composition", lang, { melee: Math.max(0, camp.enemyCount - (camp.archerCount ?? 0)), archers: camp.archerCount ?? 0 })}</Text> : null}
+              {watchTowerLevel >= 4 ? <View style={styles.lootRow}>
                 <LootChip assetKey="resourceBanana" amount={camp.loot.bananas} />
                 <LootChip assetKey="resourceWood" amount={camp.loot.wood} />
                 <LootChip assetKey="resourceStone" amount={camp.loot.stones} />
-              </View>
+              </View> : <Text style={styles.scoutingLocked}>{t("raidmap.rewardsLocked", lang)}</Text>}
             </View>
 
             <SpringPressable
@@ -222,6 +225,8 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: "800", fontFamily: theme.fonts.bold
   },
+  scoutingLine: { marginTop: 2, color: "#d9c58e", fontSize: 9.5, fontFamily: theme.fonts.bold },
+  scoutingLocked: { marginTop: 5, color: "#9d8d75", fontSize: 9.5, fontFamily: theme.fonts.bold },
   cardArt: {
     width: 64,
     height: 64,

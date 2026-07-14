@@ -19,6 +19,7 @@ import {
 import { useGameStore } from "../../game/state/gameStore";
 import type {
   BananaGroveCollectionSummary,
+  BananaWorkerClass,
   Resources,
   WorkerClass
 } from "../../game/types/game";
@@ -142,7 +143,7 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
                   const status = expeditionStatus(worker, now);
                   return (
                     <View key={worker.id} style={[styles.workerRow, worker.storedReward !== undefined && styles.workerReady]}>
-                      <AssetImage assetKey={BANANA_WORKER_ASSETS[worker.workerClass]} style={styles.workerArt} fallback={<Text>🐵</Text>} hideFallbackOnLoad />
+                      <AssetImage assetKey={BANANA_WORKER_ASSETS[worker.workerClass as BananaWorkerClass]} style={styles.workerArt} fallback={<Text>🐵</Text>} hideFallbackOnLoad />
                       <View style={styles.workerCopy}>
                         <Text style={styles.workerName}>{t(`worker.${worker.workerClass}.name`, lang)}</Text>
                         <Text style={styles.workerMeta}>
@@ -206,7 +207,7 @@ function HarvestPopup({ summary, lang, onClose }: { summary: BananaGroveCollecti
     <Animated.View style={[styles.popup, { transform: [{ scale }] }]}>
       <NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} />
       <Text style={styles.popupKicker}>✓ {t("bananaGrove.harvestComplete", lang)}</Text>
-      <AssetImage assetKey={BANANA_WORKER_ASSETS[hero]} style={styles.popupWorker} fallback={<Text style={styles.fallback}>🐵</Text>} hideFallbackOnLoad />
+      <AssetImage assetKey={BANANA_WORKER_ASSETS[hero as BananaWorkerClass]} style={styles.popupWorker} fallback={<Text style={styles.fallback}>🐵</Text>} hideFallbackOnLoad />
       <View style={styles.rewardRow}><AssetImage assetKey="resourceBanana" style={styles.rewardIcon} fallback={<View />} /><Text style={styles.rewardAmount}>+{Math.floor(summary.collected)}</Text></View>
       <Text style={styles.contractText}>{t("bananaGrove.contractEnded", lang)}</Text>
       {summary.remainingStorage > 0 ? <Text style={styles.remainder}>{t("bananaGrove.storageRemainder", lang, { amount: summary.remainingStorage })}</Text> : null}

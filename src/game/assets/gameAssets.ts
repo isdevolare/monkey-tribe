@@ -32,6 +32,12 @@ export type GameAssetKey =
   | "bananaWorkerYoung"
   | "bananaWorkerExperienced"
   | "bananaWorkerMaster"
+  | "lumberWorkerApprentice"
+  | "lumberWorkerSkilled"
+  | "lumberWorkerMaster"
+  | "stoneWorkerApprentice"
+  | "stoneWorkerExperienced"
+  | "stoneWorkerMaster"
   | "workerBananaDelivery"
   | "workerMasterBuilder"
   | "unitFighter"
@@ -45,6 +51,7 @@ export type GameAssetKey =
   | "buildingHut"
   | "buildingTrainingNest"
   | "buildingWatchPost"
+  | "buildingLumberCampReference"
   | "resourceBanana"
   | "resourceStone"
   | "resourceWood"
@@ -64,6 +71,10 @@ export type GameAssetKey =
   | "uiPanelLight"
   | "bgMainMenu"
   | "bgJungleGame"
+  | "bgJungleWorldDense"
+  | "bgJungleWorldCompact"
+  | "bgVillageBoardDense"
+  | "bgVillageReferenceLayout"
   | "buildingPlayerCampL2"
   | "buildingPlayerCampL3"
   | "buildingArcherTower"
@@ -170,6 +181,30 @@ export const gameAssets = {
     ...asset("bananaWorkerMaster", "units", "banana_worker_master.png", "1024x1024 transparent unit"),
     source: require("../../../assets/game/units/banana_worker_master.png") as ImageSourcePropType
   },
+  lumberWorkerApprentice: {
+    ...asset("lumberWorkerApprentice", "units", "generated/worker_lumber_apprentice.png", "generated 1254x1254 transparent lumber worker"),
+    source: require("../../../assets/game/units/generated/worker_lumber_apprentice.png") as ImageSourcePropType
+  },
+  lumberWorkerSkilled: {
+    ...asset("lumberWorkerSkilled", "units", "generated/worker_lumber_skilled.png", "generated 1254x1254 transparent lumber worker"),
+    source: require("../../../assets/game/units/generated/worker_lumber_skilled.png") as ImageSourcePropType
+  },
+  lumberWorkerMaster: {
+    ...asset("lumberWorkerMaster", "units", "generated/worker_lumber_master.png", "generated 1254x1254 transparent lumber worker"),
+    source: require("../../../assets/game/units/generated/worker_lumber_master.png") as ImageSourcePropType
+  },
+  stoneWorkerApprentice: {
+    ...asset("stoneWorkerApprentice", "units", "generated/worker_stone_apprentice.png", "1024x1536 transparent quarry worker"),
+    source: require("../../../assets/game/units/generated/worker_stone_apprentice.png") as ImageSourcePropType
+  },
+  stoneWorkerExperienced: {
+    ...asset("stoneWorkerExperienced", "units", "generated/worker_stone_experienced.png", "1122x1402 transparent quarry worker"),
+    source: require("../../../assets/game/units/generated/worker_stone_experienced.png") as ImageSourcePropType
+  },
+  stoneWorkerMaster: {
+    ...asset("stoneWorkerMaster", "units", "generated/worker_stone_master.png", "1024x1536 transparent quarry worker"),
+    source: require("../../../assets/game/units/generated/worker_stone_master.png") as ImageSourcePropType
+  },
   workerBananaDelivery: {
     ...asset("workerBananaDelivery", "units", "worker_banana_delivery.png", "1024x1024 transparent cosmetic unit"),
     source: require("../../../assets/game/units/worker_banana_delivery.png") as ImageSourcePropType
@@ -221,6 +256,10 @@ export const gameAssets = {
   buildingWatchPost: {
     ...asset("buildingWatchPost", "buildings", "building_watch_post.png", "512x512 transparent building"),
     source: require("../../../assets/game/buildings/building_watch_post.png") as ImageSourcePropType
+  },
+  buildingLumberCampReference: {
+    ...asset("buildingLumberCampReference", "buildings", "building_lumber_camp_reference.png", "generated reference-matched transparent lumber camp"),
+    source: require("../../../assets/game/buildings/building_lumber_camp_reference.png") as ImageSourcePropType
   },
   resourceBanana: {
     ...asset("resourceBanana", "ui", "banana_icon.png", "256x256 transparent icon"),
@@ -290,6 +329,22 @@ export const gameAssets = {
   bgJungleGame: {
     ...asset("bgJungleGame", "backgrounds", "bg_jungle_game.png", "1440x2560 portrait"),
     source: require("../../../assets/game/backgrounds/bg_jungle_game.png") as ImageSourcePropType
+  },
+  bgJungleWorldDense: {
+    ...asset("bgJungleWorldDense", "backgrounds", "bg_jungle_world_dense.png", "941x1672 generated dense portrait jungle world"),
+    source: require("../../../assets/game/backgrounds/bg_jungle_world_dense.png") as ImageSourcePropType
+  },
+  bgJungleWorldCompact: {
+    ...asset("bgJungleWorldCompact", "backgrounds", "bg_jungle_world_compact.png", "941x1672 generated compact portrait jungle frame"),
+    source: require("../../../assets/game/backgrounds/bg_jungle_world_compact.png") as ImageSourcePropType
+  },
+  bgVillageBoardDense: {
+    ...asset("bgVillageBoardDense", "backgrounds", "bg_village_board_dense.png", "1254x1254 generated dense square village clearing"),
+    source: require("../../../assets/game/backgrounds/bg_village_board_dense.png") as ImageSourcePropType
+  },
+  bgVillageReferenceLayout: {
+    ...asset("bgVillageReferenceLayout", "backgrounds", "bg_village_reference_layout.png", "941x1450 reference-matched portrait village clearing"),
+    source: require("../../../assets/game/backgrounds/bg_village_reference_layout.png") as ImageSourcePropType
   },
   buildingPlayerCampL2: {
     ...asset("buildingPlayerCampL2", "buildings", "camp_player_level2.png", "generated camp lvl 2"),

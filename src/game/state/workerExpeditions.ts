@@ -1,7 +1,11 @@
 import type {
+  BananaWorkerClass,
   IdleWorker,
+  LumberMissionTier,
+  LumberWorkerClass,
   ResourceKind,
   Resources,
+  StoneWorkerClass,
   WorkerClass,
   WorkerExpedition,
   WorkerExpeditionOutcome,
@@ -14,40 +18,116 @@ export type WorkerClassDefinition = {
   cost: Resources;
   productionMs: number;
   expeditionMs: number;
-  reward: number;
+  baseYield: number;
+  unlockLodgeLevel?: number;
 };
 
-// Costs use all three village resources while preserving the requested
-// 50 / 100 / 200 total price points.
 export const WORKER_CLASSES: Record<WorkerClass, WorkerClassDefinition> = {
   gatherer: {
     id: "gatherer",
-    cost: { bananas: 30, stones: 10, wood: 10 },
+    cost: { bananas: 10, stones: 0, wood: 0 },
     productionMs: 30_000,
     expeditionMs: 5 * 60_000,
-    reward: 150
+    baseYield: 10
   },
   skilled: {
     id: "skilled",
-    cost: { bananas: 60, stones: 20, wood: 20 },
+    cost: { bananas: 25, stones: 0, wood: 0 },
     productionMs: 45_000,
     expeditionMs: 8 * 60_000,
-    reward: 350
+    baseYield: 25
   },
   master: {
     id: "master",
-    cost: { bananas: 120, stones: 40, wood: 40 },
+    cost: { bananas: 50, stones: 0, wood: 0 },
     productionMs: 60_000,
     expeditionMs: 12 * 60_000,
-    reward: 700
+    baseYield: 50
+  },
+  worker_lumber_apprentice: {
+    id: "worker_lumber_apprentice",
+    cost: { bananas: 0, stones: 0, wood: 10 },
+    productionMs: 30_000,
+    expeditionMs: 5 * 60_000,
+    baseYield: 10,
+    unlockLodgeLevel: 1
+  },
+  worker_lumber_skilled: {
+    id: "worker_lumber_skilled",
+    cost: { bananas: 0, stones: 0, wood: 25 },
+    productionMs: 45_000,
+    expeditionMs: 10 * 60_000,
+    baseYield: 25,
+    unlockLodgeLevel: 2
+  },
+  worker_lumber_master: {
+    id: "worker_lumber_master",
+    cost: { bananas: 0, stones: 0, wood: 50 },
+    productionMs: 60_000,
+    expeditionMs: 20 * 60_000,
+    baseYield: 50,
+    unlockLodgeLevel: 3
+  },
+  worker_stone_apprentice: {
+    id: "worker_stone_apprentice",
+    cost: { bananas: 0, stones: 10, wood: 0 },
+    productionMs: 30_000,
+    expeditionMs: 5 * 60_000,
+    baseYield: 10,
+    unlockLodgeLevel: 1
+  },
+  worker_stone_experienced: {
+    id: "worker_stone_experienced",
+    cost: { bananas: 0, stones: 25, wood: 0 },
+    productionMs: 45_000,
+    expeditionMs: 10 * 60_000,
+    baseYield: 25,
+    unlockLodgeLevel: 2
+  },
+  worker_stone_master: {
+    id: "worker_stone_master",
+    cost: { bananas: 0, stones: 50, wood: 0 },
+    productionMs: 60_000,
+    expeditionMs: 20 * 60_000,
+    baseYield: 50,
+    unlockLodgeLevel: 3
   }
 };
 
-export const WORKER_CLASS_ORDER: readonly WorkerClass[] = [
+export const WORKER_CLASS_ORDER: readonly BananaWorkerClass[] = [
   "gatherer",
   "skilled",
   "master"
 ];
+
+export const LUMBER_WORKER_ORDER: readonly LumberWorkerClass[] = [
+  "worker_lumber_apprentice",
+  "worker_lumber_skilled",
+  "worker_lumber_master"
+];
+
+export const STONE_WORKER_ORDER: readonly StoneWorkerClass[] = [
+  "worker_stone_apprentice",
+  "worker_stone_experienced",
+  "worker_stone_master"
+];
+
+export const WORKER_MISSIONS: Record<LumberMissionTier, {
+  id: LumberMissionTier;
+  multiplier: number;
+  durationMs: number;
+  success: number;
+  partial: number;
+}> = {
+  safe: { id: "safe", multiplier: 2, durationMs: 5 * 60_000, success: 0.96, partial: 0.03 },
+  risky: { id: "risky", multiplier: 4, durationMs: 10 * 60_000, success: 0.82, partial: 0.12 },
+  dangerous: { id: "dangerous", multiplier: 8, durationMs: 20 * 60_000, success: 0.62, partial: 0.23 }
+};
+
+// Existing Lumber UI name retained while both resources share this data.
+export const LUMBER_MISSIONS = WORKER_MISSIONS;
+
+export const LUMBER_MISSION_ORDER: readonly LumberMissionTier[] = ["safe", "risky", "dangerous"];
 
 export const WORKER_RESOURCE_ORDER: readonly ResourceKind[] = [
   "bananas",
@@ -57,6 +137,22 @@ export const WORKER_RESOURCE_ORDER: readonly ResourceKind[] = [
 
 export const BANANA_GROVE_MAX_WORKERS = 3;
 
+export function isLumberWorkerClass(value: unknown): value is LumberWorkerClass {
+  return LUMBER_WORKER_ORDER.includes(value as LumberWorkerClass);
+}
+
+export function isBananaWorkerClass(value: unknown): value is BananaWorkerClass {
+  return WORKER_CLASS_ORDER.includes(value as BananaWorkerClass);
+}
+
+export function isStoneWorkerClass(value: unknown): value is StoneWorkerClass {
+  return STONE_WORKER_ORDER.includes(value as StoneWorkerClass);
+}
+
+export function isLumberMissionTier(value: unknown): value is LumberMissionTier {
+  return value === "safe" || value === "risky" || value === "dangerous";
+}
+
 export function bananaGroveCapacity(groveLevel: number) {
   const level = Number.isFinite(groveLevel) ? Math.max(1, Math.floor(groveLevel)) : 1;
   const fixed = [0, 100, 200, 350, 550, 800];
@@ -64,6 +160,24 @@ export function bananaGroveCapacity(groveLevel: number) {
   // Continues the increasing storage steps naturally: +300, +325, +350...
   const extraLevels = level - 5;
   return 800 + extraLevels * 275 + (extraLevels * (extraLevels + 1) * 25) / 2;
+}
+
+export function lumberCampCapacity(campLevel: number) {
+  const level = Number.isFinite(campLevel) ? Math.max(1, Math.floor(campLevel)) : 1;
+  const capacities = [0, 100, 200, 350, 550, 800, 1150, 1600, 2200, 3000, 4000];
+  return capacities[Math.min(10, level)] ?? 100;
+}
+
+export function stoneQuarryCapacity(quarryLevel: number) {
+  return lumberCampCapacity(quarryLevel);
+}
+
+export function sanitizeLumberCampStorage(value: unknown, capacity: number) {
+  return sanitizeBananaGroveStorage(value, capacity);
+}
+
+export function sanitizeStoneQuarryStorage(value: unknown, capacity: number) {
+  return sanitizeBananaGroveStorage(value, capacity);
 }
 
 export function sanitizeBananaGroveStorage(value: unknown, capacity: number) {
@@ -188,15 +302,70 @@ export function sanitizeWorkerExpeditions(
       expectedReward: Math.round(expedition.expectedReward),
       reward: Math.round(expedition.reward),
       storedReward:
-        expedition.resource === "bananas" &&
+        isWorkerResource(expedition.resource) &&
         typeof expedition.storedReward === "number" &&
         Number.isFinite(expedition.storedReward) &&
         expedition.storedReward >= 0
           ? Math.round(expedition.storedReward)
+          : undefined,
+      missionTier:
+        isWorkerResource(expedition.resource) &&
+        isLumberMissionTier(expedition.missionTier)
+          ? expedition.missionTier
+          : undefined,
+      missionMultiplier:
+        isWorkerResource(expedition.resource) && typeof expedition.missionMultiplier === "number" && Number.isFinite(expedition.missionMultiplier)
+          ? expedition.missionMultiplier
+          : undefined,
+      buildingBonus:
+        isWorkerResource(expedition.resource) && typeof expedition.buildingBonus === "number" && Number.isFinite(expedition.buildingBonus)
+          ? expedition.buildingBonus
           : undefined
     });
   }
   return expeditions;
+}
+
+/** Credits completed resource missions into finite building storage exactly once. */
+export function reconcileResourceWorkplace(
+  expeditions: WorkerExpedition[],
+  storage: number,
+  capacity: number,
+  now: number,
+  resource: ResourceKind
+) {
+  let nextStorage = sanitizeBananaGroveStorage(storage, capacity);
+  let changed = nextStorage !== storage;
+  let completed = 0;
+  const nextExpeditions = expeditions.map((expedition) => {
+    if (expedition.resource !== resource || expedition.returnsAt > now || expedition.storedReward !== undefined) {
+      return expedition;
+    }
+    const credited = Math.min(Math.max(0, capacity - nextStorage), expedition.reward);
+    nextStorage += credited;
+    completed += 1;
+    changed = true;
+    return { ...expedition, storedReward: credited };
+  });
+  return { expeditions: changed ? nextExpeditions : expeditions, storage: nextStorage, completed };
+}
+
+export function reconcileLumberCamp(
+  expeditions: WorkerExpedition[],
+  storage: number,
+  capacity: number,
+  now: number
+) {
+  return reconcileResourceWorkplace(expeditions, storage, capacity, now, "wood");
+}
+
+export function reconcileStoneQuarry(
+  expeditions: WorkerExpedition[],
+  storage: number,
+  capacity: number,
+  now: number
+) {
+  return reconcileResourceWorkplace(expeditions, storage, capacity, now, "stones");
 }
 
 /**
@@ -210,28 +379,7 @@ export function reconcileBananaGrove(
   capacity: number,
   now: number
 ) {
-  let nextStorage = sanitizeBananaGroveStorage(storage, capacity);
-  let changed = nextStorage !== storage;
-  let completed = 0;
-  const nextExpeditions = expeditions.map((expedition) => {
-    if (
-      expedition.resource !== "bananas" ||
-      expedition.returnsAt > now ||
-      expedition.storedReward !== undefined
-    ) {
-      return expedition;
-    }
-    const credited = Math.min(Math.max(0, capacity - nextStorage), expedition.reward);
-    nextStorage += credited;
-    completed += 1;
-    changed = true;
-    return { ...expedition, storedReward: credited };
-  });
-  return {
-    expeditions: changed ? nextExpeditions : expeditions,
-    storage: nextStorage,
-    completed
-  };
+  return reconcileResourceWorkplace(expeditions, storage, capacity, now, "bananas");
 }
 
 function isWorkerOutcome(value: unknown): value is WorkerExpeditionOutcome {
@@ -287,6 +435,96 @@ function stableRoll(seed: string) {
   return (hash >>> 0) / 0x1_0000_0000;
 }
 
+/** Shared base-yield economy used by every resource worker mission. */
+export function calculateWorkerExpectedReward(
+  baseYield: number,
+  missionMultiplier: number,
+  buildingBonus = 0
+) {
+  const safeBase = Number.isFinite(baseYield) ? Math.max(0, baseYield) : 0;
+  const safeMultiplier = Number.isFinite(missionMultiplier) ? Math.max(0, missionMultiplier) : 0;
+  const safeBonus = Number.isFinite(buildingBonus) ? Math.max(0, buildingBonus) : 0;
+  return Math.round(safeBase * safeMultiplier * (1 + safeBonus));
+}
+
+export function calculateWorkerFinalReward(
+  expectedReward: number,
+  outcome: WorkerExpeditionOutcome
+) {
+  if (outcome === "success") return expectedReward;
+  if (outcome === "half") return Math.round(expectedReward / 2);
+  return 0;
+}
+
+export function lumberExpeditionOutcome(seed: string, missionTier: LumberMissionTier): WorkerExpeditionOutcome {
+  const roll = stableRoll(seed);
+  const mission = WORKER_MISSIONS[missionTier];
+  if (roll < mission.success) return "success";
+  if (roll < mission.success + mission.partial) return "half";
+  return "empty";
+}
+
+export const workerMissionOutcome = lumberExpeditionOutcome;
+
+export function createResourceWorkerExpedition(
+  id: string,
+  worker: IdleWorker,
+  resource: "wood" | "stones",
+  missionTier: LumberMissionTier,
+  buildingLevel: number,
+  now: number
+): WorkerExpedition {
+  const validWorker = resource === "wood"
+    ? isLumberWorkerClass(worker.workerClass)
+    : isStoneWorkerClass(worker.workerClass);
+  if (!validWorker) {
+    throw new Error(`Worker class does not belong to ${resource}.`);
+  }
+  const definition = WORKER_CLASSES[worker.workerClass];
+  const mission = WORKER_MISSIONS[missionTier];
+  const buildingBonus = Math.max(0, Math.floor(buildingLevel)) * 0.03;
+  const expectedReward = calculateWorkerExpectedReward(
+    definition.baseYield,
+    mission.multiplier,
+    buildingBonus
+  );
+  const outcome = workerMissionOutcome(id, missionTier);
+  return {
+    id,
+    workerId: worker.id,
+    workerClass: worker.workerClass,
+    resource,
+    startedAt: now,
+    returnsAt: now + mission.durationMs,
+    expectedReward,
+    reward: calculateWorkerFinalReward(expectedReward, outcome),
+    outcome,
+    missionTier,
+    missionMultiplier: mission.multiplier,
+    buildingBonus
+  };
+}
+
+export function createLumberExpedition(
+  id: string,
+  worker: IdleWorker,
+  missionTier: LumberMissionTier,
+  campLevel: number,
+  now: number
+): WorkerExpedition {
+  return createResourceWorkerExpedition(id, worker, "wood", missionTier, campLevel, now);
+}
+
+export function createStoneExpedition(
+  id: string,
+  worker: IdleWorker,
+  missionTier: LumberMissionTier,
+  quarryLevel: number,
+  now: number
+): WorkerExpedition {
+  return createResourceWorkerExpedition(id, worker, "stones", missionTier, quarryLevel, now);
+}
+
 // 97% full success, 2% half reward, 1% empty. The result is fixed at
 // dispatch so reloading cannot reroll a failed or successful expedition.
 export function expeditionOutcome(seed: string): WorkerExpeditionOutcome {
@@ -301,19 +539,18 @@ export function createWorkerExpedition(
   worker: IdleWorker,
   resource: ResourceKind,
   now: number,
-  rewardMultiplier = 1
+  missionMultiplier = 2,
+  buildingBonus = 0,
+  missionTier: LumberMissionTier = "safe"
 ): WorkerExpedition {
   const definition = WORKER_CLASSES[worker.workerClass];
-  const expectedReward = Math.round(
-    definition.reward * Math.max(0, Number.isFinite(rewardMultiplier) ? rewardMultiplier : 1)
+  const expectedReward = calculateWorkerExpectedReward(
+    definition.baseYield,
+    missionMultiplier,
+    buildingBonus
   );
   const outcome = expeditionOutcome(id);
-  const reward =
-    outcome === "success"
-      ? expectedReward
-      : outcome === "half"
-        ? Math.round(expectedReward / 2)
-        : 0;
+  const reward = calculateWorkerFinalReward(expectedReward, outcome);
   return {
     id,
     workerId: worker.id,
@@ -323,7 +560,10 @@ export function createWorkerExpedition(
     returnsAt: now + definition.expeditionMs,
     expectedReward,
     reward,
-    outcome
+    outcome,
+    missionTier,
+    missionMultiplier,
+    buildingBonus
   };
 }
 

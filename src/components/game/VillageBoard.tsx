@@ -9,18 +9,17 @@ import {
   type GestureResponderEvent,
   useWindowDimensions
 } from "react-native";
-import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from "react-native-svg";
+import Svg, { Ellipse, Line, Path } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
 import { PopIn, PulseRing } from "./Vfx";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { buildingName } from "../../game/config/buildings";
 import { t } from "../../game/i18n";
 import {
-  BUILDING_GEOMETRY,
   createBuildingHitTargets,
   selectBuildingAtPoint
 } from "../../game/ui/buildingHitboxes";
-import type { Lang, Tile, VillageBuilding, VillageBuildingType, WorkerClass, WorkerExpedition } from "../../game/types/game";
+import type { BananaWorkerClass, Lang, LumberWorkerClass, StoneWorkerClass, Tile, VillageBuilding, VillageBuildingType, WorkerExpedition } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type VillageBoardProps = {
@@ -29,10 +28,17 @@ type VillageBoardProps = {
   lang: Lang;
   maxSize?: number;
   feedbackText?: string;
+  feedbackOpacity?: Animated.Value;
   selectedType?: VillageBuildingType | null;
   bananaWorkers?: WorkerExpedition[];
   bananaGroveStorage?: number;
   bananaGroveCapacity?: number;
+  lumberWorkers?: WorkerExpedition[];
+  lumberCampStorage?: number;
+  lumberCampCapacity?: number;
+  stoneWorkers?: WorkerExpedition[];
+  stoneQuarryStorage?: number;
+  stoneQuarryCapacity?: number;
   onBuildingPress: (type: VillageBuildingType) => void;
 };
 
@@ -49,80 +55,55 @@ type SceneItem = {
   node: ReactNode;
 };
 
-const VILLAGE_CENTER: Point = { x: 47, y: 42 };
-const TILE_POINTS: Record<string, Point> = {
-  "1,8": VILLAGE_CENTER,
-  "1,7": { x: 37, y: 57 },
-  "2,8": { x: 32, y: 63 },
-  "0,8": { x: 16, y: 77 },
-  "3,8": { x: 37, y: 79 },
-  "4,7": { x: 62, y: 72 },
-  "0,5": { x: 13, y: 55 },
-  "2,6": { x: 23, y: 68 },
-  "5,3": { x: 69, y: 45 },
-  "6,5": { x: 73, y: 62 },
-  "7,3": { x: 87, y: 40 },
-  "3,5": { x: 16, y: 38 },
-  "6,2": { x: 57, y: 17 },
-  "8,4": { x: 91, y: 53 },
-  "8,1": { x: 79, y: 24 },
-  "7,1": { x: 69, y: 23 },
-  "9,1": { x: 89, y: 24 },
-  "8,2": { x: 80, y: 32 },
-  "0,0": { x: 10, y: 12 },
-  "1,0": { x: 22, y: 11 },
-  "9,0": { x: 92, y: 10 },
-  "0,9": { x: 11, y: 90 },
-  "5,8": { x: 62, y: 86 },
-  "9,9": { x: 90, y: 88 }
+const CAMPFIRE_SLOT: Point = { x: 50, y: 58 };
+
+const VISUAL_BUILDING_POINTS: Record<VillageBuildingType, Point> = {
+  clanHall: { x: 50, y: 39 },
+  watchTower: { x: 74, y: 22 },
+  bananaGrove: { x: 25, y: 22 },
+  lumberCamp: { x: 28, y: 69 },
+  stoneQuarry: { x: 79, y: 49 },
+  workerShelter: { x: 21, y: 49 },
+  trainingNest: { x: 69, y: 69 }
 };
 
-const CAMPFIRE_SLOT: Point = { x: 47, y: 52 };
-
-// Where each building sits on the painted scene + which sprite represents it.
+// Reference-matched visual composition. The touch geometry mirrors these
+// centers in buildingHitboxes.ts so art and interaction remain aligned.
 const BUILDING_LAYOUT: Record<
   VillageBuildingType,
   { point: Point; size: number; asset: GameAssetKey }
 > = {
-  clanHall: { ...BUILDING_GEOMETRY.clanHall, asset: "buildingPlayerCamp" },
-  bananaGrove: { ...BUILDING_GEOMETRY.bananaGrove, asset: "terrainBananaTree" },
-  lumberCamp: { ...BUILDING_GEOMETRY.lumberCamp, asset: "terrainWoodTree" },
-  stoneQuarry: { ...BUILDING_GEOMETRY.stoneQuarry, asset: "terrainRock" },
-  watchTower: { ...BUILDING_GEOMETRY.watchTower, asset: "buildingWatchPost" },
-  workerShelter: { ...BUILDING_GEOMETRY.workerShelter, asset: "buildingHut" },
-  trainingNest: { ...BUILDING_GEOMETRY.trainingNest, asset: "buildingTrainingNest" }
+  clanHall: { point: VISUAL_BUILDING_POINTS.clanHall, size: 30, asset: "buildingPlayerCamp" },
+  bananaGrove: { point: VISUAL_BUILDING_POINTS.bananaGrove, size: 18, asset: "terrainBananaTree" },
+  lumberCamp: { point: VISUAL_BUILDING_POINTS.lumberCamp, size: 23, asset: "buildingLumberCampReference" },
+  stoneQuarry: { point: VISUAL_BUILDING_POINTS.stoneQuarry, size: 18, asset: "terrainRock" },
+  watchTower: { point: VISUAL_BUILDING_POINTS.watchTower, size: 19, asset: "buildingWatchPost" },
+  workerShelter: { point: VISUAL_BUILDING_POINTS.workerShelter, size: 22, asset: "buildingHut" },
+  trainingNest: { point: VISUAL_BUILDING_POINTS.trainingNest, size: 23, asset: "buildingTrainingNest" }
 };
 
-const FENCE_POSTS = [
-  { x: 18, y: 45, rotate: -14 },
-  { x: 22, y: 33, rotate: -7 },
-  { x: 33, y: 24, rotate: 12 },
-  { x: 47, y: 21, rotate: 3 },
-  { x: 62, y: 24, rotate: -9 },
-  { x: 75, y: 35, rotate: -16 },
-  { x: 79, y: 50, rotate: 2 },
-  { x: 72, y: 65, rotate: 17 },
-  { x: 57, y: 75, rotate: 8 },
-  { x: 39, y: 74, rotate: -8 },
-  { x: 24, y: 65, rotate: -18 },
-  { x: 17, y: 55, rotate: -6 }
-];
-
 export function VillageBoard({
-  tiles,
+  tiles: _tiles,
   buildings,
   lang,
   maxSize = 430,
   feedbackText,
+  feedbackOpacity,
   selectedType,
   bananaWorkers = [],
   bananaGroveStorage = 0,
   bananaGroveCapacity = 100,
+  lumberWorkers = [],
+  lumberCampStorage = 0,
+  lumberCampCapacity = 100,
+  stoneWorkers = [],
+  stoneQuarryStorage = 0,
+  stoneQuarryCapacity = 100,
   onBuildingPress
 }: VillageBoardProps) {
   const { width } = useWindowDimensions();
-  const sceneWidth = Math.min(width - theme.spacing.lg * 2, maxSize);
-  const sceneHeight = sceneWidth * 0.94;
+  const sceneWidth = Math.min(width - theme.spacing.sm * 2, maxSize);
+  const sceneHeight = sceneWidth * (1450 / 941);
   const prevLevelsRef = useRef<Record<string, number>>({});
   const [upgradeFx, setUpgradeFx] = useState<{ key: number; point: Point; size: number } | null>(null);
   const fxSeq = useRef(0);
@@ -146,8 +127,8 @@ export function VillageBoard({
   }, [upgradeFx]);
 
   const decorativeItems = useMemo(
-    () => [...resourceItems(tiles), ...sceneryItems()].sort((a, b) => a.zIndex - b.zIndex),
-    [tiles]
+    () => settlementProps().sort((a, b) => a.zIndex - b.zIndex),
+    []
   );
   const buildingSprites = buildings
     .map((building) => ({ building, layout: BUILDING_LAYOUT[building.type] }))
@@ -187,6 +168,8 @@ export function VillageBoard({
         ))}
       </View>
 
+      <DecorativeWorkers sceneWidth={sceneWidth} />
+
       <View style={styles.buildingLayer} pointerEvents="none">
         {buildingSprites.map(({ building, layout }) => (
           <MemoBuildingSprite
@@ -198,10 +181,18 @@ export function VillageBoard({
             bananaWorkers={building.type === "bananaGrove" ? bananaWorkers : []}
             bananaGroveStorage={building.type === "bananaGrove" ? bananaGroveStorage : 0}
             bananaGroveCapacity={building.type === "bananaGrove" ? bananaGroveCapacity : 100}
+            lumberWorkers={building.type === "lumberCamp" ? lumberWorkers : []}
+            lumberCampStorage={building.type === "lumberCamp" ? lumberCampStorage : 0}
+            lumberCampCapacity={building.type === "lumberCamp" ? lumberCampCapacity : 100}
+            stoneWorkers={building.type === "stoneQuarry" ? stoneWorkers : []}
+            stoneQuarryStorage={building.type === "stoneQuarry" ? stoneQuarryStorage : 0}
+            stoneQuarryCapacity={building.type === "stoneQuarry" ? stoneQuarryCapacity : 100}
             onAccessibilityPress={() => onBuildingPress(building.type)}
           />
         ))}
       </View>
+
+      <CampfireLife />
 
       <Pressable
         accessible={false}
@@ -228,11 +219,12 @@ export function VillageBoard({
       ) : null}
 
       <Fireflies />
+      <AmbientLife sceneWidth={sceneWidth} />
 
       {feedbackText ? (
-        <View style={styles.feedbackBanner} pointerEvents="none">
+        <Animated.View style={[styles.feedbackBanner, feedbackOpacity ? { opacity: feedbackOpacity } : null]} pointerEvents="none">
           <Text style={styles.feedbackText}>{feedbackText}</Text>
-        </View>
+        </Animated.View>
       ) : null}
     </View>
   );
@@ -273,13 +265,160 @@ function CampfireGlow() {
   );
 }
 
+const CampfireLife = memo(function CampfireLife() {
+  const flicker = useRef(new Animated.Value(0)).current;
+  const smoke = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const flameLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(flicker, { toValue: 1, duration: 420, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(flicker, { toValue: 0, duration: 610, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+      ])
+    );
+    const smokeLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(smoke, { toValue: 1, duration: 2700, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(smoke, { toValue: 0, duration: 1, useNativeDriver: true })
+      ])
+    );
+    flameLoop.start();
+    smokeLoop.start();
+    return () => {
+      flameLoop.stop();
+      smokeLoop.stop();
+    };
+  }, [flicker, smoke]);
+
+  const flameScale = flicker.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1.13] });
+  const flameShift = flicker.interpolate({ inputRange: [0, 1], outputRange: [1, -1] });
+  const smokeY = smoke.interpolate({ inputRange: [0, 1], outputRange: [0, -24] });
+  const smokeX = smoke.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 4, 1] });
+  const smokeOpacity = smoke.interpolate({ inputRange: [0, 0.15, 0.72, 1], outputRange: [0, 0.24, 0.12, 0] });
+
+  return (
+    <View pointerEvents="none" style={styles.campfireLife}>
+      <Animated.View style={[styles.campfireLight, { opacity: flicker.interpolate({ inputRange: [0, 1], outputRange: [0.26, 0.48] }) }]} />
+      <Animated.View style={[styles.campfireFlameArt, { transform: [{ translateY: flameShift }, { scaleY: flameScale }] }]}>
+        <Svg width="100%" height="100%" viewBox="0 0 24 32">
+          <Path d="M12 30 C4 26 4 19 9 14 C12 11 11 7 13 2 C21 10 22 19 18 25 C16 28 14 30 12 30 Z" fill="#ef7420" />
+          <Path d="M12 27 C8 24 9 20 12 17 C14 15 14 12 15 10 C18 17 17 23 12 27 Z" fill="#ffd75b" />
+        </Svg>
+      </Animated.View>
+      <Animated.View style={[styles.campfireSmoke, { opacity: smokeOpacity, transform: [{ translateX: smokeX }, { translateY: smokeY }, { scale: smoke.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.45] }) }] }]} />
+      <Animated.View style={[styles.campfireSmoke, styles.campfireSmokeSecond, { opacity: smokeOpacity, transform: [{ translateX: Animated.multiply(smokeX, -0.7) }, { translateY: Animated.multiply(smokeY, 0.78) }] }]} />
+    </View>
+  );
+});
+
+type AmbientKind = "butterfly" | "bird" | "leaf" | "dust";
+type AmbientSpec = {
+  kind: AmbientKind;
+  left: number;
+  top: number;
+  dx: number;
+  dy: number;
+  duration: number;
+  delay: number;
+  seed: number;
+};
+
+const AMBIENT_SPECS: AmbientSpec[] = [
+  { kind: "butterfly", left: 18, top: 31, dx: 17, dy: 5, duration: 7200, delay: 700, seed: 1 },
+  { kind: "butterfly", left: 74, top: 54, dx: -14, dy: -7, duration: 8300, delay: 3100, seed: 2 },
+  { kind: "bird", left: -8, top: 17, dx: 116, dy: -3, duration: 11500, delay: 9000, seed: 3 },
+  { kind: "leaf", left: 13, top: 14, dx: 26, dy: 37, duration: 10400, delay: 1800, seed: 4 },
+  { kind: "leaf", left: 82, top: 25, dx: -22, dy: 32, duration: 12100, delay: 5200, seed: 5 },
+  { kind: "dust", left: 39, top: 63, dx: 7, dy: -9, duration: 5400, delay: 300, seed: 6 },
+  { kind: "dust", left: 55, top: 46, dx: -5, dy: -8, duration: 6100, delay: 2100, seed: 7 },
+  { kind: "dust", left: 63, top: 68, dx: 6, dy: -10, duration: 5800, delay: 3900, seed: 8 }
+];
+
+const AmbientLife = memo(function AmbientLife({ sceneWidth }: { sceneWidth: number }) {
+  return (
+    <View pointerEvents="none" style={styles.ambientLifeLayer}>
+      {AMBIENT_SPECS.map((spec) => <AmbientDrifter key={`${spec.kind}-${spec.seed}`} spec={spec} sceneWidth={sceneWidth} />)}
+    </View>
+  );
+});
+
+const AmbientDrifter = memo(function AmbientDrifter({ spec, sceneWidth }: { spec: AmbientSpec; sceneWidth: number }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(spec.delay),
+        Animated.timing(progress, { toValue: 1, duration: spec.duration, easing: Easing.inOut(Easing.linear), useNativeDriver: true }),
+        Animated.timing(progress, { toValue: 0, duration: 1, useNativeDriver: true })
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [progress, spec.delay, spec.duration]);
+
+  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [0, sceneWidth * spec.dx / 100] });
+  const translateY = progress.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, sceneWidth * (spec.dy - 2) / 200, sceneWidth * spec.dy / 100] });
+  const opacity = progress.interpolate({ inputRange: [0, 0.08, 0.85, 1], outputRange: [0, 0.72, 0.62, 0] });
+  const rotate = progress.interpolate({ inputRange: [0, 0.5, 1], outputRange: [`${-18 + spec.seed * 3}deg`, `${16 - spec.seed}deg`, `${58 + spec.seed * 2}deg`] });
+  return (
+    <Animated.View style={[styles.ambientDrifter, { left: `${spec.left}%`, top: `${spec.top}%`, opacity, transform: [{ translateX }, { translateY }, { rotate }] }]}>
+      {spec.kind === "butterfly" ? <Butterfly /> : null}
+      {spec.kind === "bird" ? <BirdSilhouette /> : null}
+      {spec.kind === "leaf" ? <View style={[styles.floatingLeaf, spec.seed % 2 === 0 ? styles.floatingLeafGold : null]} /> : null}
+      {spec.kind === "dust" ? <View style={styles.dustMote} /> : null}
+    </Animated.View>
+  );
+});
+
+function Butterfly() {
+  return <View style={styles.butterfly}><View style={[styles.butterflyWing, styles.butterflyWingLeft]} /><View style={[styles.butterflyWing, styles.butterflyWingRight]} /><View style={styles.butterflyBody} /></View>;
+}
+
+function BirdSilhouette() {
+  return <Svg width="30" height="12" viewBox="0 0 30 12"><Path d="M1 9 C7 2 11 3 15 8 C19 3 23 2 29 9 C22 6 19 7 15 11 C11 7 8 6 1 9 Z" fill="rgba(18,27,18,0.72)" /></Svg>;
+}
+
+type WorkerRoute = { asset: GameAssetKey; cargo?: GameAssetKey; left: number; top: number; dx: number; dy: number; duration: number; delay: number };
+const DECORATIVE_WORKER_ROUTES: WorkerRoute[] = [
+  { asset: "workerBananaDelivery", cargo: "resourceBanana", left: 30, top: 35, dx: 10, dy: 7, duration: 7900, delay: 300 },
+  { asset: "lumberWorkerApprentice", cargo: "resourceWood", left: 23, top: 52, dx: 13, dy: -4, duration: 9200, delay: 1900 },
+  { asset: "workerMasterBuilder", cargo: "resourceStone", left: 68, top: 52, dx: -11, dy: -5, duration: 8700, delay: 3700 },
+  { asset: "unitWorker", left: 32, top: 69, dx: 4, dy: -1, duration: 10800, delay: 6000 }
+];
+
+const DecorativeWorkers = memo(function DecorativeWorkers({ sceneWidth }: { sceneWidth: number }) {
+  return <View pointerEvents="none" style={styles.decorativeWorkers}>{DECORATIVE_WORKER_ROUTES.map((route) => <DecorativeWorker key={route.asset} route={route} sceneWidth={sceneWidth} />)}</View>;
+});
+
+const DecorativeWorker = memo(function DecorativeWorker({ route, sceneWidth }: { route: WorkerRoute; sceneWidth: number }) {
+  const travel = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.delay(route.delay),
+      Animated.timing(travel, { toValue: 1, duration: route.duration, easing: Easing.inOut(Easing.linear), useNativeDriver: true }),
+      Animated.delay(900),
+      Animated.timing(travel, { toValue: 0, duration: route.duration, easing: Easing.inOut(Easing.linear), useNativeDriver: true })
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [route.delay, route.duration, travel]);
+  const bob = travel.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, -2, 0, -2, 0] });
+  return (
+    <Animated.View style={[styles.decorativeWorker, { left: `${route.left}%`, top: `${route.top}%`, width: sceneWidth * 0.075, height: sceneWidth * 0.075, transform: [
+      { translateX: travel.interpolate({ inputRange: [0, 1], outputRange: [0, sceneWidth * route.dx / 100] }) },
+      { translateY: Animated.add(bob, travel.interpolate({ inputRange: [0, 1], outputRange: [0, sceneWidth * route.dy / 100] })) }
+    ] }]}>
+      <AssetImage assetKey={route.asset} style={styles.full} fallback={<Text style={styles.decorativeWorkerFallback}>🐒</Text>} hideFallbackOnLoad />
+      {route.cargo ? <View style={styles.workerCargo}><AssetImage assetKey={route.cargo} style={styles.full} fallback={<View />} /></View> : null}
+    </Animated.View>
+  );
+});
+
 const FIREFLY_SPOTS: Array<Point & { seed: number }> = [
-  { x: 20, y: 34, seed: 1 },
-  { x: 71, y: 32, seed: 2 },
-  { x: 33, y: 68, seed: 3 },
-  { x: 63, y: 64, seed: 4 },
-  { x: 84, y: 52, seed: 5 },
-  { x: 12, y: 55, seed: 6 }
+  { x: 15, y: 35, seed: 1 },
+  { x: 79, y: 36, seed: 2 },
+  { x: 19, y: 69, seed: 3 },
+  { x: 81, y: 66, seed: 4 }
 ];
 
 function Fireflies() {
@@ -346,6 +485,12 @@ const MemoBuildingSprite = memo(
     a.bananaGroveStorage === b.bananaGroveStorage &&
     a.bananaGroveCapacity === b.bananaGroveCapacity &&
     a.bananaWorkers === b.bananaWorkers &&
+    a.lumberCampStorage === b.lumberCampStorage &&
+    a.lumberCampCapacity === b.lumberCampCapacity &&
+    a.lumberWorkers === b.lumberWorkers &&
+    a.stoneQuarryStorage === b.stoneQuarryStorage &&
+    a.stoneQuarryCapacity === b.stoneQuarryCapacity &&
+    a.stoneWorkers === b.stoneWorkers &&
     a.lang === b.lang
 );
 
@@ -363,15 +508,18 @@ type TierProp = {
 const TIER_PROPS: Record<VillageBuildingType, TierProp[]> = {
   clanHall: [],
   bananaGrove: [
-    { minLevel: 2, asset: "propBananaBasket", left: 66, top: 66, size: 38 },
+    { minLevel: 1, asset: "propBananaBasket", left: 62, top: 64, size: 40 },
+    { minLevel: 1, asset: "resourceBananaPile", left: -9, top: 69, size: 34 },
     { minLevel: 4, asset: "propBananaBasket", left: -8, top: 72, size: 30 }
   ],
   lumberCamp: [
-    { minLevel: 2, asset: "propLogPile", left: 62, top: 68, size: 44 },
+    { minLevel: 1, asset: "propLogPile", left: 58, top: 66, size: 46 },
+    { minLevel: 1, asset: "resourceWoodBundle", left: -10, top: 70, size: 34 },
     { minLevel: 4, asset: "propBarrel", left: -6, top: 70, size: 32 }
   ],
   stoneQuarry: [
-    { minLevel: 2, asset: "propBarrel", left: 64, top: 62, size: 38 },
+    { minLevel: 1, asset: "resourceStonePile", left: 60, top: 62, size: 44 },
+    { minLevel: 1, asset: "propCrate", left: -10, top: 70, size: 34 },
     { minLevel: 4, asset: "propCrate", left: -10, top: 66, size: 36 }
   ],
   watchTower: [
@@ -393,14 +541,75 @@ const GLOW_LEVEL = 6;
 
 // Small clan pennant planted once a building reaches tier 3.
 function Pennant() {
+  const wave = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(wave, { toValue: 1, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(wave, { toValue: 0, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [wave]);
   return (
     <View style={styles.pennant} pointerEvents="none">
-      <Svg width="100%" height="100%" viewBox="0 0 20 34">
-        <Line x1="4" y1="2" x2="4" y2="32" stroke="#6a4121" strokeWidth="2.6" />
-        <Path d="M5 3 L18 7.5 L5 12 Z" fill="#4f8f3a" stroke="#2e5220" strokeWidth="1" />
-      </Svg>
+      <Animated.View style={[styles.full, { transform: [{ rotate: wave.interpolate({ inputRange: [0, 1], outputRange: ["-1.5deg", "1.5deg"] }) }, { scaleX: wave.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1.04] }) }] }]}>
+        <Svg width="100%" height="100%" viewBox="0 0 20 34">
+          <Line x1="4" y1="2" x2="4" y2="32" stroke="#6a4121" strokeWidth="2.6" />
+          <Path d="M5 3 L18 7.5 L5 12 Z" fill="#4f8f3a" stroke="#2e5220" strokeWidth="1" />
+        </Svg>
+      </Animated.View>
     </View>
   );
+}
+
+const BuildingIdleDetails = memo(function BuildingIdleDetails({ type }: { type: VillageBuildingType }) {
+  const idle = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(idle, { toValue: 1, duration: 2600 + type.length * 90, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(idle, { toValue: 0, duration: 3100 + type.length * 70, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [idle, type]);
+
+  const sway = idle.interpolate({ inputRange: [0, 1], outputRange: ["-2deg", "2deg"] });
+  const flicker = idle.interpolate({ inputRange: [0, 1], outputRange: [0.52, 0.88] });
+
+  if (type === "clanHall") {
+    return <>
+      <WavingFlag idle={idle} style={styles.clanFlagLeft} color="#2268ad" />
+      <WavingFlag idle={idle} style={styles.clanFlagRight} color="#2268ad" mirrored />
+    </>;
+  }
+  if (type === "workerShelter") {
+    return <Animated.View style={[styles.lodgeLantern, { opacity: flicker, transform: [{ rotate: sway }] }]}><View style={styles.lanternGlow} /></Animated.View>;
+  }
+  if (type === "trainingNest") {
+    return <>
+      <Animated.View style={[styles.trainingTargetIdle, { transform: [{ rotate: sway }] }]}><AssetImage assetKey="propTrainingDummy" style={styles.full} fallback={<View />} /></Animated.View>
+      <WavingFlag idle={idle} style={styles.trainingFlag} color="#a93b25" />
+    </>;
+  }
+  if (type === "watchTower") {
+    return <Animated.View style={[styles.lookoutIdle, { transform: [{ translateX: idle.interpolate({ inputRange: [0, 1], outputRange: [-2, 2] }) }, { rotate: sway }] }]}><AssetImage assetKey="unitWorker" style={styles.full} fallback={<View />} /></Animated.View>;
+  }
+  if (type === "bananaGrove") {
+    return <Animated.View style={[styles.resourceIdleIcon, { opacity: flicker, transform: [{ rotate: sway }] }]}><AssetImage assetKey="resourceBanana" style={styles.full} fallback={<View />} /></Animated.View>;
+  }
+  if (type === "lumberCamp") {
+    return <Animated.View style={[styles.resourceIdleIcon, { opacity: flicker, transform: [{ rotate: sway }] }]}><AssetImage assetKey="resourceWood" style={styles.full} fallback={<View />} /></Animated.View>;
+  }
+  return <Animated.View style={[styles.quarryDust, { opacity: idle.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0.08, 0.34, 0.08] }), transform: [{ translateY: idle.interpolate({ inputRange: [0, 1], outputRange: [1, -5] }) }, { scale: idle.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.15] }) }] }]} />;
+});
+
+function WavingFlag({ idle, style, color, mirrored = false }: { idle: Animated.Value; style: object; color: string; mirrored?: boolean }) {
+  return <Animated.View style={[styles.idleFlag, style, { transform: [{ rotate: idle.interpolate({ inputRange: [0, 1], outputRange: [mirrored ? "2deg" : "-2deg", mirrored ? "-2deg" : "2deg"] }) }, { scaleX: idle.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.04] }) }] }]}>
+    <Svg width="100%" height="100%" viewBox="0 0 20 34">
+      <Line x1="4" y1="2" x2="4" y2="32" stroke="#6b421e" strokeWidth="2.2" />
+      <Path d="M5 4 C9 3 13 5 18 5 L16 13 C12 12 9 11 5 13 Z" fill={color} stroke="rgba(255,221,120,0.55)" strokeWidth="0.8" />
+    </Svg>
+  </Animated.View>;
 }
 
 function BuildingSprite({
@@ -411,7 +620,13 @@ function BuildingSprite({
   onAccessibilityPress,
   bananaWorkers,
   bananaGroveStorage,
-  bananaGroveCapacity
+  bananaGroveCapacity,
+  lumberWorkers,
+  lumberCampStorage,
+  lumberCampCapacity,
+  stoneWorkers,
+  stoneQuarryStorage,
+  stoneQuarryCapacity
 }: {
   building: VillageBuilding;
   layout: { point: Point; size: number; asset: GameAssetKey };
@@ -421,6 +636,12 @@ function BuildingSprite({
   bananaWorkers: WorkerExpedition[];
   bananaGroveStorage: number;
   bananaGroveCapacity: number;
+  lumberWorkers: WorkerExpedition[];
+  lumberCampStorage: number;
+  lumberCampCapacity: number;
+  stoneWorkers: WorkerExpedition[];
+  stoneQuarryStorage: number;
+  stoneQuarryCapacity: number;
 }) {
   const { point, asset } = layout;
   const size = layout.size;
@@ -450,12 +671,19 @@ function BuildingSprite({
       ) : null}
       {selected ? <View style={styles.buildingSelected} pointerEvents="none" /> : null}
       <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
+      <BuildingIdleDetails type={building.type} />
       {building.type === "bananaGrove" ? (
         <BananaGroveActivity
           workers={bananaWorkers}
           storage={bananaGroveStorage}
           capacity={bananaGroveCapacity}
         />
+      ) : null}
+      {building.type === "lumberCamp" ? (
+        <ResourceWorkplaceActivity kind="lumber" workers={lumberWorkers} storage={lumberCampStorage} capacity={lumberCampCapacity} />
+      ) : null}
+      {building.type === "stoneQuarry" ? (
+        <ResourceWorkplaceActivity kind="stone" workers={stoneWorkers} storage={stoneQuarryStorage} capacity={stoneQuarryCapacity} />
       ) : null}
       {props.map((prop) => (
         <View
@@ -476,15 +704,18 @@ function BuildingSprite({
       ))}
       {building.level >= PENNANT_LEVEL ? <Pennant /> : null}
 
-      {selected ? (
-        <View style={styles.nameTagWrap} pointerEvents="none">
-          <View style={styles.nameTag}>
-            <Text style={styles.nameTagText} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
-              {buildingName(building.type, lang)}
-            </Text>
-          </View>
+      <View style={styles.nameTagWrap} pointerEvents="none">
+        <View style={styles.nameTag}>
+          <Text
+            style={[styles.nameTagText, selected ? styles.nameTagTextSelected : null]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            maxFontSizeMultiplier={theme.maxFontScale}
+          >
+            {buildingName(building.type, lang)}
+          </Text>
         </View>
-      ) : null}
+      </View>
 
       <View style={styles.levelBadgeWrap} pointerEvents="none">
         <View style={styles.levelBadge}>
@@ -497,7 +728,7 @@ function BuildingSprite({
   );
 }
 
-const BANANA_WORKER_ASSET: Record<WorkerClass, GameAssetKey> = {
+const BANANA_WORKER_ASSET: Record<BananaWorkerClass, GameAssetKey> = {
   gatherer: "bananaWorkerYoung",
   skilled: "bananaWorkerExperienced",
   master: "bananaWorkerMaster"
@@ -516,7 +747,7 @@ function BananaGroveActivity({ workers, storage, capacity }: { workers: WorkerEx
           key={worker.id}
           style={[styles.groveWorker, { left: `${spots[index]?.left ?? 0}%`, top: `${spots[index]?.top ?? 55}%` }]}
         >
-          <AssetImage assetKey={BANANA_WORKER_ASSET[worker.workerClass]} style={styles.full} fallback={<Text>🐵</Text>} hideFallbackOnLoad />
+          <AssetImage assetKey={BANANA_WORKER_ASSET[worker.workerClass as BananaWorkerClass]} style={styles.full} fallback={<Text>🐵</Text>} hideFallbackOnLoad />
         </View>
       ))}
       {storage > 0 ? (
@@ -529,17 +760,48 @@ function BananaGroveActivity({ workers, storage, capacity }: { workers: WorkerEx
   );
 }
 
+const LUMBER_WORKER_ASSET: Record<LumberWorkerClass, GameAssetKey> = {
+  worker_lumber_apprentice: "lumberWorkerApprentice",
+  worker_lumber_skilled: "lumberWorkerSkilled",
+  worker_lumber_master: "lumberWorkerMaster"
+};
+
+const STONE_WORKER_ASSET: Record<StoneWorkerClass, GameAssetKey> = {
+  worker_stone_apprentice: "stoneWorkerApprentice",
+  worker_stone_experienced: "stoneWorkerExperienced",
+  worker_stone_master: "stoneWorkerMaster"
+};
+
+function ResourceWorkplaceActivity({ kind, workers, storage, capacity }: { kind: "lumber" | "stone"; workers: WorkerExpedition[]; storage: number; capacity: number }) {
+  const pulse = useRef(new Animated.Value(0)).current;
+  const worker = workers[0];
+  const ready = worker?.storedReward !== undefined;
+  useEffect(() => {
+    if (!ready && storage <= 0) { pulse.setValue(0); return; }
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 850, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 850, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [pulse, ready, storage]);
+  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
+  return <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    {worker ? <View style={styles.lumberWorker}><AssetImage assetKey={kind === "lumber" ? LUMBER_WORKER_ASSET[worker.workerClass as LumberWorkerClass] : STONE_WORKER_ASSET[worker.workerClass as StoneWorkerClass]} style={styles.full} fallback={<Text>🐵</Text>} hideFallbackOnLoad /></View> : null}
+    {ready || storage > 0 ? <Animated.View style={[styles.harvestBadge, styles.woodBadge, storage >= capacity && styles.harvestBadgeFull, { transform: [{ scale }] }]}><AssetImage assetKey={kind === "lumber" ? "resourceWood" : "resourceStone"} style={styles.harvestIcon} fallback={<Text>{kind === "lumber" ? "🪵" : "🪨"}</Text>} />{storage > 0 ? <Text style={styles.harvestAmount}>{Math.floor(storage)}</Text> : null}</Animated.View> : null}
+  </View>;
+}
+
 function SceneBackground() {
   return (
     <>
       <AssetImage
-        assetKey="bgJungleGame"
+        assetKey="bgVillageReferenceLayout"
         resizeMode="cover"
         style={styles.background}
         fallback={<View style={styles.backgroundFallback} />}
       />
       <View style={styles.depthShade} />
-      <View style={styles.vignette} />
     </>
   );
 }
@@ -548,97 +810,11 @@ function VillageGround() {
   return (
     <View style={styles.groundLayer} pointerEvents="none">
       <Svg width="100%" height="100%" viewBox="0 0 100 106">
-        <Ellipse cx="47" cy="48" rx="33" ry="30" fill="rgba(58, 91, 43, 0.2)" />
-        <Path
-          d="M17 53 C20 33 35 22 52 24 C71 27 82 39 78 57 C74 77 55 84 37 77 C23 72 14 64 17 53 Z"
-          fill="rgba(55, 84, 41, 0.18)"
-        />
-        <Path
-          d="M31 46 C41 40 51 39 65 48"
-          stroke="rgba(132, 88, 43, 0.62)"
-          strokeWidth="12"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <Path
-          d="M48 44 C46 51 47 58 51 65"
-          stroke="rgba(132, 88, 43, 0.58)"
-          strokeWidth="10"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <Path
-          d="M49 42 C54 35 59 30 64 27"
-          stroke="rgba(132, 88, 43, 0.48)"
-          strokeWidth="8"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <Path
-          d="M17 53 C20 33 35 22 52 24 C71 27 82 39 78 57 C74 77 55 84 37 77 C23 72 14 64 17 53 Z"
-          fill="none"
-          stroke="rgba(88, 55, 26, 0.9)"
-          strokeWidth="3.8"
-          strokeLinecap="round"
-        />
-        {FENCE_POSTS.map((post) => (
-          <Rect
-            key={`${post.x}-${post.y}`}
-            x={post.x - 1.2}
-            y={post.y - 4}
-            width="2.4"
-            height="8"
-            rx="1"
-            fill="#8f5b2a"
-            stroke="#4d2a13"
-            strokeWidth="0.45"
-            transform={`rotate(${post.rotate} ${post.x} ${post.y})`}
-          />
-        ))}
+        <Ellipse cx="50" cy="45" rx="31" ry="30" fill="rgba(255, 214, 112, 0.055)" />
+        <Ellipse cx="50" cy="45" rx="18" ry="18" fill="rgba(255, 232, 156, 0.04)" />
       </Svg>
     </View>
   );
-}
-
-function resourceItems(tiles: Tile[]): SceneItem[] {
-  return tiles.flatMap((tile) => {
-    if (tile.type === "playerCamp" || tile.type === "enemyCamp") {
-      return [];
-    }
-
-    if (tile.type === "bananaTree") {
-      return [
-        item(`banana-${tile.x}-${tile.y}`, pointForTile(tile), 16, 30 + pointForTile(tile).y, (
-          <AssetImage assetKey="terrainBananaTree" style={styles.full} fallback={<BananaFallback />} />
-        ))
-      ];
-    }
-
-    if (tile.type === "woodGrove") {
-      return [
-        item(`wood-${tile.x}-${tile.y}`, pointForTile(tile), 21, 28 + pointForTile(tile).y, (
-          <AssetImage assetKey="terrainWoodTree" style={styles.full} fallback={<WoodFallback />} />
-        ))
-      ];
-    }
-
-    if (tile.type === "stoneRock") {
-      return [
-        item(`stone-${tile.x}-${tile.y}`, pointForTile(tile), 11, 28 + pointForTile(tile).y, (
-          <AssetImage assetKey="terrainRock" style={styles.full} fallback={<StoneFallback />} />
-        ))
-      ];
-    }
-
-    if (tile.type === "bush") {
-      return [
-        item(`bush-${tile.x}-${tile.y}`, pointForTile(tile), 12, 24 + pointForTile(tile).y, (
-          <AssetImage assetKey="terrainBush" style={styles.full} fallback={<BushFallback />} />
-        ))
-      ];
-    }
-    return [];
-  });
 }
 
 function prop(key: string, center: Point, size: number, asset: GameAssetKey): SceneItem {
@@ -647,42 +823,14 @@ function prop(key: string, center: Point, size: number, asset: GameAssetKey): Sc
   ));
 }
 
-function sceneryItems(): SceneItem[] {
+function settlementProps(): SceneItem[] {
   return [
-    item("edge-tree-left", { x: 5, y: 34 }, 22, 18, (
-      <AssetImage assetKey="terrainWoodTree" style={styles.full} fallback={<WoodFallback />} />
-    )),
-    item("edge-tree-right", { x: 95, y: 38 }, 23, 22, (
-      <AssetImage assetKey="terrainWoodTree" style={styles.full} fallback={<WoodFallback />} />
-    )),
-    item("edge-bush-a", { x: 10, y: 72 }, 11, 74, (
-      <AssetImage assetKey="terrainBush" style={styles.full} fallback={<BushFallback />} />
-    )),
-    item("edge-bush-b", { x: 90, y: 70 }, 11, 72, (
-      <AssetImage assetKey="terrainBush" style={styles.full} fallback={<BushFallback />} />
-    )),
-    // Lived-in village props scattered near the buildings.
+    // A few purposeful props keep the compact village lived-in without noise.
     prop("prop-campfire", CAMPFIRE_SLOT, 12, "propCampfire"),
-    prop("prop-log", { x: 11, y: 61 }, 11, "propLogPile"),
-    prop("prop-dummy", { x: 80, y: 64 }, 10, "propTrainingDummy"),
-    prop("prop-basket", { x: 39, y: 58 }, 8, "propBananaBasket"),
-    prop("prop-crate", { x: 35, y: 49 }, 7, "propCrate"),
-    prop("prop-barrel", { x: 59, y: 50 }, 7, "propBarrel"),
-    prop("prop-rope", { x: 62, y: 70 }, 6, "propRopeCoil")
+    prop("prop-log", { x: 18, y: 71 }, 10, "propLogPile"),
+    prop("prop-dummy", { x: 79, y: 68 }, 9, "propTrainingDummy"),
+    prop("prop-basket", { x: 34, y: 27 }, 7, "propBananaBasket")
   ];
-}
-
-function pointForTile(position: { x: number; y: number }): Point {
-  const mapped = TILE_POINTS[`${position.x},${position.y}`];
-  if (mapped) {
-    return mapped;
-  }
-
-  const centerDistance = Math.abs(position.x - 4.5) + Math.abs(position.y - 5);
-  return {
-    x: 18 + position.x * 7 + Math.sin(position.y * 1.1) * 2.2,
-    y: 22 + position.y * 6.7 + Math.cos(position.x * 0.9) * 2.4 + centerDistance * 0.3
-  };
 }
 
 function item(key: string, center: Point, size: number, zIndex: number, node: ReactNode): SceneItem {
@@ -728,73 +876,14 @@ function assetForBuilding(building: VillageBuilding, fallback: GameAssetKey): Ga
   return fallback;
 }
 
-function Campfire() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Circle cx="32" cy="42" r="20" fill="rgba(255, 145, 36, 0.22)" />
-      <Line x1="17" y1="48" x2="47" y2="35" stroke="#6a3b1d" strokeWidth="6" strokeLinecap="round" />
-      <Line x1="18" y1="35" x2="48" y2="49" stroke="#7b4b24" strokeWidth="6" strokeLinecap="round" />
-      <Path d="M32 38 C22 30 34 20 31 11 C43 22 44 31 36 39 Z" fill="#ff8c1a" />
-      <Path d="M31 39 C27 32 35 27 34 20 C42 31 37 37 33 43 Z" fill="#ffd95a" />
-    </Svg>
-  );
-}
-
-function BananaFallback() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Rect x="28" y="26" width="9" height="26" rx="4" fill="#7b4b24" />
-      <Ellipse cx="20" cy="25" rx="20" ry="9" fill="#236f3d" transform="rotate(-30 20 25)" />
-      <Ellipse cx="43" cy="25" rx="20" ry="9" fill="#2f9850" transform="rotate(29 43 25)" />
-      <Ellipse cx="32" cy="18" rx="19" ry="9" fill="#47b35e" />
-      <Path d="M36 31 C45 31 48 40 39 45" stroke="#ffd43b" strokeWidth="4.5" fill="none" />
-    </Svg>
-  );
-}
-
-function StoneFallback() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Polygon points="13,45 23,22 43,16 54,34 45,51 23,53" fill="#7f898f" />
-      <Polygon points="23,22 33,34 13,45" fill="#b7c0c4" />
-      <Line x1="33" y1="24" x2="43" y2="45" stroke="#636c71" strokeWidth="3" />
-    </Svg>
-  );
-}
-
-function WoodFallback() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Rect x="18" y="22" width="8" height="30" rx="3" fill="#70431f" />
-      <Rect x="38" y="18" width="8" height="34" rx="3" fill="#875329" />
-      <Circle cx="22" cy="20" r="14" fill="#2e7d43" />
-      <Circle cx="42" cy="17" r="15" fill="#3b9b52" />
-      <Circle cx="34" cy="26" r="13" fill="#256c3b" />
-    </Svg>
-  );
-}
-
-function BushFallback() {
-  return (
-    <Svg width="100%" height="100%" viewBox="0 0 64 64">
-      <Circle cx="22" cy="38" r="14" fill="#286c3d" />
-      <Circle cx="36" cy="34" r="17" fill="#3a8d4d" />
-      <Circle cx="48" cy="41" r="12" fill="#236238" />
-      <Circle cx="40" cy="30" r="3" fill="#f4d35e" />
-    </Svg>
-  );
-}
-
 const styles = StyleSheet.create({
   scene: {
     overflow: "hidden",
     borderRadius: 18,
-    borderWidth: 2,
-    borderColor: "rgba(122, 170, 83, 0.46)",
     backgroundColor: "#18331f",
-    shadowColor: "#000",
-    shadowOpacity: 0.38,
-    shadowRadius: 14,
+    shadowColor: "#07150b",
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 10
   },
@@ -807,12 +896,7 @@ const styles = StyleSheet.create({
   },
   depthShade: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(12, 25, 14, 0.12)"
-  },
-  vignette: {
-    ...StyleSheet.absoluteFillObject,
-    borderWidth: 18,
-    borderColor: "rgba(0, 0, 0, 0.2)"
+    backgroundColor: "rgba(12, 25, 14, 0.035)"
   },
   groundLayer: {
     ...StyleSheet.absoluteFillObject,
@@ -823,10 +907,10 @@ const styles = StyleSheet.create({
   },
   campGlowWrap: {
     position: "absolute",
-    left: "33%",
-    top: "40%",
-    width: "28%",
-    height: "24%"
+    left: "37%",
+    top: "50%",
+    width: "26%",
+    height: "18%"
   },
   campGlowOuter: {
     ...StyleSheet.absoluteFillObject,
@@ -842,15 +926,71 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(255, 198, 96, 0.55)"
   },
+  campfireLife: {
+    position: "absolute",
+    left: "47.5%",
+    top: "54.7%",
+    width: "5%",
+    height: "6%",
+    zIndex: 250,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  campfireLight: {
+    position: "absolute",
+    width: "170%",
+    height: "82%",
+    top: "42%",
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 143, 39, 0.42)",
+    shadowColor: "#ff9b35",
+    shadowOpacity: 0.68,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 0 }
+  },
+  campfireFlameArt: {
+    position: "absolute",
+    bottom: "16%",
+    width: "48%",
+    height: "58%",
+    shadowColor: "#ff9a32",
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 }
+  },
+  campfireSmoke: {
+    position: "absolute",
+    top: "17%",
+    left: "46%",
+    width: 4,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: "#d6d2bd"
+  },
+  campfireSmokeSecond: { top: "25%", left: "33%", width: 3, height: 3 },
   ambientLayer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 400
   },
+  ambientLifeLayer: { ...StyleSheet.absoluteFillObject, zIndex: 410 },
+  ambientDrifter: { position: "absolute", alignItems: "center", justifyContent: "center" },
+  butterfly: { width: 14, height: 10, alignItems: "center", justifyContent: "center" },
+  butterflyWing: { position: "absolute", width: 7, height: 8, borderRadius: 7, backgroundColor: "rgba(248, 197, 64, 0.9)" },
+  butterflyWingLeft: { left: 0, transform: [{ rotate: "-24deg" }] },
+  butterflyWingRight: { right: 0, transform: [{ rotate: "24deg" }] },
+  butterflyBody: { width: 2, height: 8, borderRadius: 2, backgroundColor: "#4b311c" },
+  floatingLeaf: { width: 8, height: 13, borderTopLeftRadius: 8, borderBottomRightRadius: 8, backgroundColor: "rgba(92, 151, 52, 0.82)" },
+  floatingLeafGold: { backgroundColor: "rgba(188, 145, 44, 0.76)" },
+  dustMote: { width: 3, height: 3, borderRadius: 2, backgroundColor: "rgba(233, 204, 139, 0.42)" },
+  decorativeWorkers: { ...StyleSheet.absoluteFillObject, zIndex: 190 },
+  decorativeWorker: { position: "absolute" },
+  decorativeWorkerFallback: { fontSize: 18 },
+  workerCargo: { position: "absolute", right: "-8%", bottom: "4%", width: "34%", height: "34%" },
   firefly: {
     position: "absolute",
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: "#f6ffbe",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 220, 0.9)",
@@ -878,12 +1018,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end"
   },
+  idleFlag: { position: "absolute", width: "17%", height: "33%", zIndex: 7 },
+  clanFlagLeft: { left: "11%", top: "18%" },
+  clanFlagRight: { right: "11%", top: "18%" },
+  lodgeLantern: { position: "absolute", right: "22%", top: "49%", width: "6%", height: "12%", transformOrigin: "top" },
+  lanternGlow: { flex: 1, borderRadius: 999, backgroundColor: "#f4a52c", shadowColor: "#ffb43f", shadowOpacity: 0.95, shadowRadius: 7, shadowOffset: { width: 0, height: 0 } },
+  trainingTargetIdle: { position: "absolute", right: "-8%", top: "45%", width: "34%", height: "34%" },
+  trainingFlag: { right: "8%", top: "19%" },
+  lookoutIdle: { position: "absolute", left: "39%", top: "5%", width: "23%", height: "23%" },
+  resourceIdleIcon: { position: "absolute", right: "5%", top: "48%", width: "16%", height: "16%", zIndex: 7 },
+  quarryDust: { position: "absolute", right: "12%", top: "45%", width: "24%", height: "18%", borderRadius: 999, backgroundColor: "rgba(211,203,176,0.48)" },
   groveWorker: {
     position: "absolute",
     width: "43%",
     height: "43%",
     zIndex: 5
   },
+  lumberWorker: { position: "absolute", width: "52%", height: "52%", left: "24%", top: "51%", zIndex: 5 },
   harvestBadge: {
     position: "absolute",
     top: "-28%",
@@ -906,6 +1057,7 @@ const styles = StyleSheet.create({
     zIndex: 9
   },
   harvestBadgeFull: { backgroundColor: "#b4781f", borderColor: "#ffe27a" },
+  woodBadge: { backgroundColor: "#9a5d2b", borderColor: "#ffe0a0" },
   harvestIcon: { width: "44%", height: "80%" },
   harvestAmount: { color: "white", fontSize: 8, fontWeight: "900" },
   // Soft contact shadow so buildings sit in the ground instead of floating.
@@ -967,28 +1119,28 @@ const styles = StyleSheet.create({
   // Wider than the sprite so long names don't get squeezed into ellipsis.
   nameTagWrap: {
     position: "absolute",
-    top: "-16%",
+    bottom: "-24%",
     left: "-70%",
     right: "-70%",
     alignItems: "center"
   },
   nameTag: {
-    paddingHorizontal: 11,
-    paddingVertical: 4,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 224, 151, 0.9)",
-    backgroundColor: "rgba(13, 14, 9, 0.96)",
+    width: "78%",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     shadowColor: "#000",
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 }
+    shadowOpacity: 0.9,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 }
   },
   nameTagText: {
-    color: "#ffe9ad",
-    fontSize: 11,
+    color: "#fff4d6",
+    fontSize: 10,
+    lineHeight: 12,
+    textAlign: "center",
     fontFamily: theme.fonts.heavy
   },
+  nameTagTextSelected: { color: "#ffe07d" },
   levelBadgeWrap: {
     position: "absolute",
     bottom: "-5%",

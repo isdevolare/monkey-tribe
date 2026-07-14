@@ -40,6 +40,9 @@ const BACKGROUND_LOOP_FILES = {
   main: require("../../../assets/game/audio/jungle_village_theme.mp3")
 } as const;
 
+const VILLAGE_AMBIENCE_FILE = require("../../../assets/game/audio/ambient_forest_cc0.mp3");
+const VILLAGE_AMBIENCE_GAIN = 0.12;
+
 const VOLUMES: Record<SoundName, number> = {
   tap: 0.5,
   open: 0.5,
@@ -161,6 +164,9 @@ let activeBackgroundLoop: BackgroundLoopName | null = null;
 let backgroundTransitionId = 0;
 let lastButtonClickAt = 0;
 let appSuspended = false;
+let villageAmbienceDesired = false;
+let villageAmbiencePlaying = false;
+let villageAmbiencePlayer: AudioPlayer | null = null;
 
 function clampVolume(volume: number) {
   if (!Number.isFinite(volume)) {
@@ -230,6 +236,34 @@ function clearFade(name: BackgroundLoopName) {
 function musicGain() {
   const settings = useSoundStore.getState();
   return settings.musicMuted ? 0 : clampVolume(settings.musicVolume);
+}
+
+function reconcileVillageAmbience() {
+  const gain = musicGain() * VILLAGE_AMBIENCE_GAIN;
+  const shouldPlay = villageAmbienceDesired && !appSuspended && gain > 0;
+
+  try {
+    if (!villageAmbiencePlayer && shouldPlay) {
+      ensureAudioMode();
+      villageAmbiencePlayer = createAudioPlayer(VILLAGE_AMBIENCE_FILE, { keepAudioSessionActive: true });
+      villageAmbiencePlayer.loop = true;
+    }
+
+    if (!villageAmbiencePlayer) {
+      return;
+    }
+
+    villageAmbiencePlayer.volume = clampVolume(gain);
+    if (shouldPlay && !villageAmbiencePlaying) {
+      villageAmbiencePlayer.play();
+      villageAmbiencePlaying = true;
+    } else if (!shouldPlay && villageAmbiencePlaying) {
+      villageAmbiencePlayer.pause();
+      villageAmbiencePlaying = false;
+    }
+  } catch {
+    // Ambient audio is optional flavor and must never affect gameplay.
+  }
 }
 
 function getBackgroundPlayer(name: BackgroundLoopName) {
@@ -315,6 +349,7 @@ function startLoop(name: BackgroundLoopName, durationMs: number) {
 }
 
 function reconcileBackgroundLoop() {
+  reconcileVillageAmbience();
   const transitionId = ++backgroundTransitionId;
   if (appSuspended) {
     return;
@@ -359,6 +394,14 @@ export function setBackgroundLoop(name: BackgroundLoopName | null) {
   reconcileBackgroundLoop();
 }
 
+export function setVillageAmbience(active: boolean) {
+  if (villageAmbienceDesired === active) {
+    return;
+  }
+  villageAmbienceDesired = active;
+  reconcileVillageAmbience();
+}
+
 // Pause music while the app is backgrounded; resume the same player position
 // when it comes back.
 AppState.addEventListener("change", (status) => {
@@ -376,10 +419,13 @@ AppState.addEventListener("change", (status) => {
     const player = activeBackgroundLoop ? backgroundPlayers.get(activeBackgroundLoop) : null;
     try {
       player?.pause();
+      villageAmbiencePlayer?.pause();
+      villageAmbiencePlaying = false;
     } catch {
       // Audio is flavor, never let it break gameplay.
     }
   } else {
+    reconcileVillageAmbience();
     const resumableLoop = activeBackgroundLoop;
     if (resumableLoop && resumableLoop === desiredBackgroundLoop && musicGain() > 0) {
       const player = backgroundPlayers.get(resumableLoop);

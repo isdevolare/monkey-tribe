@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -27,17 +27,20 @@ import { ShopModal } from "../components/game/ShopModal";
 import { SpringPressable } from "../components/game/SpringPressable";
 import { PopIn, TapHint } from "../components/game/Vfx";
 import { VillageBoard } from "../components/game/VillageBoard";
+import { VillageShortcutDock, VILLAGE_SHORTCUT_DOCK_HEIGHT } from "../components/game/VillageShortcutDock";
 import { WorkerLodgeModal } from "../components/game/WorkerLodgeModal";
 import { BananaGroveModal } from "../components/game/BananaGroveModal";
+import { LumberCampModal, StoneQuarryModal } from "../components/game/LumberCampModal";
 import { playSound } from "../game/audio/soundManager";
 import type { GameAssetKey } from "../game/assets/gameAssets";
 import { RUSH_GEM_COST, unitCost } from "../game/config/constants";
 import {
   buildingEffect,
   buildingName,
+  storageCap,
   upgradeCost
 } from "../game/config/buildings";
-import { getCamp } from "../game/config/camps";
+import { RAID_CAMPS, getCamp } from "../game/config/camps";
 import { todayKey } from "../game/config/dailyRewards";
 import { claimableQuestCount } from "../game/config/quests";
 import {
@@ -45,9 +48,10 @@ import {
 } from "../game/config/profileMonkeys";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
-import { bananaGroveCapacity } from "../game/state/workerExpeditions";
+import { bananaGroveCapacity, lumberCampCapacity, stoneQuarryCapacity } from "../game/state/workerExpeditions";
 import type {
   Lang,
+  FeedbackMessage,
   ProductionItem,
   Resources,
   Unit,
@@ -129,9 +133,15 @@ export function GameScreen() {
   const [showCollection, setShowCollection] = useState(false);
   const [showWorkerLodge, setShowWorkerLodge] = useState(false);
   const [showBananaGrove, setShowBananaGrove] = useState(false);
+  const [showLumberCamp, setShowLumberCamp] = useState(false);
+  const [showStoneQuarry, setShowStoneQuarry] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
   const dailyAutoShown = useRef(false);
   const [selectedBuilding, setSelectedBuilding] = useState<VillageBuildingType | null>(null);
+  const [villageFeedback, setVillageFeedback] = useState<FeedbackMessage | null>(null);
+  const feedbackOpacity = useRef(new Animated.Value(0)).current;
+  const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const villageScrollRef = useRef<ScrollView>(null);
   const lang = state.language;
   const population = state.units.filter(
     (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
@@ -147,9 +157,33 @@ export function GameScreen() {
   const activeCamp = getCamp(state.activeCampId ?? "");
   const activeCampLoot =
     state.lastRaidReward?.loot ?? activeCamp?.loot ?? { bananas: 0, stones: 0, wood: 0 };
-  // Cap by height too so board + panel + dock fit ~667pt phones without
-  // pushing the dock off-screen.
-  const boardMaxSize = Math.max(260, Math.min(layoutWidth - 20, 404, Math.round(height * 0.52)));
+  // Use more of the viewport while retaining a scroll-safe fit on short phones.
+  const boardMaxSize = Math.max(260, Math.min(layoutWidth - 8, 430, Math.round(height * 0.58)));
+  const inlineSelectedBuilding =
+    selectedBuilding === "workerShelter" || selectedBuilding === "bananaGrove" || selectedBuilding === "lumberCamp" || selectedBuilding === "stoneQuarry"
+      ? null
+      : selectedBuilding;
+
+  const clearBuildingSelection = useCallback(() => {
+    setSelectedBuilding(null);
+    setShowWorkerLodge(false);
+    setShowBananaGrove(false);
+    setShowLumberCamp(false);
+    setShowStoneQuarry(false);
+  }, []);
+
+  const selectBuilding = useCallback((type: VillageBuildingType) => {
+    playSound("tap");
+    setSelectedBuilding(type);
+    setShowWorkerLodge(type === "workerShelter");
+    setShowBananaGrove(type === "bananaGrove");
+    setShowLumberCamp(type === "lumberCamp");
+    setShowStoneQuarry(type === "stoneQuarry");
+
+    if (type !== "workerShelter" && type !== "bananaGrove" && type !== "lumberCamp" && type !== "stoneQuarry") {
+      requestAnimationFrame(() => villageScrollRef.current?.scrollToEnd({ animated: true }));
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -158,6 +192,49 @@ export function GameScreen() {
 
     return () => clearInterval(timer);
   }, [state.tickGame]);
+
+  useEffect(() => {
+    if (feedbackTimeout.current) {
+      clearTimeout(feedbackTimeout.current);
+      feedbackTimeout.current = null;
+    }
+    feedbackOpacity.stopAnimation();
+    if (state.gameMode !== "village" || !state.feedback) {
+      feedbackOpacity.setValue(0);
+      setVillageFeedback(null);
+      return;
+    }
+    const message = state.feedback;
+    setVillageFeedback(message);
+    feedbackOpacity.setValue(1);
+    feedbackTimeout.current = setTimeout(() => {
+      feedbackTimeout.current = null;
+      Animated.timing(feedbackOpacity, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true
+      }).start(({ finished }) => {
+        if (finished) {
+          setVillageFeedback(null);
+          state.dismissFeedback(message.id);
+        }
+      });
+    }, 1500);
+    return () => {
+      if (feedbackTimeout.current) {
+        clearTimeout(feedbackTimeout.current);
+        feedbackTimeout.current = null;
+      }
+      feedbackOpacity.stopAnimation();
+    };
+  }, [feedbackOpacity, state.dismissFeedback, state.feedback, state.gameMode]);
+
+  useEffect(() => {
+    if (state.gameMode !== "village") {
+      clearBuildingSelection();
+    }
+  }, [clearBuildingSelection, state.gameMode]);
 
   const raidPulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -242,6 +319,25 @@ export function GameScreen() {
   const compactHud = layoutWidth < 370;
   const claimableQuests = claimableQuestCount(state.questProgress, state.questsClaimed);
   const dailyAvailable = state.dailyLastClaim !== todayKey();
+  const attentionNow = Date.now();
+  const bananaReadyCount = state.workerExpeditions.filter(
+    (entry) => entry.resource === "bananas" && entry.storedReward !== undefined
+  ).length;
+  const lumberReadyCount = state.workerExpeditions.filter(
+    (entry) => entry.resource === "wood" && entry.storedReward !== undefined
+  ).length;
+  const stoneReadyCount = state.workerExpeditions.filter(
+    (entry) => entry.resource === "stones" && entry.storedReward !== undefined
+  ).length;
+  const shortcutBadges = {
+    workerShelter:
+      state.workerProductionQueue.filter((item) => item.finishesAt <= attentionNow).length +
+      (state.activeWorkerLodgeUpgrade && state.activeWorkerLodgeUpgrade.endsAt <= attentionNow ? 1 : 0),
+    bananaGrove: Math.max(bananaReadyCount, state.bananaGroveStorage > 0 ? 1 : 0),
+    lumberCamp: Math.max(lumberReadyCount, state.lumberCampStorage > 0 ? 1 : 0),
+    stoneQuarry: Math.max(stoneReadyCount, state.stoneQuarryStorage > 0 ? 1 : 0),
+    trainingNest: state.productionQueue.filter((item) => item.finishAt <= attentionNow).length
+  };
 
   // Auto-open the daily reward once per launch, but wait until the
   // welcome-back (offline) modal has been dismissed so they don't stack.
@@ -255,7 +351,7 @@ export function GameScreen() {
   return (
     <View style={styles.safeScreen}>
       <AssetImage
-        assetKey="bgJungleGame"
+        assetKey="bgJungleWorldCompact"
         resizeMode="cover"
         style={styles.backgroundArt}
         fallback={<View style={styles.backgroundFallback} />}
@@ -263,12 +359,15 @@ export function GameScreen() {
       <View style={styles.backgroundShade} />
 
       <ScrollView
+        ref={villageScrollRef}
         style={styles.screen}
         contentContainerStyle={[
           styles.content,
           {
             paddingTop: theme.spacing.sm + insets.top,
-            paddingBottom: theme.spacing.md + insets.bottom
+            paddingBottom:
+              theme.spacing.md + insets.bottom +
+              (state.gameMode === "village" ? VILLAGE_SHORTCUT_DOCK_HEIGHT + 12 : 0)
           }
         ]}
         bounces={false}
@@ -353,6 +452,7 @@ export function GameScreen() {
             <RaidMapScreen
               fighterCount={fighterCount}
               raidLevel={state.raidLevel}
+              watchTowerLevel={levelOf(state.buildings, "watchTower")}
               lang={lang}
               onAttack={state.startRaidOn}
               onClose={state.closeRaidMap}
@@ -413,97 +513,80 @@ export function GameScreen() {
                   buildings={state.buildings}
                   lang={lang}
                   maxSize={boardMaxSize}
-                  feedbackText={state.feedback?.text}
+                  feedbackText={villageFeedback?.text}
+                  feedbackOpacity={feedbackOpacity}
                   selectedType={selectedBuilding}
                   bananaWorkers={state.workerExpeditions.filter((entry) => entry.resource === "bananas")}
                   bananaGroveStorage={state.bananaGroveStorage}
                   bananaGroveCapacity={bananaGroveCapacity(levelOf(state.buildings, "bananaGrove"))}
-                  onBuildingPress={(type) => {
-                    playSound("tap");
-                    if (type === "workerShelter") {
-                      setSelectedBuilding(null);
-                      setShowWorkerLodge(true);
-                    } else if (type === "bananaGrove") {
-                      setSelectedBuilding(null);
-                      setShowBananaGrove(true);
-                    } else {
-                      setSelectedBuilding(type);
-                    }
-                  }}
+                  lumberWorkers={state.workerExpeditions.filter((entry) => entry.resource === "wood")}
+                  lumberCampStorage={state.lumberCampStorage}
+                  lumberCampCapacity={lumberCampCapacity(levelOf(state.buildings, "lumberCamp"))}
+                  stoneWorkers={state.workerExpeditions.filter((entry) => entry.resource === "stones")}
+                  stoneQuarryStorage={state.stoneQuarryStorage}
+                  stoneQuarryCapacity={stoneQuarryCapacity(levelOf(state.buildings, "stoneQuarry"))}
+                  onBuildingPress={selectBuilding}
                 />
               </View>
             </View>
 
-            {selectedBuilding ? (
-              <UpgradePanel
-                buildings={state.buildings}
-                resources={state.resources}
-                type={selectedBuilding}
-                lang={lang}
-                units={state.units}
-                guardianDisabled={trainGuardianDisabled}
-                onTrainGuardian={state.trainGuardian}
-                onUpgrade={() => state.upgradeBuilding(selectedBuilding)}
-                onClose={() => setSelectedBuilding(null)}
-              />
-            ) : (
-              <View style={styles.hintPanel}>
-                <View style={styles.hintAvatar}>
-                  <AssetImage
-                    assetKey={equippedAppearance.villageAsset}
-                    style={styles.hintAvatarArt}
-                    fallback={<AvatarFallback />}
+            {inlineSelectedBuilding ? (
+              <>
+                <UpgradePanel
+                  buildings={state.buildings}
+                  resources={state.resources}
+                  type={inlineSelectedBuilding}
+                  lang={lang}
+                  onUpgrade={() => state.upgradeBuilding(inlineSelectedBuilding)}
+                  onClose={clearBuildingSelection}
+                />
+                {inlineSelectedBuilding === "trainingNest" ? (
+                  <TrainingNestControls
+                    lang={lang}
+                    population={population}
+                    maxPopulation={state.maxPopulation}
+                    costs={troopCosts}
+                    queue={state.productionQueue}
+                    queuedTypes={queuedTypes}
+                    fighterDisabled={trainFighterDisabled}
+                    archerDisabled={trainArcherDisabled}
+                    guardianDisabled={trainGuardianDisabled}
+                    onTrainFighter={state.trainFighter}
+                    onTrainArcher={state.trainArcher}
+                    onTrainGuardian={state.trainGuardian}
+                    onRush={state.rushProduction}
                   />
-                </View>
-                <Text style={styles.hintText} numberOfLines={2} maxFontSizeMultiplier={theme.maxFontScale}>
-                  {t("hint.tapBuilding", lang)}
-                </Text>
-              </View>
-            )}
-
-            {state.productionQueue.length > 0 ? (
-              <ProductionQueue
-                queue={state.productionQueue}
-                lang={lang}
-                onRush={state.rushProduction}
-              />
+                ) : inlineSelectedBuilding === "watchTower" ? (
+                  <WatchTowerControls level={levelOf(state.buildings, "watchTower")} lang={lang} />
+                ) : inlineSelectedBuilding === "clanHall" ? (
+                  <ClanHallControls
+                    level={clanLevel}
+                    raidLevel={state.raidLevel}
+                    victoryCounts={state.raidVictoryCounts}
+                    lang={lang}
+                    pulse={raidPulse}
+                    onRaid={() => {
+                      clearBuildingSelection();
+                      state.openRaidMap();
+                    }}
+                  />
+                ) : null}
+              </>
             ) : null}
-
-            <View style={styles.bottomDock}>
-              <View style={styles.actionCards}>
-                <ActionCard
-                  title={t("unit.fighter", lang)}
-                  cost={troopCosts.fighter}
-                  glyph="X"
-                  assetKey="unitWarrior"
-                  disabled={trainFighterDisabled}
-                  active={queuedTypes.has("fighter")}
-                  onPress={state.trainFighter}
-                />
-                <ActionCard
-                  title={t("unit.archer", lang)}
-                  cost={troopCosts.archer}
-                  glyph="A"
-                  assetKey="unitArcher"
-                  disabled={trainArcherDisabled}
-                  active={queuedTypes.has("archer")}
-                  onPress={state.trainArcher}
-                />
-              </View>
-              <Animated.View style={{ transform: [{ scale: raidPulse }] }}>
-                <SpringPressable
-                  accessibilityRole="button"
-                  onPress={state.openRaidMap}
-                  style={styles.raidButton}
-                >
-                  <NineSliceFrame preset="raidPlaque" cornerSize={22} style={StyleSheet.absoluteFill} />
-                  <Text style={styles.raidText} maxFontSizeMultiplier={theme.maxFontScale}>{t("dock.raid", lang)}</Text>
-                </SpringPressable>
-              </Animated.View>
-            </View>
           </>
         )}
       </ScrollView>
+
+      {state.gameMode === "village" ? (
+        <VillageShortcutDock
+          lang={lang}
+          selectedType={selectedBuilding}
+          helperAsset={equippedAppearance.villageAsset}
+          badges={shortcutBadges}
+          bottomInset={insets.bottom}
+          onSelect={selectBuilding}
+        />
+      ) : null}
 
       <TutorialOverlay
         visible={showTutorial}
@@ -545,12 +628,24 @@ export function GameScreen() {
       <WorkerLodgeModal
         visible={showWorkerLodge}
         lang={lang}
-        onClose={() => setShowWorkerLodge(false)}
+        onClose={clearBuildingSelection}
       />
       <BananaGroveModal
         visible={showBananaGrove}
         lang={lang}
-        onClose={() => setShowBananaGrove(false)}
+        onClose={clearBuildingSelection}
+      />
+      <LumberCampModal
+        visible={showLumberCamp}
+        lang={lang}
+        onClose={clearBuildingSelection}
+        onOpenWorkerLodge={() => selectBuilding("workerShelter")}
+      />
+      <StoneQuarryModal
+        visible={showStoneQuarry}
+        lang={lang}
+        onClose={clearBuildingSelection}
+        onOpenWorkerLodge={() => selectBuilding("workerShelter")}
       />
     </View>
   );
@@ -562,9 +657,6 @@ function UpgradePanel({
   resources,
   type,
   lang,
-  units,
-  guardianDisabled,
-  onTrainGuardian,
   onUpgrade,
   onClose
 }: {
@@ -572,9 +664,6 @@ function UpgradePanel({
   resources: Resources;
   type: VillageBuildingType;
   lang: Lang;
-  units: Unit[];
-  guardianDisabled: boolean;
-  onTrainGuardian: () => void;
   onUpgrade: () => void;
   onClose: () => void;
 }) {
@@ -583,17 +672,6 @@ function UpgradePanel({
   const cost = upgradeCost(type, level);
   const gated = type !== "clanHall" && level >= clanLevel;
   const disabled = gated || !hasResources(resources, cost);
-  const armyCounts = units.reduce(
-    (acc, unit) => {
-      if (unit.owner === "player" && unit.state !== "dead" && unit.hp > 0) {
-        if (unit.type === "fighter") acc.fighters += 1;
-        if (unit.type === "archer") acc.archers += 1;
-        if (unit.type === "guardian") acc.guardians += 1;
-      }
-      return acc;
-    },
-    { fighters: 0, archers: 0, guardians: 0 }
-  );
 
   return (
     <View style={styles.upgradePanel}>
@@ -652,43 +730,6 @@ function UpgradePanel({
       </Pressable>
       </View>
 
-      {type === "trainingNest" ? (
-        <View style={styles.barracksFooter}>
-          <View style={styles.rosterCol}>
-            <Text style={styles.rosterTitle} maxFontSizeMultiplier={theme.maxFontScale}>{t("barracks.title", lang)}</Text>
-            {armyCounts.fighters + armyCounts.archers + armyCounts.guardians > 0 ? (
-              <View style={styles.rosterChips}>
-                <View style={styles.rosterChip}>
-                  <AssetImage assetKey="unitWarrior" style={styles.footerUnitIcon} fallback={<View style={styles.footerUnitIconFallback} />} />
-                  <Text style={styles.rosterCount} maxFontSizeMultiplier={theme.maxFontScale}>×{armyCounts.fighters}</Text>
-                </View>
-                <View style={styles.rosterChip}>
-                  <AssetImage assetKey="unitArcher" style={styles.footerUnitIcon} fallback={<View style={styles.footerUnitIconFallback} />} />
-                  <Text style={styles.rosterCount} maxFontSizeMultiplier={theme.maxFontScale}>×{armyCounts.archers}</Text>
-                </View>
-                <View style={styles.rosterChip}>
-                  <AssetImage assetKey="unitWarrior" style={styles.footerUnitIcon} fallback={<View style={styles.footerUnitIconFallback} />} />
-                  <Text style={styles.rosterCount} maxFontSizeMultiplier={theme.maxFontScale}>🛡×{armyCounts.guardians}</Text>
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.rosterEmpty}>{t("barracks.empty", lang)}</Text>
-            )}
-          </View>
-          <SpringPressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: guardianDisabled }}
-            disabled={guardianDisabled}
-            onPress={onTrainGuardian}
-            style={[styles.guardianButton, guardianDisabled ? styles.guardianButtonDisabled : null]}
-          >
-            <Text style={styles.guardianButtonText} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
-              🛡 {t("barracks.trainGuardian", lang)}
-            </Text>
-            <CostChips cost={unitCost("guardian", level)} light />
-          </SpringPressable>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -701,6 +742,114 @@ function queueUnitAsset(type: UnitType): GameAssetKey {
     return "unitWarrior";
   }
   return "unitWorker";
+}
+
+function TrainingNestControls({
+  lang,
+  population,
+  maxPopulation,
+  costs,
+  queue,
+  queuedTypes,
+  fighterDisabled,
+  archerDisabled,
+  guardianDisabled,
+  onTrainFighter,
+  onTrainArcher,
+  onTrainGuardian,
+  onRush
+}: {
+  lang: Lang;
+  population: number;
+  maxPopulation: number;
+  costs: Record<"fighter" | "archer" | "guardian", Resources>;
+  queue: ProductionItem[];
+  queuedTypes: Set<UnitType>;
+  fighterDisabled: boolean;
+  archerDisabled: boolean;
+  guardianDisabled: boolean;
+  onTrainFighter: () => void;
+  onTrainArcher: () => void;
+  onTrainGuardian: () => void;
+  onRush: () => void;
+}) {
+  return <>
+    <View style={styles.buildingOwnedPanel}>
+      <View style={styles.ownershipHeader}>
+        <Text style={styles.ownershipTitle}>{t("trainingNest.units", lang)}</Text>
+        <Text style={styles.capacityBadge}>{t("trainingNest.armyCapacity", lang, { used: population, max: maxPopulation })}</Text>
+      </View>
+      <View style={styles.trainingCards}>
+        <ActionCard title={t("unit.fighter", lang)} cost={costs.fighter} glyph="X" assetKey="unitWarrior" disabled={fighterDisabled} active={queuedTypes.has("fighter")} onPress={onTrainFighter} />
+        <ActionCard title={t("unit.archer", lang)} cost={costs.archer} glyph="A" assetKey="unitArcher" disabled={archerDisabled} active={queuedTypes.has("archer")} onPress={onTrainArcher} />
+        <ActionCard title={t("unit.guardian", lang)} cost={costs.guardian} glyph="G" assetKey="unitWarrior" disabled={guardianDisabled} active={queuedTypes.has("guardian")} onPress={onTrainGuardian} />
+      </View>
+    </View>
+    <ProductionQueue queue={queue} lang={lang} onRush={onRush} />
+  </>;
+}
+
+function WatchTowerControls({ level, lang }: { level: number; lang: Lang }) {
+  const unlocks = [
+    { level: 1, key: "watchTower.unlock.damage" },
+    { level: 2, key: "watchTower.unlock.archer" },
+    { level: 3, key: "watchTower.unlock.power" },
+    { level: 4, key: "watchTower.unlock.rewards" },
+    { level: 5, key: "watchTower.unlock.composition" }
+  ];
+  return <View style={styles.buildingOwnedPanel}>
+    <Text style={styles.ownershipTitle}>{t("watchTower.scoutingTitle", lang)}</Text>
+    {unlocks.map((unlock) => {
+      const unlocked = level >= unlock.level;
+      return <View key={unlock.key} style={styles.unlockRow}>
+        <Text style={[styles.unlockMark, !unlocked && styles.lockedText]}>{unlocked ? "✓" : "🔒"}</Text>
+        <Text style={[styles.unlockText, !unlocked && styles.lockedText]}>{t(unlock.key, lang)}</Text>
+        <Text style={[styles.unlockLevel, !unlocked && styles.lockedText]}>{t("common.levelShort", lang)} {unlock.level}</Text>
+      </View>;
+    })}
+  </View>;
+}
+
+function ClanHallControls({
+  level,
+  raidLevel,
+  victoryCounts,
+  lang,
+  pulse,
+  onRaid
+}: {
+  level: number;
+  raidLevel: number;
+  victoryCounts: Record<string, number>;
+  lang: Lang;
+  pulse: Animated.Value;
+  onRaid: () => void;
+}) {
+  const victories = Object.values(victoryCounts).reduce((sum, count) => sum + count, 0);
+  return <View style={styles.buildingOwnedPanel}>
+    <View style={styles.ownershipHeader}>
+      <View>
+        <Text style={styles.ownershipTitle}>{t("clanHall.raidHeadquarters", lang)}</Text>
+        <Text style={styles.ownershipMeta}>{t("clanHall.storageSummary", lang, { current: storageCap(level), next: storageCap(level + 1) })}</Text>
+      </View>
+      <Animated.View style={{ transform: [{ scale: pulse }] }}>
+        <SpringPressable accessibilityRole="button" onPress={onRaid} style={styles.raidButton}>
+          <NineSliceFrame preset="raidPlaque" cornerSize={22} style={StyleSheet.absoluteFill} />
+          <Text style={styles.raidText} maxFontSizeMultiplier={theme.maxFontScale}>{t("dock.raid", lang)}</Text>
+        </SpringPressable>
+      </Animated.View>
+    </View>
+    <View style={styles.raidSummaryRow}>
+      <SummaryStat label={t("clanHall.unlockedCamps", lang)} value={RAID_CAMPS.length + 1} />
+      <SummaryStat label={t("clanHall.victories", lang)} value={victories} />
+      <SummaryStat label={t("clanHall.stronghold", lang)} value={raidLevel} />
+    </View>
+    <Text style={styles.repeatRewardInfo}>{t("clanHall.repeatRewards", lang)}</Text>
+  </View>;
+}
+
+function SummaryStat({ label, value }: { label: string; value: number }) {
+  return <View style={styles.summaryStat}><Text style={styles.summaryStatValue}>{value}</Text><Text style={styles.summaryStatLabel} numberOfLines={1} adjustsFontSizeToFit>{label}</Text></View>;
 }
 
 function ProductionQueue({
@@ -717,7 +866,7 @@ function ProductionQueue({
     <View style={styles.queuePanel}>
       <View style={styles.queueHeader}>
         <Text style={styles.queueTitle}>{t("production.title", lang)}</Text>
-        <Pressable
+        {queue.length > 0 ? <Pressable
           accessibilityRole="button"
           onPress={onRush}
           onPressIn={() => playSound("tap")}
@@ -727,10 +876,10 @@ function ProductionQueue({
           <Text style={styles.rushText}>
             {t("production.rush", lang)} {RUSH_GEM_COST}
           </Text>
-        </Pressable>
+        </Pressable> : null}
       </View>
       <View style={styles.queueSlots}>
-        {queue.map((item) => {
+        {queue.length === 0 ? <Text style={styles.queueEmpty}>{t("trainingNest.queueEmpty", lang)}</Text> : queue.map((item) => {
           const remain = Math.max(0, Math.ceil((item.finishAt - now) / 1000));
           return (
             <PopIn key={item.id}>
@@ -1061,7 +1210,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: "rgba(4, 10, 7, 0.34)"
+    backgroundColor: "rgba(4, 10, 7, 0.18)"
   },
   content: {
     paddingTop: theme.spacing.sm,
@@ -1411,20 +1560,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: theme.spacing.xs,
     borderRadius: 20,
-    borderWidth: 3,
-    borderColor: "rgba(122, 84, 40, 0.9)",
-    backgroundColor: "rgba(20, 27, 15, 0.3)",
-    padding: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
+    backgroundColor: "transparent",
+    shadowColor: "#07150b",
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 5 },
     elevation: 8
   },
   boardShellInner: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: "rgba(226, 177, 90, 0.4)",
+    borderRadius: 18,
     overflow: "hidden"
   },
   // Event buttons float over the board corner, Clash-style.
@@ -1472,6 +1616,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800", fontFamily: theme.fonts.bold
   },
+  buildingOwnedPanel: {
+    gap: 8,
+    marginTop: theme.spacing.xs,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.32)",
+    backgroundColor: glass,
+    padding: theme.spacing.sm,
+    overflow: "hidden"
+  },
+  ownershipHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  ownershipTitle: { color: theme.colors.paper, fontSize: 14, fontWeight: "900", fontFamily: theme.fonts.heavy, textTransform: "uppercase" },
+  ownershipMeta: { color: "#d8ccb0", fontSize: 11, fontWeight: "800", fontFamily: theme.fonts.bold },
+  capacityBadge: { color: "#f1cd74", fontSize: 12, fontWeight: "900", fontFamily: theme.fonts.heavy },
+  trainingCards: { flexDirection: "row", gap: 6 },
+  unlockRow: { minHeight: 28, flexDirection: "row", alignItems: "center", gap: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(255,255,255,0.08)" },
+  unlockMark: { width: 20, color: "#91df70", fontSize: 13, fontWeight: "900" },
+  unlockText: { flex: 1, color: "#eee2c1", fontSize: 11.5, fontWeight: "800", fontFamily: theme.fonts.bold },
+  unlockLevel: { color: "#e2b15a", fontSize: 10.5, fontWeight: "900", fontFamily: theme.fonts.heavy },
+  lockedText: { color: "#827d70" },
+  raidSummaryRow: { flexDirection: "row", gap: 6 },
+  summaryStat: { flex: 1, minWidth: 0, alignItems: "center", paddingVertical: 6, borderRadius: 9, backgroundColor: "rgba(20,24,16,0.7)" },
+  summaryStatValue: { color: "#f1cd74", fontSize: 17, fontWeight: "900", fontFamily: theme.fonts.heavy },
+  summaryStatLabel: { color: "#bdb294", fontSize: 9, fontWeight: "800", fontFamily: theme.fonts.bold },
+  repeatRewardInfo: { color: "#cfc19c", fontSize: 10.5, textAlign: "center", fontFamily: theme.fonts.bold },
   queuePanel: {
     marginTop: theme.spacing.xs,
     borderRadius: 12,
@@ -1520,6 +1689,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6
   },
+  queueEmpty: { flex: 1, color: "#9e9989", fontSize: 11, textAlign: "center", fontFamily: theme.fonts.bold },
   queueSlot: {
     width: 46,
     height: 52,

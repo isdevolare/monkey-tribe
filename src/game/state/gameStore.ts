@@ -55,19 +55,31 @@ import {
 } from "./raidRewards";
 import {
   WORKER_CLASSES,
+  WORKER_MISSIONS,
   BANANA_GROVE_MAX_WORKERS,
   bananaGroveCapacity,
+  createLumberExpedition,
+  createStoneExpedition,
   createWorkerExpedition,
   expeditionStatus,
   isWorkerClass,
+  isLumberMissionTier,
+  isLumberWorkerClass,
+  isStoneWorkerClass,
   isWorkerResource,
   managedWorkerCount,
   reconcileWorkerProduction,
   reconcileBananaGrove,
+  reconcileLumberCamp,
+  reconcileStoneQuarry,
+  lumberCampCapacity,
   sanitizeBananaGroveStorage,
+  sanitizeLumberCampStorage,
+  sanitizeStoneQuarryStorage,
   sanitizeIdleWorkers,
   sanitizeWorkerExpeditions,
   sanitizeWorkerProductionQueue,
+  stoneQuarryCapacity,
   workerCapacity
 } from "./workerExpeditions";
 import {
@@ -97,6 +109,10 @@ import type {
   VillageBuildingType,
   VillageSave,
   BananaGroveCollectionSummary,
+  LumberCampCollectionSummary,
+  LumberWorkerClass,
+  StoneQuarryCollectionSummary,
+  StoneWorkerClass,
   WorkerCollectionSummary,
   WorkerProductionItem
 } from "../types/game";
@@ -232,6 +248,8 @@ function createFreshState(now: number) {
     idleWorkers: [],
     workerExpeditions: [],
     bananaGroveStorage: 0,
+    lumberCampStorage: 0,
+    stoneQuarryStorage: 0,
     activeWorkerLodgeUpgrade: null,
     playerCampHp: CAMP_MAX_HP,
     enemyCampHp: CAMP_MAX_HP,
@@ -999,7 +1017,21 @@ export const useGameStore = create<GameState>((set) => ({
         groveCapacity,
         now
       );
-      const workerExpeditions = reconciledGrove.expeditions;
+      const lumberCapacity = lumberCampCapacity(buildingLevel(buildings, "lumberCamp"));
+      const reconciledLumber = reconcileLumberCamp(
+        reconciledGrove.expeditions,
+        sanitizeLumberCampStorage(save.lumberCampStorage, lumberCapacity),
+        lumberCapacity,
+        now
+      );
+      const stoneCapacity = stoneQuarryCapacity(buildingLevel(buildings, "stoneQuarry"));
+      const reconciledStone = reconcileStoneQuarry(
+        reconciledLumber.expeditions,
+        sanitizeStoneQuarryStorage(save.stoneQuarryStorage, stoneCapacity),
+        stoneCapacity,
+        now
+      );
+      const workerExpeditions = reconciledStone.expeditions;
       const expeditionWorkerIds = new Set(workerExpeditions.map((entry) => entry.workerId));
       idleWorkers = idleWorkers.filter((worker) => !expeditionWorkerIds.has(worker.id));
       workerProductionQueue = workerProductionQueue.filter(
@@ -1069,6 +1101,8 @@ export const useGameStore = create<GameState>((set) => ({
         idleWorkers: reconciledWorkers.idleWorkers,
         workerExpeditions,
         bananaGroveStorage: reconciledGrove.storage,
+        lumberCampStorage: reconciledLumber.storage,
+        stoneQuarryStorage: reconciledStone.storage,
         activeWorkerLodgeUpgrade: reconciledWorkerLodgeUpgrade.activeUpgrade,
         language: save.language ?? state.language,
         // Migration: older saves tracked the stronghold from Sv4; the ladder
@@ -1081,9 +1115,12 @@ export const useGameStore = create<GameState>((set) => ({
         questsClaimed: save.questsClaimed ?? [],
         dailyStreak: save.dailyStreak ?? 0,
         dailyLastClaim: save.dailyLastClaim ?? null,
-        lastProductionAt: Date.now()
+        lastProductionAt: Date.now(),
+        feedback: null
       };
     }),
+  dismissFeedback: (id) =>
+    set((state) => state.feedback?.id === id ? { ...state, feedback: null } : state),
   setLanguage: (lang) =>
     set((state) => {
       const next = { ...state, language: lang };
@@ -1197,6 +1234,15 @@ export const useGameStore = create<GameState>((set) => ({
         };
       }
       const definition = WORKER_CLASSES[workerClass];
+      const requiredLodgeLevel = definition.unlockLodgeLevel ?? 1;
+      if (buildingLevel(state.buildings, "workerShelter") < requiredLodgeLevel) {
+        return {
+          ...state,
+          workerProductionQueue: reconciled.queue,
+          idleWorkers: reconciled.idleWorkers,
+          feedback: { id: now, text: t("lumberCamp.workerLocked", state.language, { level: requiredLodgeLevel }) }
+        };
+      }
       if (!hasResources(state.resources, definition.cost)) {
         return {
           ...state,
@@ -1237,13 +1283,13 @@ export const useGameStore = create<GameState>((set) => ({
         }
       };
     }),
-  sendWorkerExpedition: (workerId, resource) =>
+  sendWorkerExpedition: (workerId, resource, missionTier) =>
     set((state) => {
       if (
         state.gameStatus !== "playing" ||
         typeof workerId !== "string" ||
         !isWorkerResource(resource) ||
-        resource !== "bananas"
+        (resource !== "bananas" && resource !== "wood" && resource !== "stones")
       ) {
         return state;
       }
@@ -1260,6 +1306,79 @@ export const useGameStore = create<GameState>((set) => ({
           workerProductionQueue: reconciled.queue,
           idleWorkers: reconciled.idleWorkers
         };
+      }
+      if (resource === "wood") {
+        const capacity = lumberCampCapacity(buildingLevel(state.buildings, "lumberCamp"));
+        const lumber = reconcileLumberCamp(state.workerExpeditions, state.lumberCampStorage, capacity, now);
+        const lumberMission = lumber.expeditions.find((entry) => entry.resource === "wood");
+        if (!isLumberWorkerClass(worker.workerClass) || !isLumberMissionTier(missionTier) || lumberMission || lumber.storage >= capacity) {
+          return {
+            ...state,
+            workerProductionQueue: reconciled.queue,
+            idleWorkers: reconciled.idleWorkers,
+            workerExpeditions: lumber.expeditions,
+            lumberCampStorage: lumber.storage,
+            feedback: {
+              id: now,
+              text: t(lumber.storage >= capacity ? "lumberCamp.storageFullFeedback" : lumberMission ? "lumberCamp.busyFeedback" : "lumberCamp.invalidWorker", state.language)
+            }
+          };
+        }
+        workerSerial += 1;
+        const expedition = createLumberExpedition(
+          `lumber-expedition-${now}-${workerSerial}`,
+          worker,
+          missionTier,
+          buildingLevel(state.buildings, "lumberCamp"),
+          now
+        );
+        return {
+          ...state,
+          workerProductionQueue: reconciled.queue,
+          idleWorkers: reconciled.idleWorkers.filter((entry) => entry.id !== workerId),
+          workerExpeditions: [...lumber.expeditions, expedition],
+          lumberCampStorage: lumber.storage,
+          questProgress: bumpQuest(state.questProgress, "workShift"),
+          feedback: { id: now, text: t("lumberCamp.missionStarted", state.language) }
+        };
+      }
+      if (resource === "stones") {
+        const capacity = stoneQuarryCapacity(buildingLevel(state.buildings, "stoneQuarry"));
+        const quarry = reconcileStoneQuarry(state.workerExpeditions, state.stoneQuarryStorage, capacity, now);
+        const stoneMission = quarry.expeditions.find((entry) => entry.resource === "stones");
+        if (!isStoneWorkerClass(worker.workerClass) || !isLumberMissionTier(missionTier) || stoneMission || quarry.storage >= capacity) {
+          return {
+            ...state,
+            workerProductionQueue: reconciled.queue,
+            idleWorkers: reconciled.idleWorkers,
+            workerExpeditions: quarry.expeditions,
+            stoneQuarryStorage: quarry.storage,
+            feedback: {
+              id: now,
+              text: t(quarry.storage >= capacity ? "stoneQuarry.storageFullFeedback" : stoneMission ? "stoneQuarry.busyFeedback" : "stoneQuarry.invalidWorker", state.language)
+            }
+          };
+        }
+        workerSerial += 1;
+        const expedition = createStoneExpedition(
+          `stone-expedition-${now}-${workerSerial}`,
+          worker,
+          missionTier,
+          buildingLevel(state.buildings, "stoneQuarry"),
+          now
+        );
+        return {
+          ...state,
+          workerProductionQueue: reconciled.queue,
+          idleWorkers: reconciled.idleWorkers.filter((entry) => entry.id !== workerId),
+          workerExpeditions: [...quarry.expeditions, expedition],
+          stoneQuarryStorage: quarry.storage,
+          questProgress: bumpQuest(state.questProgress, "workShift"),
+          feedback: { id: now, text: t("stoneQuarry.missionStarted", state.language) }
+        };
+      }
+      if (!(["gatherer", "skilled", "master"] as string[]).includes(worker.workerClass)) {
+        return { ...state, workerProductionQueue: reconciled.queue, idleWorkers: reconciled.idleWorkers };
       }
       const groveCapacity = bananaGroveCapacity(
         buildingLevel(state.buildings, "bananaGrove")
@@ -1295,21 +1414,16 @@ export const useGameStore = create<GameState>((set) => ({
         };
       }
       workerSerial += 1;
+      const bananaGroveLevel = buildingLevel(state.buildings, "bananaGrove");
+      const bananaMissionTier = isLumberMissionTier(missionTier) ? missionTier : "safe";
       const expedition = createWorkerExpedition(
         `worker-expedition-${now}-${workerSerial}`,
         worker,
         resource,
         now,
-        productionLevelMultiplier(
-          buildingLevel(
-            state.buildings,
-            resource === "bananas"
-              ? "bananaGrove"
-              : resource === "stones"
-                ? "stoneQuarry"
-                : "lumberCamp"
-          )
-        )
+        WORKER_MISSIONS[bananaMissionTier].multiplier,
+        productionLevelMultiplier(bananaGroveLevel) - 1,
+        bananaMissionTier
       );
       return {
         ...state,
@@ -1336,7 +1450,7 @@ export const useGameStore = create<GameState>((set) => ({
       );
       if (
         !expedition ||
-        expedition.resource === "bananas" ||
+        (expedition.resource === "bananas" || expedition.resource === "wood" || expedition.resource === "stones") ||
         expeditionStatus(expedition, now) !== "completed"
       ) {
         return state;
@@ -1424,6 +1538,76 @@ export const useGameStore = create<GameState>((set) => ({
             resource: t("res.bananas", state.language)
           })
         }
+      };
+    });
+    return summary;
+  },
+  collectLumberCamp: () => {
+    let summary: LumberCampCollectionSummary | null = null;
+    set((state) => {
+      const now = Date.now();
+      const capacity = lumberCampCapacity(buildingLevel(state.buildings, "lumberCamp"));
+      const camp = reconcileLumberCamp(state.workerExpeditions, state.lumberCampStorage, capacity, now);
+      const finished = camp.expeditions.find(
+        (entry) => entry.resource === "wood" && entry.storedReward !== undefined && isLumberWorkerClass(entry.workerClass)
+      );
+      if (!finished && camp.storage <= 0) {
+        return { ...state, workerExpeditions: camp.expeditions, lumberCampStorage: camp.storage };
+      }
+      const resources = { ...state.resources };
+      const before = resources.wood;
+      addResourcesCapped(resources, { wood: camp.storage }, storageCap(buildingLevel(state.buildings, "clanHall")));
+      const collected = Math.max(0, resources.wood - before);
+      const remainingStorage = Math.max(0, camp.storage - collected);
+      summary = {
+        collected,
+        remainingStorage,
+        workerClass: finished?.workerClass as LumberWorkerClass | undefined,
+        outcome: finished?.outcome,
+        reward: finished?.reward ?? 0,
+        storedReward: finished?.storedReward ?? 0
+      };
+      return {
+        ...state,
+        resources,
+        workerExpeditions: finished ? camp.expeditions.filter((entry) => entry.id !== finished.id) : camp.expeditions,
+        lumberCampStorage: remainingStorage,
+        feedback: { id: now, text: t("worker.collected", state.language, { amount: Math.floor(collected), resource: t("res.wood", state.language) }) }
+      };
+    });
+    return summary;
+  },
+  collectStoneQuarry: () => {
+    let summary: StoneQuarryCollectionSummary | null = null;
+    set((state) => {
+      const now = Date.now();
+      const capacity = stoneQuarryCapacity(buildingLevel(state.buildings, "stoneQuarry"));
+      const quarry = reconcileStoneQuarry(state.workerExpeditions, state.stoneQuarryStorage, capacity, now);
+      const finished = quarry.expeditions.find(
+        (entry) => entry.resource === "stones" && entry.storedReward !== undefined && isStoneWorkerClass(entry.workerClass)
+      );
+      if (!finished && quarry.storage <= 0) {
+        return { ...state, workerExpeditions: quarry.expeditions, stoneQuarryStorage: quarry.storage };
+      }
+      const resources = { ...state.resources };
+      const before = resources.stones;
+      addResourcesCapped(resources, { stones: quarry.storage }, storageCap(buildingLevel(state.buildings, "clanHall")));
+      const collected = Math.max(0, resources.stones - before);
+      const remainingStorage = Math.max(0, quarry.storage - collected);
+      summary = {
+        collected,
+        remainingStorage,
+        workerClass: finished?.workerClass as StoneWorkerClass | undefined,
+        outcome: finished?.outcome,
+        reward: finished?.reward ?? 0,
+        storedReward: finished?.storedReward ?? 0
+      };
+      return {
+        ...state,
+        resources,
+        workerExpeditions: finished ? quarry.expeditions.filter((entry) => entry.id !== finished.id) : quarry.expeditions,
+        stoneQuarryStorage: remainingStorage,
+        feedback: { id: now, text: t("worker.collected", state.language, { amount: Math.floor(collected), resource: t("res.stones", state.language) }) }
       };
     });
     return summary;
@@ -1670,6 +1854,18 @@ export const useGameStore = create<GameState>((set) => ({
         bananaGroveCapacity(buildingLevel(state.buildings, "bananaGrove")),
         now
       );
+      const lumber = reconcileLumberCamp(
+        grove.expeditions,
+        state.lumberCampStorage,
+        lumberCampCapacity(buildingLevel(state.buildings, "lumberCamp")),
+        now
+      );
+      const stone = reconcileStoneQuarry(
+        lumber.expeditions,
+        state.stoneQuarryStorage,
+        stoneQuarryCapacity(buildingLevel(state.buildings, "stoneQuarry")),
+        now
+      );
       const lodgeUpgrade = reconcileWorkerLodgeUpgrade(
         state.buildings,
         state.activeWorkerLodgeUpgrade,
@@ -1684,14 +1880,20 @@ export const useGameStore = create<GameState>((set) => ({
         activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
         workerProductionQueue: reconciled.queue,
         idleWorkers: reconciled.idleWorkers,
-        workerExpeditions: grove.expeditions,
+        workerExpeditions: stone.expeditions,
         bananaGroveStorage: grove.storage,
+        lumberCampStorage: lumber.storage,
+        stoneQuarryStorage: stone.storage,
         feedback: reconciled.completed.length > 0
           ? { id: now, text: t("worker.productionReady", state.language) }
           : lodgeUpgrade.completed
             ? { id: now, text: t("workerLodge.upgradeComplete", state.language) }
           : grove.completed > 0
             ? { id: now, text: t("bananaGrove.harvestReady", state.language) }
+          : lumber.completed > 0
+            ? { id: now, text: t("lumberCamp.harvestReady", state.language) }
+          : stone.completed > 0
+            ? { id: now, text: t("stoneQuarry.harvestReady", state.language) }
           : state.feedback
       };
     }),
@@ -1735,14 +1937,32 @@ export const useGameStore = create<GameState>((set) => ({
         bananaGroveCapacity(buildingLevel(state.buildings, "bananaGrove")),
         now
       );
-      const workerExpeditions = reconciledGrove.expeditions;
+      const reconciledLumber = reconcileLumberCamp(
+        reconciledGrove.expeditions,
+        state.lumberCampStorage,
+        lumberCampCapacity(buildingLevel(state.buildings, "lumberCamp")),
+        now
+      );
+      const reconciledStone = reconcileStoneQuarry(
+        reconciledLumber.expeditions,
+        state.stoneQuarryStorage,
+        stoneQuarryCapacity(buildingLevel(state.buildings, "stoneQuarry")),
+        now
+      );
+      const workerExpeditions = reconciledStone.expeditions;
       const bananaGroveStorage = reconciledGrove.storage;
+      const lumberCampStorage = reconciledLumber.storage;
+      const stoneQuarryStorage = reconciledStone.storage;
       if (reconciledWorkers.completed.length > 0) {
         game.feedbackText = t("worker.productionReady", state.language);
       } else if (lodgeUpgrade.completed) {
         game.feedbackText = t("workerLodge.upgradeComplete", state.language);
       } else if (reconciledGrove.completed > 0) {
         game.feedbackText = t("bananaGrove.harvestReady", state.language);
+      } else if (reconciledLumber.completed > 0) {
+        game.feedbackText = t("lumberCamp.harvestReady", state.language);
+      } else if (reconciledStone.completed > 0) {
+        game.feedbackText = t("stoneQuarry.harvestReady", state.language);
       }
 
       if (state.gameMode === "raid" && state.raidStatus === "active") {
@@ -1796,6 +2016,8 @@ export const useGameStore = create<GameState>((set) => ({
             idleWorkers,
             workerExpeditions,
             bananaGroveStorage,
+            lumberCampStorage,
+            stoneQuarryStorage,
             buildings: game.buildings,
             maxPopulation: game.maxPopulation,
             activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
@@ -1832,6 +2054,8 @@ export const useGameStore = create<GameState>((set) => ({
             idleWorkers,
             workerExpeditions,
             bananaGroveStorage,
+            lumberCampStorage,
+            stoneQuarryStorage,
             buildings: game.buildings,
             maxPopulation: game.maxPopulation,
             activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
@@ -1850,6 +2074,8 @@ export const useGameStore = create<GameState>((set) => ({
           idleWorkers,
           workerExpeditions,
           bananaGroveStorage,
+          lumberCampStorage,
+          stoneQuarryStorage,
           buildings: game.buildings,
           maxPopulation: game.maxPopulation,
           activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
@@ -1935,6 +2161,8 @@ export const useGameStore = create<GameState>((set) => ({
         idleWorkers,
         workerExpeditions,
         bananaGroveStorage,
+        lumberCampStorage,
+        stoneQuarryStorage,
         activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
         lastProductionAt: now
       };
@@ -2016,6 +2244,8 @@ function persistVillage(state: GameState) {
     idleWorkers: state.idleWorkers,
     workerExpeditions: state.workerExpeditions,
     bananaGroveStorage: state.bananaGroveStorage,
+    lumberCampStorage: state.lumberCampStorage,
+    stoneQuarryStorage: state.stoneQuarryStorage,
     activeWorkerLodgeUpgrade: state.activeWorkerLodgeUpgrade,
     language: state.language,
     raidLevel: state.raidLevel,
@@ -2040,11 +2270,25 @@ export function flushVillageSave() {
 
 // Save as the village changes, throttled.
 let lastSaveAt = 0;
-useGameStore.subscribe((state) => {
+useGameStore.subscribe((state, previousState) => {
   if (state.gameStatus !== "playing") {
     return;
   }
   const now = Date.now();
+  const workplaceStateChanged =
+    state.lumberCampStorage !== previousState.lumberCampStorage ||
+    state.stoneQuarryStorage !== previousState.stoneQuarryStorage ||
+    (state.workerProductionQueue !== previousState.workerProductionQueue &&
+      (state.workerProductionQueue.some((item) => isLumberWorkerClass(item.workerClass) || isStoneWorkerClass(item.workerClass)) || previousState.workerProductionQueue.some((item) => isLumberWorkerClass(item.workerClass) || isStoneWorkerClass(item.workerClass)))) ||
+    (state.idleWorkers !== previousState.idleWorkers &&
+      (state.idleWorkers.some((worker) => isLumberWorkerClass(worker.workerClass) || isStoneWorkerClass(worker.workerClass)) || previousState.idleWorkers.some((worker) => isLumberWorkerClass(worker.workerClass) || isStoneWorkerClass(worker.workerClass)))) ||
+    (state.workerExpeditions !== previousState.workerExpeditions &&
+      (state.workerExpeditions.some((mission) => mission.resource === "wood" || mission.resource === "stones") || previousState.workerExpeditions.some((mission) => mission.resource === "wood" || mission.resource === "stones")));
+  if (workplaceStateChanged) {
+    lastSaveAt = now;
+    void persistVillage(state);
+    return;
+  }
   if (now - lastSaveAt < 3000) {
     return;
   }
