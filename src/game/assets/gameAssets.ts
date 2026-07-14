@@ -29,6 +29,9 @@ export type GameAssetKey =
   | "terrainMudPathTile"
   | "terrainWaterTile"
   | "unitWorker"
+  | "bananaWorkerYoung"
+  | "bananaWorkerExperienced"
+  | "bananaWorkerMaster"
   | "workerBananaDelivery"
   | "workerMasterBuilder"
   | "unitFighter"
@@ -154,6 +157,18 @@ export const gameAssets = {
   unitWorker: {
     ...asset("unitWorker", "units", "unit_worker.png", "512x512 transparent unit"),
     source: require("../../../assets/game/units/unit_worker.png") as ImageSourcePropType
+  },
+  bananaWorkerYoung: {
+    ...asset("bananaWorkerYoung", "units", "banana_worker_young.png", "1024x1024 transparent unit"),
+    source: require("../../../assets/game/units/banana_worker_young.png") as ImageSourcePropType
+  },
+  bananaWorkerExperienced: {
+    ...asset("bananaWorkerExperienced", "units", "banana_worker_experienced.png", "1024x1024 transparent unit"),
+    source: require("../../../assets/game/units/banana_worker_experienced.png") as ImageSourcePropType
+  },
+  bananaWorkerMaster: {
+    ...asset("bananaWorkerMaster", "units", "banana_worker_master.png", "1024x1024 transparent unit"),
+    source: require("../../../assets/game/units/banana_worker_master.png") as ImageSourcePropType
   },
   workerBananaDelivery: {
     ...asset("workerBananaDelivery", "units", "worker_banana_delivery.png", "1024x1024 transparent cosmetic unit"),

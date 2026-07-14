@@ -28,6 +28,7 @@ import { SpringPressable } from "../components/game/SpringPressable";
 import { PopIn, TapHint } from "../components/game/Vfx";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { WorkerLodgeModal } from "../components/game/WorkerLodgeModal";
+import { BananaGroveModal } from "../components/game/BananaGroveModal";
 import { playSound } from "../game/audio/soundManager";
 import type { GameAssetKey } from "../game/assets/gameAssets";
 import { RUSH_GEM_COST, unitCost } from "../game/config/constants";
@@ -44,6 +45,7 @@ import {
 } from "../game/config/profileMonkeys";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
+import { bananaGroveCapacity } from "../game/state/workerExpeditions";
 import type {
   Lang,
   ProductionItem,
@@ -126,6 +128,7 @@ export function GameScreen() {
   const [showShop, setShowShop] = useState(false);
   const [showCollection, setShowCollection] = useState(false);
   const [showWorkerLodge, setShowWorkerLodge] = useState(false);
+  const [showBananaGrove, setShowBananaGrove] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
   const dailyAutoShown = useRef(false);
   const [selectedBuilding, setSelectedBuilding] = useState<VillageBuildingType | null>(null);
@@ -412,11 +415,17 @@ export function GameScreen() {
                   maxSize={boardMaxSize}
                   feedbackText={state.feedback?.text}
                   selectedType={selectedBuilding}
+                  bananaWorkers={state.workerExpeditions.filter((entry) => entry.resource === "bananas")}
+                  bananaGroveStorage={state.bananaGroveStorage}
+                  bananaGroveCapacity={bananaGroveCapacity(levelOf(state.buildings, "bananaGrove"))}
                   onBuildingPress={(type) => {
                     playSound("tap");
                     if (type === "workerShelter") {
                       setSelectedBuilding(null);
                       setShowWorkerLodge(true);
+                    } else if (type === "bananaGrove") {
+                      setSelectedBuilding(null);
+                      setShowBananaGrove(true);
                     } else {
                       setSelectedBuilding(type);
                     }
@@ -537,6 +546,11 @@ export function GameScreen() {
         visible={showWorkerLodge}
         lang={lang}
         onClose={() => setShowWorkerLodge(false)}
+      />
+      <BananaGroveModal
+        visible={showBananaGrove}
+        lang={lang}
+        onClose={() => setShowBananaGrove(false)}
       />
     </View>
   );

@@ -495,7 +495,7 @@ const dict: Record<string, Entry> = {
   "workerLodge.producing": { tr: "Üretiliyor", en: "Producing" },
   "workerLodge.away": { tr: "Seferde", en: "Away" },
   "workerLodge.ready": { tr: "Hazır", en: "Ready" },
-  "workerLodge.produceTitle": { tr: "İşçi Üret", en: "Produce Workers" },
+  "workerLodge.produceTitle": { tr: "Muz İşçisi Üret", en: "Produce Banana Workers" },
   "workerLodge.produceSubtitle": {
     tr: "İşçiler tek seferliktir; ödül alınınca locadan ayrılır.",
     en: "Workers are single-use and leave after their reward is collected."
@@ -512,8 +512,8 @@ const dict: Record<string, Entry> = {
   "workerLodge.queuedStatus": { tr: "Kuyruk · {n}. sıra", en: "Queue · position {n}" },
   "workerLodge.idleTitle": { tr: "Boştaki İşçiler", en: "Idle Workers" },
   "workerLodge.idleSubtitle": {
-    tr: "Bir işçi ve tek bir kaynak hedefi seç.",
-    en: "Choose one worker and one resource destination."
+    tr: "Hazır işçiyi doğrudan Muz Bahçesi'ne gönder.",
+    en: "Send a ready worker directly to the Banana Grove."
   },
   "workerLodge.idleEmpty": { tr: "Gönderilmeye hazır işçi yok.", en: "No worker is ready to depart." },
   "workerLodge.expeditionsTitle": { tr: "Aktif Seferler", en: "Active Expeditions" },
@@ -529,6 +529,21 @@ const dict: Record<string, Entry> = {
     tr: "Kapasite {current} → {next}",
     en: "Capacity {current} → {next}"
   },
+  "workerLodge.upgradeDuration": { tr: "Süre: {duration}", en: "Duration: {duration}" },
+  "workerLodge.clanRequirement": { tr: "Klan Salonu Sv. {level} gerekli", en: "Requires Clan Hall Lv. {level}" },
+  "workerLodge.upgradeActive": { tr: "Sv. {level} geliştiriliyor", en: "Upgrading to Lv. {level}" },
+  "workerLodge.upgradeStarted": { tr: "İşçi Locası Sv. {level} geliştirmesi başladı.", en: "Worker Lodge Lv. {level} upgrade started." },
+  "workerLodge.upgradeComplete": { tr: "İşçi Locası geliştirmesi tamamlandı!", en: "Worker Lodge upgrade complete!" },
+  "workerLodge.upgradeAlreadyActive": { tr: "İşçi Locası zaten geliştiriliyor.", en: "The Worker Lodge is already upgrading." },
+  "workerLodge.needClanLevel": { tr: "Önce Klan Salonu Sv. {level} gerekli.", en: "Clan Hall Lv. {level} is required first." },
+  "workerLodge.needStorage": { tr: "Mevcut {amount} depo kapasitesi bu maliyeti tutamıyor.", en: "The current storage capacity of {amount} cannot hold this cost." },
+  "workerLodge.storageTooSmall": { tr: "Depo kapasitesi yetersiz", en: "Storage capacity too small" },
+  "workerLodge.maxLevel": { tr: "İşçi Locası maksimum seviyede.", en: "The Worker Lodge is at maximum level." },
+  "workerLodge.maxLevelShort": { tr: "Maksimum Seviye", en: "Maximum Level" },
+  "workerLodge.upgrading": { tr: "Geliştiriliyor", en: "Upgrading" },
+  "duration.minute": { tr: "{n} dk", en: "{n} min" },
+  "duration.hour": { tr: "{n} sa", en: "{n} hr" },
+  "duration.day": { tr: "{n} gün", en: "{n} day" },
   "workerLodge.riskNote": {
     tr: "Seferlerin %97'si tam başarıyla döner; nadir aksilikler ödülü azaltabilir.",
     en: "97% of expeditions return in full; rare mishaps may reduce the reward."
@@ -544,9 +559,9 @@ const dict: Record<string, Entry> = {
     en: "After collection, the worker permanently left the lodge."
   },
   "workerLodge.continue": { tr: "Harika!", en: "Great!" },
-  "worker.gatherer.name": { tr: "Toplayıcı", en: "Gatherer" },
-  "worker.skilled.name": { tr: "Yetenekli İşçi", en: "Skilled Worker" },
-  "worker.master.name": { tr: "Usta İşçi", en: "Master Worker" },
+  "worker.gatherer.name": { tr: "Genç Muz Toplayıcısı", en: "Young Banana Gatherer" },
+  "worker.skilled.name": { tr: "Deneyimli Muz Toplayıcısı", en: "Experienced Banana Gatherer" },
+  "worker.master.name": { tr: "Usta Muz Hasatçısı", en: "Master Banana Harvester" },
   "worker.status.active": { tr: "Yolda", en: "On expedition" },
   "worker.status.returning": { tr: "Dönüyor", en: "Returning" },
   "worker.status.completed": { tr: "Tamamlandı", en: "Completed" },
@@ -576,6 +591,24 @@ const dict: Record<string, Entry> = {
     tr: "+{amount} {resource} toplandı.",
     en: "+{amount} {resource} collected."
   },
+  "bananaGrove.send": { tr: "İşe Gönder", en: "Send to Work" },
+  "bananaGrove.assigned": { tr: "Muz Bahçesi'nde", en: "At Banana Grove" },
+  "bananaGrove.collectThere": { tr: "Muz Bahçesi'nden topla", en: "Collect at Banana Grove" },
+  "bananaGrove.harvestReady": { tr: "Muz hasadı toplanmaya hazır!", en: "The banana harvest is ready to collect!" },
+  "bananaGrove.storageFullFeedback": { tr: "Muz Bahçesi deposu dolu.", en: "Banana Grove storage is full." },
+  "bananaGrove.busyFeedback": { tr: "Muz Bahçesi'nde üç işçi çalışıyor.", en: "Three workers are already working at the Banana Grove." },
+  "bananaGrove.eyebrow": { tr: "MUZ ÜRETİMİ", en: "BANANA PRODUCTION" },
+  "bananaGrove.storage": { tr: "Bahçe Deposu", en: "Grove Storage" },
+  "bananaGrove.empty": { tr: "Boş", en: "Empty" },
+  "bananaGrove.working": { tr: "Çalışıyor", en: "Working" },
+  "bananaGrove.busy": { tr: "Meşgul", en: "Busy" },
+  "bananaGrove.full": { tr: "Depo Dolu", en: "Storage Full" },
+  "bananaGrove.ready": { tr: "Toplanmaya Hazır", en: "Ready to Collect" },
+  "bananaGrove.workers": { tr: "Bahçedeki İşçiler", en: "Workers at the Grove" },
+  "bananaGrove.noWorkers": { tr: "Bahçede çalışan işçi yok.", en: "No workers are assigned to the Grove." },
+  "bananaGrove.harvestComplete": { tr: "Muz Hasadı Tamamlandı", en: "Banana Harvest Complete" },
+  "bananaGrove.contractEnded": { tr: "Tamamlanan işçi sözleşmeleri sona erdi.", en: "The completed worker contracts have ended." },
+  "bananaGrove.storageRemainder": { tr: "Ana depo dolu: {amount} muz bahçede kaldı.", en: "Main storage is full: {amount} bananas remain at the Grove." },
   "barracks.title": { tr: "Karargâh", en: "Barracks" },
   "barracks.empty": {
     tr: "Ordu boş — savaşçı eğit",

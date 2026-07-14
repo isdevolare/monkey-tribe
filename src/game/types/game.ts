@@ -169,6 +169,23 @@ export type WorkerExpedition = {
   expectedReward: number;
   reward: number;
   outcome: WorkerExpeditionOutcome;
+  /** Banana reward credited into the Grove's local storage exactly once. */
+  storedReward?: number;
+};
+
+export type BananaGroveCollectionSummary = {
+  collected: number;
+  remainingStorage: number;
+  workerClasses: WorkerClass[];
+};
+
+export type WorkerLodgeUpgrade = {
+  fromLevel: number;
+  targetLevel: number;
+  startedAt: number;
+  endsAt: number;
+  cost: Resources;
+  requiredClanHallLevel: number;
 };
 
 export type WorkerCollectionSummary = {
@@ -206,6 +223,8 @@ export type VillageSave = {
   workerProductionQueue?: WorkerProductionItem[];
   idleWorkers?: IdleWorker[];
   workerExpeditions?: WorkerExpedition[];
+  bananaGroveStorage?: number;
+  activeWorkerLodgeUpgrade?: WorkerLodgeUpgrade | null;
   questProgress?: Partial<Record<QuestMetric, number>>;
   questsClaimed?: string[];
   lastSeenAt?: number;
@@ -246,6 +265,8 @@ export type GameState = {
   workerProductionQueue: WorkerProductionItem[];
   idleWorkers: IdleWorker[];
   workerExpeditions: WorkerExpedition[];
+  bananaGroveStorage: number;
+  activeWorkerLodgeUpgrade: WorkerLodgeUpgrade | null;
   playerCampHp: number;
   enemyCampHp: number;
   enemyCampMaxHp: number;
@@ -269,6 +290,7 @@ export type GameState = {
   queueWorker: (workerClass: WorkerClass) => void;
   sendWorkerExpedition: (workerId: string, resource: ResourceKind) => void;
   collectWorkerExpedition: (expeditionId: string) => WorkerCollectionSummary | null;
+  collectBananaGrove: () => BananaGroveCollectionSummary | null;
   claimQuest: (id: string) => void;
   dismissOfflineReport: () => void;
   claimDaily: () => void;

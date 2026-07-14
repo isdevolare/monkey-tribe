@@ -55,6 +55,24 @@ export const WORKER_RESOURCE_ORDER: readonly ResourceKind[] = [
   "wood"
 ];
 
+export const BANANA_GROVE_MAX_WORKERS = 3;
+
+export function bananaGroveCapacity(groveLevel: number) {
+  const level = Number.isFinite(groveLevel) ? Math.max(1, Math.floor(groveLevel)) : 1;
+  const fixed = [0, 100, 200, 350, 550, 800];
+  if (level <= 5) return fixed[level] ?? 100;
+  // Continues the increasing storage steps naturally: +300, +325, +350...
+  const extraLevels = level - 5;
+  return 800 + extraLevels * 275 + (extraLevels * (extraLevels + 1) * 25) / 2;
+}
+
+export function sanitizeBananaGroveStorage(value: unknown, capacity: number) {
+  return Math.min(
+    capacity,
+    Math.max(0, typeof value === "number" && Number.isFinite(value) ? Math.round(value) : 0)
+  );
+}
+
 export function workerCapacity(lodgeLevel: number) {
   const level = Number.isFinite(lodgeLevel)
     ? Math.max(1, Math.floor(lodgeLevel))
@@ -168,10 +186,52 @@ export function sanitizeWorkerExpeditions(
     expeditions.push({
       ...expedition,
       expectedReward: Math.round(expedition.expectedReward),
-      reward: Math.round(expedition.reward)
+      reward: Math.round(expedition.reward),
+      storedReward:
+        expedition.resource === "bananas" &&
+        typeof expedition.storedReward === "number" &&
+        Number.isFinite(expedition.storedReward) &&
+        expedition.storedReward >= 0
+          ? Math.round(expedition.storedReward)
+          : undefined
     });
   }
   return expeditions;
+}
+
+/**
+ * Credits completed Banana Grove contracts into local Grove storage once.
+ * `storedReward` is the persisted idempotency marker, including when the
+ * Grove was full and the credited amount is zero.
+ */
+export function reconcileBananaGrove(
+  expeditions: WorkerExpedition[],
+  storage: number,
+  capacity: number,
+  now: number
+) {
+  let nextStorage = sanitizeBananaGroveStorage(storage, capacity);
+  let changed = nextStorage !== storage;
+  let completed = 0;
+  const nextExpeditions = expeditions.map((expedition) => {
+    if (
+      expedition.resource !== "bananas" ||
+      expedition.returnsAt > now ||
+      expedition.storedReward !== undefined
+    ) {
+      return expedition;
+    }
+    const credited = Math.min(Math.max(0, capacity - nextStorage), expedition.reward);
+    nextStorage += credited;
+    completed += 1;
+    changed = true;
+    return { ...expedition, storedReward: credited };
+  });
+  return {
+    expeditions: changed ? nextExpeditions : expeditions,
+    storage: nextStorage,
+    completed
+  };
 }
 
 function isWorkerOutcome(value: unknown): value is WorkerExpeditionOutcome {

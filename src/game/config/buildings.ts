@@ -81,8 +81,42 @@ const UPGRADE_BASE: Record<VillageBuildingType, Resources> = {
   watchTower: { bananas: 20, stones: 30, wood: 20 }
 };
 
+export type WorkerLodgeUpgradeDefinition = {
+  targetLevel: number;
+  cost: Resources;
+  durationMs: number;
+  requiredClanHallLevel: number;
+};
+
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+export const WORKER_LODGE_UPGRADES: readonly WorkerLodgeUpgradeDefinition[] = [
+  { targetLevel: 2, cost: { bananas: 250, stones: 120, wood: 220 }, durationMs: 5 * MINUTE, requiredClanHallLevel: 1 },
+  { targetLevel: 3, cost: { bananas: 700, stones: 350, wood: 600 }, durationMs: 20 * MINUTE, requiredClanHallLevel: 2 },
+  { targetLevel: 4, cost: { bananas: 1_800, stones: 900, wood: 1_500 }, durationMs: HOUR, requiredClanHallLevel: 3 },
+  { targetLevel: 5, cost: { bananas: 4_500, stones: 2_500, wood: 3_800 }, durationMs: 4 * HOUR, requiredClanHallLevel: 4 },
+  { targetLevel: 6, cost: { bananas: 10_000, stones: 6_000, wood: 8_000 }, durationMs: 10 * HOUR, requiredClanHallLevel: 5 },
+  { targetLevel: 7, cost: { bananas: 22_000, stones: 14_000, wood: 18_000 }, durationMs: DAY, requiredClanHallLevel: 6 },
+  { targetLevel: 8, cost: { bananas: 45_000, stones: 30_000, wood: 38_000 }, durationMs: 2 * DAY, requiredClanHallLevel: 7 },
+  { targetLevel: 9, cost: { bananas: 90_000, stones: 65_000, wood: 75_000 }, durationMs: 3 * DAY, requiredClanHallLevel: 8 },
+  { targetLevel: 10, cost: { bananas: 180_000, stones: 135_000, wood: 150_000 }, durationMs: 5 * DAY, requiredClanHallLevel: 9 }
+];
+
+export function workerLodgeUpgrade(currentLevel: number) {
+  return WORKER_LODGE_UPGRADES.find((entry) => entry.targetLevel === currentLevel + 1) ?? null;
+}
+
+export function storageCanHoldCost(capacity: number, cost: Resources) {
+  return cost.bananas <= capacity && cost.stones <= capacity && cost.wood <= capacity;
+}
+
 // Cost to upgrade from `level` to `level + 1`; grows with level.
 export function upgradeCost(type: VillageBuildingType, level: number): Resources {
+  if (type === "workerShelter") {
+    return workerLodgeUpgrade(level)?.cost ?? { bananas: 0, stones: 0, wood: 0 };
+  }
   const base = UPGRADE_BASE[type];
   const factor = Math.pow(1.6, level - 1);
   return {

@@ -20,7 +20,7 @@ import {
   createBuildingHitTargets,
   selectBuildingAtPoint
 } from "../../game/ui/buildingHitboxes";
-import type { Lang, Tile, VillageBuilding, VillageBuildingType } from "../../game/types/game";
+import type { Lang, Tile, VillageBuilding, VillageBuildingType, WorkerClass, WorkerExpedition } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type VillageBoardProps = {
@@ -30,6 +30,9 @@ type VillageBoardProps = {
   maxSize?: number;
   feedbackText?: string;
   selectedType?: VillageBuildingType | null;
+  bananaWorkers?: WorkerExpedition[];
+  bananaGroveStorage?: number;
+  bananaGroveCapacity?: number;
   onBuildingPress: (type: VillageBuildingType) => void;
 };
 
@@ -112,6 +115,9 @@ export function VillageBoard({
   maxSize = 430,
   feedbackText,
   selectedType,
+  bananaWorkers = [],
+  bananaGroveStorage = 0,
+  bananaGroveCapacity = 100,
   onBuildingPress
 }: VillageBoardProps) {
   const { width } = useWindowDimensions();
@@ -189,6 +195,9 @@ export function VillageBoard({
             layout={layout}
             lang={lang}
             selected={selectedType === building.type}
+            bananaWorkers={building.type === "bananaGrove" ? bananaWorkers : []}
+            bananaGroveStorage={building.type === "bananaGrove" ? bananaGroveStorage : 0}
+            bananaGroveCapacity={building.type === "bananaGrove" ? bananaGroveCapacity : 100}
             onAccessibilityPress={() => onBuildingPress(building.type)}
           />
         ))}
@@ -334,6 +343,9 @@ const MemoBuildingSprite = memo(
     a.building.type === b.building.type &&
     a.building.level === b.building.level &&
     a.selected === b.selected &&
+    a.bananaGroveStorage === b.bananaGroveStorage &&
+    a.bananaGroveCapacity === b.bananaGroveCapacity &&
+    a.bananaWorkers === b.bananaWorkers &&
     a.lang === b.lang
 );
 
@@ -396,13 +408,19 @@ function BuildingSprite({
   layout,
   lang,
   selected,
-  onAccessibilityPress
+  onAccessibilityPress,
+  bananaWorkers,
+  bananaGroveStorage,
+  bananaGroveCapacity
 }: {
   building: VillageBuilding;
   layout: { point: Point; size: number; asset: GameAssetKey };
   lang: Lang;
   selected: boolean;
   onAccessibilityPress: () => void;
+  bananaWorkers: WorkerExpedition[];
+  bananaGroveStorage: number;
+  bananaGroveCapacity: number;
 }) {
   const { point, asset } = layout;
   const size = layout.size;
@@ -432,6 +450,13 @@ function BuildingSprite({
       ) : null}
       {selected ? <View style={styles.buildingSelected} pointerEvents="none" /> : null}
       <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
+      {building.type === "bananaGrove" ? (
+        <BananaGroveActivity
+          workers={bananaWorkers}
+          storage={bananaGroveStorage}
+          capacity={bananaGroveCapacity}
+        />
+      ) : null}
       {props.map((prop) => (
         <View
           key={`${prop.asset}-${prop.minLevel}`}
@@ -468,6 +493,38 @@ function BuildingSprite({
           </Text>
         </View>
       </View>
+    </View>
+  );
+}
+
+const BANANA_WORKER_ASSET: Record<WorkerClass, GameAssetKey> = {
+  gatherer: "bananaWorkerYoung",
+  skilled: "bananaWorkerExperienced",
+  master: "bananaWorkerMaster"
+};
+
+function BananaGroveActivity({ workers, storage, capacity }: { workers: WorkerExpedition[]; storage: number; capacity: number }) {
+  const spots = [
+    { left: -5, top: 54 },
+    { left: 61, top: 55 },
+    { left: 29, top: 69 }
+  ];
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {workers.slice(0, 3).map((worker, index) => (
+        <View
+          key={worker.id}
+          style={[styles.groveWorker, { left: `${spots[index]?.left ?? 0}%`, top: `${spots[index]?.top ?? 55}%` }]}
+        >
+          <AssetImage assetKey={BANANA_WORKER_ASSET[worker.workerClass]} style={styles.full} fallback={<Text>🐵</Text>} hideFallbackOnLoad />
+        </View>
+      ))}
+      {storage > 0 ? (
+        <View style={[styles.harvestBadge, storage >= capacity && styles.harvestBadgeFull]}>
+          <AssetImage assetKey="resourceBanana" style={styles.harvestIcon} fallback={<Text>🍌</Text>} />
+          <Text style={styles.harvestAmount}>{Math.floor(storage)}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -821,6 +878,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end"
   },
+  groveWorker: {
+    position: "absolute",
+    width: "43%",
+    height: "43%",
+    zIndex: 5
+  },
+  harvestBadge: {
+    position: "absolute",
+    top: "-28%",
+    left: "18%",
+    minWidth: "64%",
+    height: "36%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    paddingHorizontal: 3,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: "#fff0a4",
+    backgroundColor: "#4f9d3b",
+    shadowColor: "#b9ff68",
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    zIndex: 9
+  },
+  harvestBadgeFull: { backgroundColor: "#b4781f", borderColor: "#ffe27a" },
+  harvestIcon: { width: "44%", height: "80%" },
+  harvestAmount: { color: "white", fontSize: 8, fontWeight: "900" },
   // Soft contact shadow so buildings sit in the ground instead of floating.
   // The building's foot lands ~68% down its container (see top offset), so
   // the shadow straddles that line, not the container bottom.

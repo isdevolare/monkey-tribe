@@ -10,13 +10,16 @@ import {
   View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { buildingName, storageCap, upgradeCost } from "../../game/config/buildings";
+import { buildingName, storageCap, storageCanHoldCost, workerLodgeUpgrade } from "../../game/config/buildings";
+import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { t, type Lang } from "../../game/i18n";
 import { playSound } from "../../game/audio/soundManager";
 import {
   WORKER_CLASSES,
   WORKER_CLASS_ORDER,
   WORKER_RESOURCE_ORDER,
+  BANANA_GROVE_MAX_WORKERS,
+  bananaGroveCapacity,
   expeditionStatus,
   managedWorkerCount,
   workerCapacity
@@ -77,9 +80,31 @@ function formatTime(ms: number) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function formatUpgradeCountdown(ms: number, lang: Lang) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const days = Math.floor(total / 86_400);
+  const hours = Math.floor((total % 86_400) / 3_600);
+  const minutes = Math.floor((total % 3_600) / 60);
+  const seconds = total % 60;
+  const clock = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return days > 0 ? `${days}${lang === "tr" ? "g" : "d"} ${clock}` : clock;
+}
+
+function formatUpgradeDuration(ms: number, lang: Lang) {
+  if (ms % 86_400_000 === 0) return t("duration.day", lang, { n: ms / 86_400_000 });
+  if (ms % 3_600_000 === 0) return t("duration.hour", lang, { n: ms / 3_600_000 });
+  return t("duration.minute", lang, { n: ms / 60_000 });
+}
+
 function workerName(workerClass: WorkerClass, lang: Lang) {
   return t(`worker.${workerClass}.name`, lang);
 }
+
+export const BANANA_WORKER_ASSETS: Record<WorkerClass, GameAssetKey> = {
+  gatherer: "bananaWorkerYoung",
+  skilled: "bananaWorkerExperienced",
+  master: "bananaWorkerMaster"
+};
 
 function resourceName(resource: ResourceKind, lang: Lang) {
   return t(`res.${resource}`, lang);
@@ -107,9 +132,17 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
     state.idleWorkers,
     state.workerExpeditions
   );
-  const cost = upgradeCost("workerShelter", lodgeLevel);
-  const upgradeGated = lodgeLevel >= clanLevel;
-  const upgradeDisabled = upgradeGated || !hasResources(state.resources, cost);
+  const upgrade = workerLodgeUpgrade(lodgeLevel);
+  const cost = upgrade?.cost ?? { bananas: 0, stones: 0, wood: 0 };
+  const upgradeGated = upgrade != null && clanLevel < upgrade.requiredClanHallLevel;
+  const villageStorageCap = storageCap(clanLevel);
+  const storageBlocked = upgrade != null && !storageCanHoldCost(villageStorageCap, upgrade.cost);
+  const upgradeDisabled =
+    !upgrade ||
+    state.activeWorkerLodgeUpgrade != null ||
+    upgradeGated ||
+    storageBlocked ||
+    !hasResources(state.resources, cost);
   const idleByClass = useMemo(
     () =>
       WORKER_CLASS_ORDER.map((workerClass) => ({
@@ -118,6 +151,11 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
       })),
     [state.idleWorkers]
   );
+  const bananaAssignments = state.workerExpeditions.filter(
+    (expedition) => expedition.resource === "bananas"
+  ).length;
+  const groveLevel = state.buildings.find((building) => building.type === "bananaGrove")?.level ?? 1;
+  const groveFull = state.bananaGroveStorage >= bananaGroveCapacity(groveLevel);
 
   function collect(expeditionId: string) {
     const result = state.collectWorkerExpedition(expeditionId);
@@ -141,10 +179,11 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
           <View style={styles.header}>
             <View style={styles.headerPortrait}>
               <AssetImage
-                assetKey="unitWorker"
+                assetKey="bananaWorkerYoung"
                 style={styles.headerPortraitArt}
                 resizeMode="contain"
                 fallback={<Text style={styles.workerFallback}>🐵</Text>}
+                hideFallbackOnLoad
               />
             </View>
             <View style={styles.headerCopy}>
@@ -212,10 +251,11 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                   >
                     <View style={styles.workerPortraitWrap}>
                       <AssetImage
-                        assetKey="unitWorker"
+                        assetKey={BANANA_WORKER_ASSETS[workerClass]}
                         style={styles.workerPortrait}
                         resizeMode="contain"
                         fallback={<Text style={styles.workerFallback}>🐵</Text>}
+                        hideFallbackOnLoad
                       />
                       <View
                         style={[
@@ -262,7 +302,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
               ) : (
                 state.workerProductionQueue.map((item, index) => (
                   <View key={item.id} style={styles.queueRow}>
-                    <WorkerMotion status={index === 0 ? "producing" : "queued"} />
+                    <WorkerMotion workerClass={item.workerClass} status={index === 0 ? "producing" : "queued"} />
                     <View style={styles.flexCopy}>
                       <Text style={styles.rowTitle}>{workerName(item.workerClass, lang)}</Text>
                       <Text style={styles.rowMeta}>
@@ -294,35 +334,36 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                       <View key={group.workerClass} style={styles.idleGroup}>
                         <View style={styles.idleHeader}>
                           <AssetImage
-                            assetKey="unitWorker"
+                            assetKey={BANANA_WORKER_ASSETS[group.workerClass]}
                             style={styles.smallPortrait}
                             resizeMode="contain"
                             fallback={<Text>🐵</Text>}
+                            hideFallbackOnLoad
                           />
                           <Text style={styles.rowTitle}>
                             {workerName(group.workerClass, lang)} ×{group.workers.length}
                           </Text>
                         </View>
                         <View style={styles.destinationRow}>
-                          {WORKER_RESOURCE_ORDER.map((resource) => (
-                            <SpringPressable
-                              key={resource}
-                              accessibilityRole="button"
-                              onPress={() =>
-                                state.sendWorkerExpedition(firstWorker.id, resource)
-                              }
-                              style={styles.destinationButton}
-                            >
-                              <AssetImage
-                                assetKey={RESOURCE_ASSETS[resource]}
-                                style={styles.destinationIcon}
-                                fallback={<View />}
-                              />
-                              <Text style={styles.destinationText} numberOfLines={1}>
-                                {resourceName(resource, lang)}
-                              </Text>
-                            </SpringPressable>
-                          ))}
+                          <SpringPressable
+                            accessibilityRole="button"
+                            accessibilityState={{
+                              disabled:
+                                bananaAssignments >= BANANA_GROVE_MAX_WORKERS || groveFull
+                            }}
+                            onPress={() => state.sendWorkerExpedition(firstWorker.id, "bananas")}
+                            style={[
+                              styles.destinationButton,
+                              bananaAssignments >= BANANA_GROVE_MAX_WORKERS || groveFull
+                                ? styles.disabledButton
+                                : null
+                            ]}
+                          >
+                            <AssetImage assetKey="resourceBanana" style={styles.destinationIcon} fallback={<View />} />
+                            <Text style={styles.destinationText} numberOfLines={1}>
+                              {t("bananaGrove.send", lang)}
+                            </Text>
+                          </SpringPressable>
                         </View>
                       </View>
                     );
@@ -345,7 +386,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                       key={expedition.id}
                       style={[styles.expeditionRow, status === "completed" && styles.completedRow]}
                     >
-                      <WorkerMotion status={status} />
+                      <WorkerMotion workerClass={expedition.workerClass} status={status} />
                       <View style={styles.flexCopy}>
                         <Text style={styles.rowTitle}>{workerName(expedition.workerClass, lang)}</Text>
                         <View style={styles.expeditionDestination}>
@@ -362,7 +403,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                           {t("workerLodge.expected", lang, { amount: expedition.expectedReward })}
                         </Text>
                       </View>
-                      {status === "completed" ? (
+                      {status === "completed" && expedition.resource !== "bananas" ? (
                         <SpringPressable
                           accessibilityRole="button"
                           onPress={() => collect(expedition.id)}
@@ -370,6 +411,8 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                         >
                           <Text style={styles.collectButtonText}>{t("workerLodge.collect", lang)}</Text>
                         </SpringPressable>
+                      ) : status === "completed" ? (
+                        <Text style={styles.groveCollectHint}>{t("bananaGrove.collectThere", lang)}</Text>
                       ) : (
                         <Text style={styles.timer}>{formatTime(expedition.returnsAt - now)}</Text>
                       )}
@@ -380,30 +423,86 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
             </View>
 
             <View style={styles.upgradePanel}>
-              <View style={styles.flexCopy}>
-                <Text style={styles.upgradeTitle}>
-                  {t("workerLodge.upgradeTitle", lang, { level: lodgeLevel })}
-                </Text>
-                <Text style={styles.upgradeMeta}>
-                  {t("workerLodge.capacityUpgrade", lang, {
-                    current: capacity,
-                    next: workerCapacity(lodgeLevel + 1)
-                  })}
-                </Text>
-              </View>
-              <View style={styles.upgradeAction}>
-                <ResourceCost cost={cost} compact />
-                <SpringPressable
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: upgradeDisabled }}
-                  onPress={() => state.upgradeBuilding("workerShelter")}
-                  style={[styles.upgradeButton, upgradeDisabled && styles.disabledButton]}
-                >
-                  <Text style={styles.upgradeButtonText}>
-                    {upgradeGated ? t("upgrade.needClanHall", lang) : t("upgrade.button", lang)}
+              {state.activeWorkerLodgeUpgrade ? (
+                <View style={styles.activeUpgrade}>
+                  <View style={styles.activeUpgradeHeader}>
+                    <Text style={styles.upgradeTitle}>
+                      {t("workerLodge.upgradeActive", lang, {
+                        level: state.activeWorkerLodgeUpgrade.targetLevel
+                      })}
+                    </Text>
+                    <Text style={styles.upgradeTimer}>
+                      {formatUpgradeCountdown(state.activeWorkerLodgeUpgrade.endsAt - now, lang)}
+                    </Text>
+                  </View>
+                  <View style={styles.upgradeTrack}>
+                    <View
+                      style={[
+                        styles.upgradeFill,
+                        {
+                          width: `${Math.min(100, Math.max(0,
+                            ((now - state.activeWorkerLodgeUpgrade.startedAt) /
+                              Math.max(1, state.activeWorkerLodgeUpgrade.endsAt - state.activeWorkerLodgeUpgrade.startedAt)) * 100
+                          ))}%`
+                        }
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.upgradeRequirement}>
+                    {t("workerLodge.clanRequirement", lang, {
+                      level: state.activeWorkerLodgeUpgrade.requiredClanHallLevel
+                    })}
                   </Text>
-                </SpringPressable>
-              </View>
+                </View>
+              ) : upgrade ? (
+                <>
+                  <View style={styles.flexCopy}>
+                    <Text style={styles.upgradeTitle}>
+                      {t("workerLodge.upgradeTitle", lang, { level: lodgeLevel })} → Sv. {upgrade.targetLevel}
+                    </Text>
+                    <Text style={styles.upgradeMeta}>
+                      {t("workerLodge.capacityUpgrade", lang, {
+                        current: capacity,
+                        next: workerCapacity(upgrade.targetLevel)
+                      })}
+                    </Text>
+                    <Text style={styles.upgradeRequirement}>
+                      {t("workerLodge.upgradeDuration", lang, {
+                        duration: formatUpgradeDuration(upgrade.durationMs, lang)
+                      })}
+                    </Text>
+                    <Text style={[styles.upgradeRequirement, upgradeGated && styles.requirementBlocked]}>
+                      {t("workerLodge.clanRequirement", lang, {
+                        level: upgrade.requiredClanHallLevel
+                      })}
+                    </Text>
+                    {storageBlocked ? (
+                      <Text style={styles.storageBlockedText}>
+                        {t("workerLodge.storageTooSmall", lang)} · {villageStorageCap}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.upgradeAction}>
+                    <ResourceCost cost={cost} compact />
+                    <SpringPressable
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: upgradeDisabled }}
+                      onPress={() => state.upgradeBuilding("workerShelter")}
+                      style={[styles.upgradeButton, upgradeDisabled && styles.disabledButton]}
+                    >
+                      <Text style={styles.upgradeButtonText}>
+                        {storageBlocked
+                          ? t("workerLodge.storageTooSmall", lang)
+                          : upgradeGated
+                            ? t("upgrade.needClanHall", lang)
+                            : t("upgrade.button", lang)}
+                      </Text>
+                    </SpringPressable>
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.maxLevelText}>{t("workerLodge.maxLevelShort", lang)}</Text>
+              )}
             </View>
             <Text style={styles.riskNote}>{t("workerLodge.riskNote", lang)}</Text>
             <Text style={styles.storageNote}>
@@ -477,9 +576,11 @@ function ResourceCost({ cost, compact = false }: { cost: Resources; compact?: bo
 }
 
 function WorkerMotion({
-  status
+  status,
+  workerClass
 }: {
   status: WorkerExpeditionStatus | "producing" | "queued";
+  workerClass: WorkerClass;
 }) {
   const motion = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -518,10 +619,11 @@ function WorkerMotion({
   return (
     <Animated.View style={[styles.motionPortrait, { transform: [{ translateX }, { scale }] }]}>
       <AssetImage
-        assetKey="unitWorker"
+        assetKey={BANANA_WORKER_ASSETS[workerClass]}
         style={styles.motionPortraitArt}
         resizeMode="contain"
         fallback={<Text>🐵</Text>}
+        hideFallbackOnLoad
       />
       {status === "returning" || status === "completed" ? (
         <Text style={styles.backpackBadge}>🎒</Text>
@@ -554,10 +656,11 @@ function CollectionPopup({
         <Text style={styles.resultKicker}>✓ {t("workerLodge.complete", lang)}</Text>
         <View style={styles.resultWorker}>
           <AssetImage
-            assetKey="unitWorker"
+            assetKey={BANANA_WORKER_ASSETS[summary.workerClass]}
             style={styles.resultWorkerArt}
             resizeMode="contain"
             fallback={<Text style={styles.workerFallback}>🐵</Text>}
+            hideFallbackOnLoad
           />
           <Text style={styles.resultBackpack}>🎒</Text>
         </View>
@@ -804,6 +907,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#579f3e"
   },
   collectButtonText: { color: "white", fontSize: 11, fontWeight: "900", fontFamily: theme.fonts.heavy },
+  groveCollectHint: { width: 82, color: "#9be77b", fontSize: 10, textAlign: "right", fontWeight: "900" },
   upgradePanel: {
     flexDirection: "row",
     alignItems: "center",
@@ -817,6 +921,15 @@ const styles = StyleSheet.create({
   },
   upgradeTitle: { color: "#ffe6a2", fontSize: 14, fontWeight: "900", fontFamily: theme.fonts.heavy },
   upgradeMeta: { color: "#cdbd91", fontSize: 10.5, fontFamily: theme.fonts.bold },
+  upgradeRequirement: { color: "#d8c995", fontSize: 10.5, fontFamily: theme.fonts.bold },
+  requirementBlocked: { color: "#ffb56f" },
+  storageBlockedText: { color: "#ff9f68", fontSize: 10.5, fontWeight: "900", marginTop: 2 },
+  activeUpgrade: { flex: 1, minWidth: 0 },
+  activeUpgradeHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  upgradeTimer: { color: "#9bea77", fontSize: 13, fontWeight: "900", fontVariant: ["tabular-nums"] },
+  upgradeTrack: { height: 9, overflow: "hidden", marginVertical: 7, borderRadius: 5, backgroundColor: "rgba(11,20,9,0.75)" },
+  upgradeFill: { height: "100%", borderRadius: 5, backgroundColor: "#6fc551" },
+  maxLevelText: { flex: 1, color: "#ffe6a2", fontSize: 15, textAlign: "center", fontWeight: "900" },
   upgradeAction: { alignItems: "flex-end" },
   upgradeButton: {
     minWidth: 92,
