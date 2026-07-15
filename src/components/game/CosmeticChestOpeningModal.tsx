@@ -10,6 +10,7 @@ import {
   useWindowDimensions
 } from "react-native";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
+import { playSound } from "../../game/audio/soundManager";
 import type { CosmeticRarity } from "../../game/config/profileMonkeys";
 import { t } from "../../game/i18n";
 import type { Lang } from "../../game/types/game";
@@ -88,6 +89,8 @@ export function CosmeticChestOpeningModal({ presentation, lang, onClose, onEquip
     progress.setValue(0);
     setCanSkip(false);
     setSequenceDone(false);
+    // Fires once per chest opening (effect is keyed on presentation.id).
+    playSound("festivalChest");
     const animation = Animated.timing(progress, {
       toValue: 1,
       duration: FULL_SEQUENCE_MS,

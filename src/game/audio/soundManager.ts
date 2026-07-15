@@ -28,7 +28,8 @@ const SOUND_FILES = {
   victory: require("../../../assets/game/audio/victory.m4a"),
   defeat: require("../../../assets/game/audio/defeat.m4a"),
   achievement: require("../../../assets/game/audio/achievement_unlock.mp3"),
-  reward: require("../../../assets/game/audio/reward_claim.mp3")
+  reward: require("../../../assets/game/audio/reward_claim.mp3"),
+  festivalChest: require("../../../assets/game/audio/festival_chest_open.mp3")
 } as const;
 
 export type SoundName = keyof typeof SOUND_FILES;
@@ -60,7 +61,8 @@ const VOLUMES: Record<SoundName, number> = {
   victory: 0.85,
   defeat: 0.8,
   achievement: 0.85,
-  reward: 0.75
+  reward: 0.75,
+  festivalChest: 0.85
 };
 
 const BUTTON_CLICK_SOUNDS = new Set<SoundName>(["tap", "open", "close", "confirm"]);
