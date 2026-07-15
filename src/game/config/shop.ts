@@ -1,4 +1,3 @@
-import { storageCap } from "./buildings";
 import type { Resources } from "../types/game";
 
 export type ShopItem = {
@@ -16,59 +15,44 @@ export type ResourceShopCapacityIssue = {
   requiredFree: number;
 };
 
-type ResourceShopDefinition = Omit<ShopItem, "reward"> & {
-  storageRatios: Partial<Record<keyof Resources, number>>;
-};
-
 /**
- * Rewards scale from Clan Hall storage rather than using a flat exchange.
- * A purchase remains useful at every level while never exceeding 25% of a
- * single depot or becoming mandatory for an upgrade.
+ * Fixed-reward Gem shop. Each pack always grants the exact amounts shown on
+ * its card — rewards never scale with Clan Hall level or storage capacity, so
+ * the value stays predictable at every stage of progression.
  */
-export const RESOURCE_SHOP_DEFINITIONS: readonly ResourceShopDefinition[] = [
+export const RESOURCE_SHOP_ITEMS: readonly ShopItem[] = [
   {
     id: "bananaPack",
     gemCost: 12,
-    storageRatios: { bananas: 0.25 },
+    reward: { bananas: 300 },
     icon: "resourceBanana"
   },
   {
     id: "stonePack",
     gemCost: 16,
-    storageRatios: { stones: 0.18 },
+    reward: { stones: 180 },
     icon: "resourceStone"
   },
   {
     id: "woodPack",
     gemCost: 14,
-    storageRatios: { wood: 0.22 },
+    reward: { wood: 220 },
     icon: "resourceWood"
   },
   {
     id: "bountyChest",
     gemCost: 30,
-    storageRatios: { bananas: 0.15, stones: 0.1, wood: 0.13 },
+    reward: { bananas: 220, stones: 140, wood: 170 },
     icon: "resourceJungleGem"
   }
 ];
 
-export function resourceShopItems(clanHallLevel: number): readonly ShopItem[] {
-  const capacity = storageCap(clanHallLevel);
-  return RESOURCE_SHOP_DEFINITIONS.map((definition) => ({
-    id: definition.id,
-    gemCost: definition.gemCost,
-    icon: definition.icon,
-    reward: Object.fromEntries(
-      Object.entries(definition.storageRatios).map(([resource, ratio]) => [
-        resource,
-        roundResource(capacity * ratio)
-      ])
-    ) as Partial<Resources>
-  }));
+export function resourceShopItems(): readonly ShopItem[] {
+  return RESOURCE_SHOP_ITEMS;
 }
 
-export function getResourceShopItem(id: string, clanHallLevel: number) {
-  return resourceShopItems(clanHallLevel).find((item) => item.id === id);
+export function getResourceShopItem(id: string) {
+  return RESOURCE_SHOP_ITEMS.find((item) => item.id === id);
 }
 
 /** Shared preflight used by both UI and store so a paid pack never clips. */
@@ -84,8 +68,4 @@ export function resourceShopCapacityIssues(
       ? [{ resource, current: resources[resource], reward, free, requiredFree: reward }]
       : [];
   });
-}
-
-function roundResource(value: number) {
-  return Math.max(5, Math.round(value / 5) * 5);
 }

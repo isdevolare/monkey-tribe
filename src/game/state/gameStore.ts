@@ -1824,10 +1824,7 @@ export const useGameStore = create<GameState>((set) => ({
   dismissOfflineReport: () => set(() => ({ offlineReport: null })),
   buyShopItem: (id: string) =>
     set((state) => {
-      const item = getResourceShopItem(
-        id,
-        buildingLevel(state.buildings, "clanHall")
-      );
+      const item = getResourceShopItem(id);
       if (!item) {
         return state;
       }
@@ -1958,10 +1955,9 @@ export const useGameStore = create<GameState>((set) => ({
       void persistVillage(next);
       return next;
     }),
-  openFestivalChest: (options) => {
+  openFestivalChest: () => {
     let result: FestivalChestOpenResult = { status: "complete" };
     set((state) => {
-      const free = __DEV__ && options?.free === true;
       const prepared = prepareFestivalChestOpen(
         {
           gems: state.gems,
@@ -1972,8 +1968,7 @@ export const useGameStore = create<GameState>((set) => ({
           pendingTransaction: state.pendingFestivalChest
         },
         {
-          free,
-          seed: __DEV__ ? options?.seed : undefined,
+          free: false,
           now: Date.now()
         }
       );
@@ -2004,43 +1999,6 @@ export const useGameStore = create<GameState>((set) => ({
         ...state,
         pendingFestivalChest: null,
         claimedFestivalChest: transaction
-      };
-      void persistVillage(next);
-      return next;
-    }),
-  addFestivalTestBalance: () =>
-    set((state) => {
-      if (!__DEV__) return state;
-      const next: GameState = { ...state, gems: state.gems + 10000 };
-      void persistVillage(next);
-      return next;
-    }),
-  resetFestivalProgress: () =>
-    set((state) => {
-      if (!__DEV__) return state;
-      const festivalIds = new Set(FESTIVAL_PROFILE_SKINS.map((skin) => skin.id));
-      const equippedFestival = festivalIds.has(state.equippedProfileSkin);
-      const next: GameState = {
-        ...state,
-        ownedProfileSkins: state.ownedProfileSkins.filter((id) => !festivalIds.has(id)),
-        newProfileSkins: state.newProfileSkins.filter((id) => !festivalIds.has(id)),
-        equippedProfileSkin: equippedFestival
-          ? getDefaultSkinId(state.equippedProfileMonkey)
-          : state.equippedProfileSkin,
-        festivalFragments: {},
-        festivalChestRngSeed: normalizeFestivalSeed(Date.now()),
-        pendingFestivalChest: null,
-        claimedFestivalChest: null
-      };
-      void persistVillage(next);
-      return next;
-    }),
-  seedFestivalChestRng: (seed) =>
-    set((state) => {
-      if (!__DEV__) return state;
-      const next: GameState = {
-        ...state,
-        festivalChestRngSeed: normalizeFestivalSeed(seed)
       };
       void persistVillage(next);
       return next;

@@ -37,12 +37,15 @@ import {
 } from "./CosmeticDetailModal";
 import { SpringPressable } from "./SpringPressable";
 import { FestivalCollectionPanel } from "./FestivalCollectionPanel";
+import { BuyGemsButton } from "./GemStoreModal";
 import { CosmeticChestOpeningModal } from "./CosmeticChestOpeningModal";
 
 type MonkeyCollectionModalProps = {
   visible: boolean;
   lang: Lang;
   onClose: () => void;
+  onOpenGemStore: () => void;
+  onOpenResourceShop: () => void;
 };
 
 const RARITY_THEME: Record<
@@ -108,7 +111,9 @@ const GOLD_PARTICLES = [
 export function MonkeyCollectionModal({
   visible,
   lang,
-  onClose
+  onClose,
+  onOpenGemStore,
+  onOpenResourceShop
 }: MonkeyCollectionModalProps) {
   const { width, height } = useWindowDimensions();
   const gems = useGameStore((state) => state.gems);
@@ -392,6 +397,21 @@ export function MonkeyCollectionModal({
                   <View style={styles.fullWidthSection}>
                     <Text style={styles.sectionTitle}>{t("collection.shop.title", lang)}</Text>
                     <Text style={styles.shopIntro}>{t("collection.shop.premiumSubtitle", lang)}</Text>
+                    <View style={styles.storeEntryRow}>
+                      <BuyGemsButton lang={lang} onPress={onOpenGemStore} style={styles.storeEntryButton} />
+                      <SpringPressable
+                        accessibilityRole="button"
+                        accessibilityLabel={t("gemStore.resourceShop", lang)}
+                        onPress={() => {
+                          onClose();
+                          onOpenResourceShop();
+                        }}
+                        style={[styles.storeEntryButton, styles.resourceShopButton]}
+                      >
+                        <AssetImage assetKey="resourceBanana" style={styles.resourceShopIcon} fallback={<View />} hideFallbackOnLoad />
+                        <Text style={styles.resourceShopText}>{t("gemStore.resourceShop", lang)}</Text>
+                      </SpringPressable>
+                    </View>
                     <FestivalCollectionPanel
                       lang={lang}
                       onSelectSkin={selectSkin}
@@ -489,15 +509,30 @@ export function MonkeyCollectionModal({
             <Text style={styles.dialogMessage} maxFontSizeMultiplier={theme.maxFontScale}>
               {t("collection.notEnoughGems", lang)}
             </Text>
-            <SpringPressable
-              accessibilityRole="button"
-              onPress={() => setShowInsufficient(false)}
-              style={[styles.dialogButton, styles.unlockButton, styles.noticeButton]}
-            >
-              <Text style={styles.unlockText} maxFontSizeMultiplier={theme.maxFontScale}>
-                {t("collection.ok", lang)}
-              </Text>
-            </SpringPressable>
+            <View style={styles.noticeActions}>
+              <SpringPressable
+                accessibilityRole="button"
+                onPress={() => setShowInsufficient(false)}
+                style={[styles.dialogButton, styles.cancelButton]}
+              >
+                <Text style={styles.cancelText} maxFontSizeMultiplier={theme.maxFontScale}>
+                  {t("collection.ok", lang)}
+                </Text>
+              </SpringPressable>
+              <SpringPressable
+                accessibilityRole="button"
+                accessibilityLabel={t("gemStore.open", lang)}
+                onPress={() => {
+                  setShowInsufficient(false);
+                  onOpenGemStore();
+                }}
+                style={[styles.dialogButton, styles.unlockButton]}
+              >
+                <Text style={styles.unlockText} maxFontSizeMultiplier={theme.maxFontScale}>
+                  {t("gemStore.open", lang)}
+                </Text>
+              </SpringPressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1363,6 +1398,41 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     lineHeight: 13,
     fontFamily: theme.fonts.bold
+  },
+  storeEntryRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12
+  },
+  storeEntryButton: {
+    flex: 1
+  },
+  resourceShopButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    minHeight: 40,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.55)",
+    backgroundColor: "rgba(74, 52, 24, 0.94)",
+    paddingHorizontal: 14
+  },
+  resourceShopIcon: {
+    width: 17,
+    height: 17
+  },
+  resourceShopText: {
+    color: "#ffe6a6",
+    fontSize: 12,
+    fontFamily: theme.fonts.heavy
+  },
+  noticeActions: {
+    width: "100%",
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 18
   },
   emptyText: {
     width: "100%",

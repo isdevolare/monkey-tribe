@@ -66,31 +66,32 @@ for (const upgrade of WORKER_LODGE_UPGRADES) {
 const resourceShopByHall = [1, 5, 10].map((hallLevel) => ({
   hallLevel,
   storageCap: storageCap(hallLevel),
-  offers: resourceShopItems(hallLevel).map((item) => ({
+  offers: resourceShopItems().map((item) => ({
     id: item.id,
     gemCost: item.gemCost,
     reward: item.reward
   }))
 }));
 assert(
-  resourceShopByHall[2]!.offers[0]!.reward.bananas! > resourceShopByHall[0]!.offers[0]!.reward.bananas!,
-  "Resource shop does not scale with progression."
+  resourceShopByHall[2]!.offers[0]!.reward.bananas! === resourceShopByHall[0]!.offers[0]!.reward.bananas! &&
+    resourceShopByHall[0]!.offers[0]!.reward.bananas! === 300,
+  "Resource shop rewards must stay fixed across progression."
 );
 
 for (let index = 1; index < GEM_PACKS.length; index += 1) {
   const previous = GEM_PACKS[index - 1]!;
   const current = GEM_PACKS[index]!;
-  assert(current.gems / current.usdPrice > previous.gems / previous.usdPrice, "Gem pack value must increase with pack size.");
+  assert(current.gems / current.referenceUsdPrice > previous.gems / previous.referenceUsdPrice, "Gem pack value must increase with pack size.");
 }
-const pack1999 = GEM_PACKS.find((pack) => pack.usdPrice === 19.99);
+const pack1999 = GEM_PACKS.find((pack) => pack.referenceUsdPrice === 19.99);
 assert(pack1999?.gems === 2_800, "$19.99 pack changed.");
 assert(pack1999.gems - monkeyKing.price === 300, "$19.99 pack must leave 300 Gems after Monkey King.");
 assert((pack1999.gems - monkeyKing.price) / FESTIVAL_CHEST_LAUNCH_PRICE === 6, "Monkey King remainder must open six launch chests.");
 
-const hallOneBananaPack = resourceShopItems(1).find((item) => item.id === "bananaPack")!;
+const hallOneBananaPack = resourceShopItems().find((item) => item.id === "bananaPack")!;
 const overflowFixture = { bananas: 350, stones: 0, wood: 0 };
 const overflowIssues = resourceShopCapacityIssues(hallOneBananaPack, overflowFixture, storageCap(1));
-assert(overflowIssues.length === 1 && overflowIssues[0]!.free === 50 && overflowIssues[0]!.requiredFree === 100, "Resource overflow preflight changed.");
+assert(overflowIssues.length === 1 && overflowIssues[0]!.free === 50 && overflowIssues[0]!.requiredFree === 300, "Resource overflow preflight changed.");
 const overflowGemBalance = 100;
 assert((overflowIssues.length > 0 ? overflowGemBalance : overflowGemBalance - hallOneBananaPack.gemCost) === 100, "Overflow purchase deducted Gems.");
 
@@ -161,8 +162,8 @@ const profiles: readonly PlayerProfile[] = [
   }
 ];
 
-const averageResourcePackCost = resourceShopItems(5).reduce((sum, item) => sum + item.gemCost, 0) /
-  resourceShopItems(5).length;
+const averageResourcePackCost = resourceShopItems().reduce((sum, item) => sum + item.gemCost, 0) /
+  resourceShopItems().length;
 
 const progression = profiles.map((profile) => {
   const firstWeekGross = profile.firstWeekLoginGems + profile.weeklyMissionGems + profile.weeklyRaidGems;

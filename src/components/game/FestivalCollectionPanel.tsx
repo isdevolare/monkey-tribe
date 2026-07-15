@@ -32,14 +32,6 @@ const RARITY_COLORS: Record<CosmeticRarity, string> = {
   mythic: "#fff08a"
 };
 
-const DEV_RARITY_SEEDS: Record<CosmeticRarity, number> = {
-  common: 1,
-  rare: 553,
-  epic: 1327,
-  legendary: 1765,
-  mythic: 1946
-};
-
 export function FestivalCollectionPanel({
   lang,
   onSelectSkin,
@@ -55,18 +47,14 @@ export function FestivalCollectionPanel({
   const unlockedMonkeys = useGameStore((state) => state.unlockedProfileMonkeys);
   const equippedSkin = useGameStore((state) => state.equippedProfileSkin);
   const pending = useGameStore((state) => state.pendingFestivalChest);
-  const seed = useGameStore((state) => state.festivalChestRngSeed);
   const openChest = useGameStore((state) => state.openFestivalChest);
-  const addTestBalance = useGameStore((state) => state.addFestivalTestBalance);
-  const resetProgress = useGameStore((state) => state.resetFestivalProgress);
-  const seedRng = useGameStore((state) => state.seedFestivalChestRng);
   const unfinished = unfinishedFestivalSkins(fragments, owned);
   const eligible = eligibleFestivalSkins(fragments, owned, unlockedMonkeys);
   const completed = unfinished.length === 0;
   const effectiveOdds = effectiveFestivalRarityOdds(fragments, owned, unlockedMonkeys);
 
-  function open(free = false, forcedSeed?: number) {
-    const result = openChest({ free, seed: forcedSeed });
+  function open() {
+    const result = openChest();
     if (result.status === "insufficient") onInsufficient();
   }
 
@@ -99,7 +87,7 @@ export function FestivalCollectionPanel({
         </View>
         <SpringPressable
           disabled={completed}
-          onPress={() => open(false)}
+          onPress={open}
           style={[styles.openButton, completed ? styles.disabledButton : null]}
         >
           <Text style={styles.openButtonText}>
@@ -176,33 +164,8 @@ export function FestivalCollectionPanel({
           );
         })}
       </View>
-
-      {__DEV__ ? (
-        <View style={styles.devCard}>
-          <Text style={styles.devTitle}>{t("festival.dev.title", lang)} • {seed}</Text>
-          <View style={styles.devButtons}>
-            <DevButton label={t("festival.dev.balance", lang)} onPress={addTestBalance} />
-            <DevButton label={t("festival.dev.open", lang)} onPress={() => open(true)} />
-            <DevButton label={t("festival.dev.seed", lang)} onPress={() => seedRng(123456789)} />
-            <DevButton label={t("festival.dev.reset", lang)} onPress={resetProgress} />
-          </View>
-          <View style={styles.devButtons}>
-            {FESTIVAL_RARITIES.map((rarity) => (
-              <DevButton
-                key={rarity}
-                label={`${t("festival.dev.force", lang)} ${t(`collection.rarity.${rarity}`, lang)}`}
-                onPress={() => open(true, DEV_RARITY_SEEDS[rarity])}
-              />
-            ))}
-          </View>
-        </View>
-      ) : null}
     </>
   );
-}
-
-function DevButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return <SpringPressable onPress={onPress} style={styles.devButton}><Text style={styles.devButtonText}>{label}</Text></SpringPressable>;
 }
 
 const styles = StyleSheet.create({
@@ -250,10 +213,5 @@ const styles = StyleSheet.create({
   fragmentProgressRow: { minHeight: 18, flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
   progressText: { color: "#e3d7c7", fontSize: 8.5, fontFamily: theme.fonts.bold },
   status: { marginTop: 5, color: "#c7b9c5", fontSize: 8.5, fontFamily: theme.fonts.heavy },
-  equipped: { color: "#85f2aa" },
-  devCard: { width: "100%", borderRadius: 12, borderWidth: 1, borderColor: "#5e87a3", backgroundColor: "rgba(16, 35, 48, 0.9)", padding: 9 },
-  devTitle: { color: "#bfe9ff", fontSize: 10, fontFamily: theme.fonts.heavy, marginBottom: 7 },
-  devButtons: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  devButton: { minHeight: 30, justifyContent: "center", borderRadius: 8, borderWidth: 1, borderColor: "#80b4d2", backgroundColor: "#274d63", paddingHorizontal: 8 },
-  devButtonText: { color: "#e8f7ff", fontSize: 8.5, fontFamily: theme.fonts.heavy }
+  equipped: { color: "#85f2aa" }
 });

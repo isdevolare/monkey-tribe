@@ -20,6 +20,7 @@ import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { DailyRewardModal } from "../components/game/DailyRewardModal";
 import { NineSliceFrame } from "../components/game/NineSliceFrame";
+import { GemStoreModal } from "../components/game/GemStoreModal";
 import { MonkeyCollectionModal } from "../components/game/MonkeyCollectionModal";
 import { OfflineModal } from "../components/game/OfflineModal";
 import { QuestModal } from "../components/game/QuestModal";
@@ -145,6 +146,7 @@ export function GameScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [showQuests, setShowQuests] = useState(false);
   const [showShop, setShowShop] = useState(false);
+  const [showGemStore, setShowGemStore] = useState(false);
   const [showCollection, setShowCollection] = useState(false);
   const [showWorkerLodge, setShowWorkerLodge] = useState(false);
   const [showBananaGrove, setShowBananaGrove] = useState(false);
@@ -410,10 +412,10 @@ export function GameScreen() {
           <View style={styles.topButtons}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Gem Mağazası"
+              accessibilityLabel={t("gemStore.title", lang)}
               onPress={() => {
                 playSound("open");
-                setShowShop(true);
+                setShowGemStore(true);
               }}
               style={styles.gemPill}
             >
@@ -621,13 +623,22 @@ export function GameScreen() {
 
       <DailyRewardModal visible={showDaily} lang={lang} onClose={() => setShowDaily(false)} />
 
-      <ShopModal visible={showShop} lang={lang} onClose={() => setShowShop(false)} />
+      <ShopModal
+        visible={showShop}
+        lang={lang}
+        onClose={() => setShowShop(false)}
+        onOpenGemStore={() => setShowGemStore(true)}
+      />
 
       <MonkeyCollectionModal
         visible={showCollection}
         lang={lang}
         onClose={() => setShowCollection(false)}
+        onOpenGemStore={() => setShowGemStore(true)}
+        onOpenResourceShop={() => setShowShop(true)}
       />
+
+      <GemStoreModal visible={showGemStore} lang={lang} onClose={() => setShowGemStore(false)} />
 
       <WorkerLodgeModal
         visible={showWorkerLodge}
