@@ -1,18 +1,36 @@
-import type { Resources } from "../types/game";
+export type DailyReward = { kind: "gems"; amount: number };
 
-export type DailyReward = Partial<Resources> & { gems?: number };
-
-// 7-day escalating streak, gem-weighted: resources are earned by raiding,
-// the calendar hands out the scarce currency. Day 7 is the big one.
+// The calendar uses the existing premium gem balance only. Festival fragments
+// are intentionally not part of daily rewards during cosmetic normalization.
 export const DAILY_REWARDS: DailyReward[] = [
-  { bananas: 80 },
-  { gems: 1 },
-  { wood: 80 },
-  { gems: 2 },
-  { stones: 100 },
-  { gems: 3 },
-  { gems: 5, bananas: 150 }
+  { kind: "gems", amount: 5 },
+  { kind: "gems", amount: 8 },
+  { kind: "gems", amount: 12 },
+  { kind: "gems", amount: 15 },
+  { kind: "gems", amount: 20 },
+  { kind: "gems", amount: 30 },
+  { kind: "gems", amount: 5 }
 ];
+
+export const DAILY_WEEKLY_GEMS = DAILY_REWARDS.reduce(
+  (total, reward) => total + reward.amount,
+  0
+);
+
+export function resolveDailyReward(reward: DailyReward) {
+  return { gems: reward.amount };
+}
+
+export function nextDailyRewardDay(
+  streak: number,
+  lastClaim: string | null,
+  today: string
+) {
+  if (lastClaim === today) return null;
+  const safeStreak = Number.isFinite(streak) ? Math.max(0, Math.floor(streak)) : 0;
+  const consecutive = lastClaim != null && dayDiff(lastClaim, today) === 1;
+  return consecutive ? (safeStreak % DAILY_REWARDS.length) + 1 : 1;
+}
 
 /** Local calendar day as YYYY-MM-DD, used to gate one claim per day. */
 export function todayKey(now = Date.now()) {

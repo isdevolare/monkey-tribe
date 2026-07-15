@@ -2,7 +2,8 @@ import { Modal, StyleSheet, Text, View } from "react-native";
 import { playSound } from "../../game/audio/soundManager";
 import {
   DAILY_REWARDS,
-  dayDiff,
+  DAILY_WEEKLY_GEMS,
+  nextDailyRewardDay,
   todayKey,
   type DailyReward
 } from "../../game/config/dailyRewards";
@@ -25,9 +26,10 @@ export function DailyRewardModal({ visible, lang, onClose }: DailyRewardModalPro
   const claimDaily = useGameStore((state) => state.claimDaily);
 
   const claimedToday = lastClaim === todayKey();
-  const consecutive = lastClaim != null && dayDiff(lastClaim, todayKey()) === 1;
   // The day highlighted today: the one just claimed, or the next in the streak.
-  const activeDay = claimedToday ? streak : consecutive ? (streak % DAILY_REWARDS.length) + 1 : 1;
+  const activeDay = claimedToday
+    ? streak
+    : nextDailyRewardDay(streak, lastClaim, todayKey()) ?? 1;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -37,7 +39,7 @@ export function DailyRewardModal({ visible, lang, onClose }: DailyRewardModalPro
             {t("daily.title", lang)}
           </Text>
           <Text style={styles.subtitle} maxFontSizeMultiplier={theme.maxFontScale}>
-            {t("daily.subtitle", lang)}
+            {t("daily.subtitle", lang, { amount: DAILY_WEEKLY_GEMS })}
           </Text>
 
           <View style={styles.grid}>
@@ -101,9 +103,6 @@ function DayCell({
   status: DayStatus;
   lang: Lang;
 }) {
-  const asset = rewardAsset(reward);
-  const amount = rewardAmount(reward);
-
   return (
     <View
       style={[
@@ -116,12 +115,12 @@ function DayCell({
         {t("daily.day", lang, { n: day })}
       </Text>
       <AssetImage
-        assetKey={asset}
+        assetKey="resourceJungleGem"
         style={styles.cellIcon}
         fallback={<View style={styles.cellIconFallback} />}
       />
-      <Text style={styles.cellAmount} maxFontSizeMultiplier={theme.maxFontScale}>
-        {amount}
+      <Text style={styles.cellAmount} numberOfLines={2} adjustsFontSizeToFit maxFontSizeMultiplier={theme.maxFontScale}>
+        {reward.amount}
       </Text>
       {status === "done" ? (
         <View style={styles.doneOverlay} pointerEvents="none">
@@ -132,17 +131,6 @@ function DayCell({
       ) : null}
     </View>
   );
-}
-
-function rewardAsset(reward: DailyReward) {
-  if (reward.gems) return "resourceJungleGem" as const;
-  if (reward.bananas) return "resourceBanana" as const;
-  if (reward.wood) return "resourceWood" as const;
-  return "resourceStone" as const;
-}
-
-function rewardAmount(reward: DailyReward) {
-  return reward.gems ?? reward.bananas ?? reward.wood ?? reward.stones ?? 0;
 }
 
 const styles = StyleSheet.create({
@@ -192,9 +180,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: theme.spacing.lg
   },
-  // Percentage cells lock the grid to 4 per row (4+3) on every width, so
-  // the modal never grows past the screen the way fixed 74px cells did
-  // when they wrapped 3-per-row on narrow devices.
+  // Percentage cells keep all seven gem rewards inside narrow phone layouts.
   cell: {
     width: "22.5%",
     minHeight: 84,
@@ -240,7 +226,8 @@ const styles = StyleSheet.create({
   cellAmount: {
     color: "#ffe9ad",
     fontSize: theme.type.body,
-    fontFamily: theme.fonts.heavy
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
   },
   doneOverlay: {
     ...StyleSheet.absoluteFillObject,

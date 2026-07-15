@@ -40,6 +40,11 @@ export type GameAssetKey =
   | "stoneWorkerMaster"
   | "workerBananaDelivery"
   | "workerMasterBuilder"
+  | "festivalWorker"
+  | "sunParadeWorker"
+  | "watermelonFeastWorker"
+  | "goldenEmperor"
+  | "celestialMonkeyKing"
   | "unitFighter"
   | "unitScout"
   | "scoutJunglePathfinder"
@@ -214,6 +219,26 @@ export const gameAssets = {
   workerMasterBuilder: {
     ...asset("workerMasterBuilder", "units", "worker_master_builder.png", "1024x1024 transparent cosmetic unit"),
     source: require("../../../assets/game/units/worker_master_builder.png") as ImageSourcePropType
+  },
+  festivalWorker: {
+    ...asset("festivalWorker", "units", "festival_worker.png", "1024x1024 transparent Epic cosmetic unit"),
+    source: require("../../../assets/game/units/festival_worker.png") as ImageSourcePropType
+  },
+  sunParadeWorker: {
+    ...asset("sunParadeWorker", "units", "sun_parade_worker.png", "1024x1024 transparent Epic cosmetic unit"),
+    source: require("../../../assets/game/units/sun_parade_worker.png") as ImageSourcePropType
+  },
+  watermelonFeastWorker: {
+    ...asset("watermelonFeastWorker", "units", "watermelon_feast_worker.png", "1024x1024 transparent Epic cosmetic unit"),
+    source: require("../../../assets/game/units/watermelon_feast_worker.png") as ImageSourcePropType
+  },
+  goldenEmperor: {
+    ...asset("goldenEmperor", "units", "golden_emperor.png", "1024x1365 transparent Mythic cosmetic unit"),
+    source: require("../../../assets/game/units/golden_emperor.png") as ImageSourcePropType
+  },
+  celestialMonkeyKing: {
+    ...asset("celestialMonkeyKing", "units", "celestial_monkey_king.png", "1024x1024 transparent Legendary cosmetic unit"),
+    source: require("../../../assets/game/units/celestial_monkey_king.png") as ImageSourcePropType
   },
   unitFighter: {
     ...asset("unitFighter", "units", "unit_fighter.png", "512x512 transparent unit"),

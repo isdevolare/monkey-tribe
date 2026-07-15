@@ -43,7 +43,7 @@ import {
   troopUpgradeCost,
   troopUpgradeRequirement
 } from "../config/troops";
-import { DAILY_REWARDS, dayDiff, todayKey } from "../config/dailyRewards";
+import { DAILY_REWARDS, nextDailyRewardDay, resolveDailyReward, todayKey } from "../config/dailyRewards";
 import { QUESTS, isQuestComplete } from "../config/quests";
 import {
   DEFAULT_PROFILE_MONKEY_ID,
@@ -1844,6 +1844,9 @@ export const useGameStore = create<GameState>((set) => ({
         result = "requires_monkey";
         return state;
       }
+      if (skin.acquisition !== "direct_purchase" || skin.disabledReasonKey) {
+        return state;
+      }
       if (state.ownedProfileSkins.includes(id)) {
         result = "owned";
         return state;
@@ -1906,29 +1909,24 @@ export const useGameStore = create<GameState>((set) => ({
   claimDaily: () =>
     set((state) => {
       const today = todayKey();
-      if (state.dailyLastClaim === today) {
-        return state;
-      }
-      // Next streak day if claimed yesterday; reset to day 1 if a day slipped.
-      const consecutive =
-        state.dailyLastClaim != null && dayDiff(state.dailyLastClaim, today) === 1;
-      const day = consecutive ? (state.dailyStreak % DAILY_REWARDS.length) + 1 : 1;
-      const reward = DAILY_REWARDS[day - 1] ?? {};
+      const day = nextDailyRewardDay(state.dailyStreak, state.dailyLastClaim, today);
+      if (day == null) return state;
+      const reward = DAILY_REWARDS[day - 1];
       const now = Date.now();
-      const resources = { ...state.resources };
-      addResourcesCapped(
-        resources,
-        reward,
-        storageCap(buildingLevel(state.buildings, "clanHall"))
-      );
-      return {
+      if (!reward) return state;
+      const grant = resolveDailyReward(reward);
+      const next: GameState = {
         ...state,
-        resources,
-        gems: state.gems + (reward.gems ?? 0),
+        gems: state.gems + grant.gems,
         dailyStreak: day,
         dailyLastClaim: today,
-        feedback: { id: now, text: t("daily.claimed", state.language) }
+        feedback: {
+          id: now,
+          text: t("daily.claimed", state.language, { amount: grant.gems })
+        }
       };
+      void persistVillage(next);
+      return next;
     }),
   trainTroop: (type) => set((state) => createPlayerUnit(state, type)),
   upgradeTroopStat: (type, stat) => set((state) => upgradeTroopStat(state, type, stat)),

@@ -81,7 +81,12 @@ export function CosmeticDetailModal({
   const colors = RARITY[rarity];
   const presentationGlow = skin?.presentationGlow ?? colors.glow;
   const price = skin?.price ?? monkey.price;
-  const availableSkins = skinsForMonkey(monkey.id);
+  const purchasable = skin == null || (
+    skin.acquisition === "direct_purchase" && !skin.disabledReasonKey
+  );
+  const availableSkins = skinsForMonkey(monkey.id).filter(
+    (entry) => !entry.disabledReasonKey || ownedSkinIds.includes(entry.id)
+  );
   const title = t((skin ?? monkey).nameKey, lang);
   const description = t((skin ?? monkey).descriptionKey, lang);
 
@@ -105,6 +110,7 @@ export function CosmeticDetailModal({
               <View style={[styles.rarityBadge, { backgroundColor: colors.badge }]}>
                 <Text style={[styles.rarityText, { color: colors.text }]}>{RARITY_ICON[rarity]} {t(`collection.rarity.${rarity}`, lang)}</Text>
               </View>
+              {skin?.badgeKey ? <View style={styles.festivalBadge}><Text style={styles.festivalBadgeText}>{t(skin.badgeKey, lang)}</Text></View> : null}
               {selection.wasNew ? <View style={styles.newBadge}><Text style={styles.newBadgeText}>NEW</Text></View> : null}
               <SpringPressable accessibilityRole="button" onPress={onClose} style={styles.closeButton}><Text style={styles.closeText}>×</Text></SpringPressable>
             </View>
@@ -122,8 +128,9 @@ export function CosmeticDetailModal({
               <Text style={[styles.stateChip, equipped ? styles.equippedChip : owned ? styles.ownedChip : styles.lockedChip]}>
                 {equipped ? t("collection.equipped", lang) : owned ? t("collection.owned", lang) : t("collection.locked", lang)}
               </Text>
-              {!owned ? <Text style={styles.price}>💎 {price}</Text> : null}
-              {!owned && gems < price ? <Text style={styles.shortfall}>{t("collection.detail.missing", lang, { amount: price - gems })}</Text> : null}
+              {!owned && purchasable ? <Text style={styles.price}>💎 {price}</Text> : null}
+              {!owned && !purchasable ? <Text style={styles.comingSoon}>{t("collection.shop.comingSoon", lang)}</Text> : null}
+              {!owned && purchasable && gems < price ? <Text style={styles.shortfall}>{t("collection.detail.missing", lang, { amount: price - gems })}</Text> : null}
             </View>
 
             <Text style={styles.sectionTitle}>{t("collection.detail.villagePreview", lang)}</Text>
@@ -132,7 +139,11 @@ export function CosmeticDetailModal({
               <View style={styles.previewShade} />
               <View style={styles.previewGround} />
               {skin?.presentationGlow ? <View style={[styles.previewAura, { backgroundColor: presentationGlow }]} /> : null}
-              <AssetImage assetKey={appearance.villageAsset} resizeMode="contain" style={styles.previewMonkey} fallback={<Text style={styles.previewEmoji}>🐵</Text>} hideFallbackOnLoad />
+              <PremiumPreviewArt
+                asset={appearance.villageAsset}
+                floating={skin?.previewMotion === "float"}
+                particleColor={skin?.particleColor}
+              />
             </View>
 
             <View style={styles.sectionHeadingRow}>
@@ -147,7 +158,9 @@ export function CosmeticDetailModal({
                   <SpringPressable key={entry.id} onPress={() => onOpenSkin(entry)} style={[styles.skinThumb, skin?.id === entry.id ? styles.skinThumbSelected : null]}>
                     <AssetImage assetKey={entryAppearance.portraitAsset} style={styles.skinThumbArt} resizeMode="contain" fallback={<Text>🐵</Text>} hideFallbackOnLoad />
                     <Text style={styles.skinThumbName} numberOfLines={1}>{t(entry.nameKey, lang)}</Text>
-                    <Text style={[styles.skinThumbState, entryOwned ? styles.skinThumbOwned : null]}>{entryOwned ? "✓" : `💎 ${entry.price}`}</Text>
+                    <Text style={[styles.skinThumbState, entryOwned ? styles.skinThumbOwned : null]}>
+                      {entryOwned ? "✓" : entry.acquisition === "direct_purchase" ? `💎 ${entry.price}` : t("collection.shop.comingSoon", lang)}
+                    </Text>
                   </SpringPressable>
                 );
               })}
@@ -156,8 +169,10 @@ export function CosmeticDetailModal({
 
           <View style={styles.actions}>
             <SpringPressable onPress={onClose} style={[styles.actionButton, styles.secondaryButton]}><Text style={styles.secondaryText}>{t("collection.detail.close", lang)}</Text></SpringPressable>
-            {!owned ? (
+            {!owned && purchasable ? (
               <SpringPressable onPress={onUnlock} style={[styles.actionButton, styles.unlockButton]}><Text style={styles.actionText}>{t("collection.unlock", lang)} · 💎 {price}</Text></SpringPressable>
+            ) : !owned ? (
+              <View style={[styles.actionButton, styles.unavailableButton]}><Text style={styles.actionText}>{t("collection.shop.comingSoon", lang)}</Text></View>
             ) : !equipped ? (
               <SpringPressable onPress={onEquip} style={[styles.actionButton, styles.equipButton]}><Text style={styles.actionText}>{t("collection.equip", lang)}</Text></SpringPressable>
             ) : (
@@ -166,6 +181,55 @@ export function CosmeticDetailModal({
           </View>
         </View>
       </View>
+  );
+}
+
+const PREVIEW_PARTICLES = [
+  { left: "28%", top: 34 },
+  { left: "40%", top: 16 },
+  { left: "58%", top: 25 },
+  { left: "69%", top: 48 },
+  { left: "48%", top: 62 }
+] as const;
+
+function PremiumPreviewArt({ asset, floating, particleColor }: {
+  asset: import("../../game/assets/gameAssets").GameAssetKey;
+  floating: boolean;
+  particleColor?: string;
+}) {
+  const drift = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!floating && !particleColor) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(drift, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [drift, floating, particleColor]);
+
+  return (
+    <>
+      {particleColor ? PREVIEW_PARTICLES.map((particle, index) => (
+        <Animated.View
+          key={`${particle.left}-${particle.top}`}
+          pointerEvents="none"
+          style={[
+            styles.previewParticle,
+            { left: particle.left, top: particle.top, backgroundColor: particleColor },
+            {
+              opacity: drift.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.18, index % 2 ? 0.68 : 0.92, 0.2] }),
+              transform: [{ translateY: drift.interpolate({ inputRange: [0, 1], outputRange: [7 + index, -8 - index] }) }]
+            }
+          ]}
+        />
+      )) : null}
+      <Animated.View style={[styles.previewMonkeyWrap, floating ? { transform: [{ translateY: drift.interpolate({ inputRange: [0, 1], outputRange: [3, -4] }) }] } : null]}>
+        <AssetImage assetKey={asset} resizeMode="contain" style={styles.previewMonkey} fallback={<Text style={styles.previewEmoji}>🐵</Text>} hideFallbackOnLoad />
+      </Animated.View>
+    </>
   );
 }
 
@@ -223,6 +287,8 @@ const styles = StyleSheet.create({
   topRow: { width: "100%", minHeight: 34, flexDirection: "row", alignItems: "center", gap: 7 },
   rarityBadge: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
   rarityText: { fontSize: 10, fontFamily: theme.fonts.heavy, textTransform: "uppercase" },
+  festivalBadge: { borderRadius: 10, borderWidth: 1, borderColor: "#ffd873", backgroundColor: "#8d3b85", paddingHorizontal: 9, paddingVertical: 4 },
+  festivalBadgeText: { color: "#fff5c9", fontSize: 9, fontFamily: theme.fonts.heavy, textTransform: "uppercase" },
   newBadge: { borderRadius: 9, backgroundColor: "#dc3e35", paddingHorizontal: 8, paddingVertical: 4 },
   newBadgeText: { color: "#fff8dc", fontSize: 9, fontFamily: theme.fonts.heavy },
   closeButton: { marginLeft: "auto", width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: 16, borderWidth: 1, borderColor: "rgba(231,185,79,0.55)", backgroundColor: "#3a2919" },
@@ -239,12 +305,15 @@ const styles = StyleSheet.create({
   ownedChip: { backgroundColor: "#32652a" }, equippedChip: { backgroundColor: "#245d22", color: "#c9ff9d" }, lockedChip: { backgroundColor: "#57472f" },
   price: { color: "#bfeaff", fontSize: 12, fontFamily: theme.fonts.heavy },
   shortfall: { color: "#f2a69d", fontSize: 9, fontFamily: theme.fonts.bold },
+  comingSoon: { color: "#ffd98a", fontSize: 10, fontFamily: theme.fonts.heavy },
   sectionTitle: { alignSelf: "flex-start", marginTop: 13, color: "#eadcaf", fontSize: 11, fontFamily: theme.fonts.heavy, textTransform: "uppercase" },
   preview: { width: "100%", height: 120, marginTop: 6, overflow: "hidden", borderRadius: 14, borderWidth: 1, borderColor: "rgba(229,190,101,0.42)", backgroundColor: "#24452b" },
   previewFallback: { flex: 1, backgroundColor: "#315c37" }, previewShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(7,22,12,0.18)" },
   previewGround: { position: "absolute", left: 0, right: 0, bottom: 0, height: 34, backgroundColor: "rgba(75,52,28,0.62)" },
   previewAura: { position: "absolute", width: 104, height: 104, left: "50%", bottom: 4, marginLeft: -52, borderRadius: 52, opacity: 0.2 },
-  previewMonkey: { position: "absolute", width: 128, height: 112, bottom: 1, alignSelf: "center", left: "50%", marginLeft: -64 },
+  previewMonkeyWrap: { position: "absolute", width: 128, height: 112, bottom: 1, alignSelf: "center", left: "50%", marginLeft: -64 },
+  previewMonkey: { width: "100%", height: "100%" },
+  previewParticle: { position: "absolute", width: 5, height: 5, borderRadius: 3, shadowOpacity: 0.8, shadowRadius: 5 },
   previewEmoji: { fontSize: 50 },
   sectionHeadingRow: { width: "100%", flexDirection: "row", alignItems: "center" }, skinCount: { marginLeft: "auto", marginTop: 13, color: "#aebc92", fontSize: 10, fontFamily: theme.fonts.heavy },
   skinStrip: { gap: 8, paddingTop: 7, paddingBottom: 3 },
@@ -255,7 +324,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: 8, borderTopWidth: 1, borderTopColor: "rgba(226,177,90,0.25)", padding: 11, backgroundColor: "rgba(23,25,16,0.98)" },
   actionButton: { flex: 1, minHeight: 43, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 8 },
   secondaryButton: { borderColor: "#80663a", backgroundColor: "#33291c" }, secondaryText: { color: "#ded1ad", fontSize: 11, fontFamily: theme.fonts.heavy },
-  unlockButton: { borderColor: "#72d3ff", backgroundColor: "#17536e" }, equipButton: { borderColor: "#7dc956", backgroundColor: "#2b681f" }, equippedButton: { borderColor: "#568a3f", backgroundColor: "#244e1e" },
+  unlockButton: { borderColor: "#72d3ff", backgroundColor: "#17536e" }, unavailableButton: { borderColor: "#a97a42", backgroundColor: "#62451f" }, equipButton: { borderColor: "#7dc956", backgroundColor: "#2b681f" }, equippedButton: { borderColor: "#568a3f", backgroundColor: "#244e1e" },
   actionText: { color: "#fff7d9", fontSize: 11, fontFamily: theme.fonts.heavy, textAlign: "center" },
   unlockScrim: { ...StyleSheet.absoluteFillObject, zIndex: 120, elevation: 120, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(3,8,5,0.94)" },
   unlockCard: { width: 275, minHeight: 355, alignItems: "center", justifyContent: "center", overflow: "visible", borderRadius: 24, borderWidth: 2, borderColor: "#f2c95c", backgroundColor: "#192114", padding: 18, shadowColor: "#ffd66c", shadowOpacity: 0.65, shadowRadius: 25, elevation: 20 },

@@ -130,25 +130,29 @@ const dict: Record<string, Entry> = {
 
   // Tutorial
   "tut.0": {
-    tr: "Binalar zamanla muz, odun ve taş üretir.",
-    en: "Buildings produce bananas, wood and stone over time."
+    tr: "Bir binaya veya alttaki kısayol simgesine dokunarak yönetim panelini aç. Klan Salonu köyünün merkezidir.",
+    en: "Tap a building or a shortcut below to open its controls. The Clan Hall is the heart of your village."
   },
   "tut.1": {
-    tr: "Bir binaya dokun ve Geliştir ile seviyesini yükselt.",
-    en: "Tap a building and use Upgrade to raise its level."
+    tr: "İşçi Locası'nda Muz, Odun veya Taş işçisi üret. İşçiyi ilgili kaynak binasından sefere gönder; dönüşte ödülü topla.",
+    en: "Produce Banana, Wood, or Stone workers at the Worker Lodge. Send them from the matching resource building and collect their return."
   },
   "tut.2": {
-    tr: "İşçi Locası'nda işçi üretip kaynak seferine gönder.",
-    en: "Produce workers at the Worker Lodge and send them on resource expeditions."
+    tr: "Topladığın kaynaklarla binaları geliştir. Klan Salonu seviyesi yeni binaların ve seçeneklerin ana kilididir.",
+    en: "Use collected resources to upgrade buildings. Clan Hall level is the main requirement for new buildings and options."
   },
   "tut.3": {
-    tr: "Savaşçın hazır olunca BASKIN ile düşman kampına saldır.",
-    en: "When your fighters are ready, RAID an enemy camp."
+    tr: "Eğitim Yuvası'nda birlik yetiştir. Klan Salonu'ndan Baskın Haritası'nı aç, düşman kampını yık ve ganimet kazan.",
+    en: "Train units at the Training Nest. Open the Raid Map from the Clan Hall, destroy an enemy camp, and earn loot."
   },
-  "tut.quickStart": { tr: "Hızlı Başlangıç", en: "Quick Start" },
-  "tut.skip": { tr: "Geç", en: "Skip" },
-  "tut.next": { tr: "İleri", en: "Next" },
-  "tut.play": { tr: "Oyna", en: "Play" },
+  "tut.title.0": { tr: "Köyünü Tanı", en: "Know Your Village" },
+  "tut.title.1": { tr: "İşçi ve Kaynak", en: "Workers and Resources" },
+  "tut.title.2": { tr: "Kabileni Geliştir", en: "Grow Your Tribe" },
+  "tut.title.3": { tr: "Ordu ve Baskın", en: "Army and Raids" },
+  "tut.quickStart": { tr: "Köy Rehberi", en: "Village Guide" },
+  "tut.skip": { tr: "Rehberi Geç", en: "Skip Guide" },
+  "tut.next": { tr: "Devam", en: "Continue" },
+  "tut.play": { tr: "Köye Başla", en: "Enter Village" },
 
   // Raid map
   "raidmap.title": { tr: "Baskın Hedefi", en: "Raid Target" },
@@ -316,11 +320,11 @@ const dict: Record<string, Entry> = {
   "offline.away": { tr: "{time} uzaktaydın", en: "You were away for {time}" },
   "offline.collect": { tr: "Topla", en: "Collect" },
   "daily.title": { tr: "Günlük Ödül", en: "Daily Reward" },
-  "daily.subtitle": { tr: "Her gün gel, ödül büyüsün!", en: "Come back daily — rewards grow!" },
+  "daily.subtitle": { tr: "7 günlük seride toplam {amount} Gem kazan!", en: "Earn {amount} Gems across the 7-day streak!" },
   "daily.day": { tr: "{n}. Gün", en: "Day {n}" },
   "daily.claim": { tr: "Ödülü Al", en: "Claim Reward" },
   "daily.comeback": { tr: "Yarın tekrar gel!", en: "Come back tomorrow!" },
-  "daily.claimed": { tr: "Günlük ödül alındı!", en: "Daily reward claimed!" },
+  "daily.claimed": { tr: "+{amount} Gem alındı!", en: "+{amount} Gems claimed!" },
   "shop.title": { tr: "Gem Mağazası", en: "Gem Shop" },
   "shop.subtitle": { tr: "Baskın ve görev gemlerini kaynağa çevir", en: "Turn raid & quest gems into resources" },
   "shop.buy": { tr: "Al", en: "Buy" },
@@ -349,7 +353,7 @@ const dict: Record<string, Entry> = {
     tr: "Skinler {owned}/{total} · %{percent}",
     en: "Skins {owned}/{total} · {percent}%"
   },
-  "collection.diamonds": { tr: "Elmaslar", en: "Diamonds" },
+  "collection.diamonds": { tr: "Gem", en: "Gems" },
   "collection.tab.monkeys": { tr: "Maymunlar", en: "Monkeys" },
   "collection.tab.skins": { tr: "Skinler", en: "Skins" },
   "collection.tab.shop": { tr: "Mağaza", en: "Shop" },
@@ -365,7 +369,7 @@ const dict: Record<string, Entry> = {
   "collection.detail.close": { tr: "Kapat", en: "Close" },
   "collection.detail.equipNow": { tr: "Şimdi Kuşan", en: "Equip Now" },
   "collection.detail.tapToSkip": { tr: "Geçmek için dokun", en: "Tap to skip" },
-  "collection.detail.missing": { tr: "{amount} elmas eksik", en: "{amount} diamonds short" },
+  "collection.detail.missing": { tr: "{amount} gem eksik", en: "{amount} gems short" },
   "collection.requiresMonkey": {
     tr: "Bu skini açmadan önce ait olduğu maymunu koleksiyonuna eklemelisin.",
     en: "Collect this skin's monkey before unlocking it."
@@ -378,39 +382,34 @@ const dict: Record<string, Entry> = {
     tr: "Önce Orman Savaşçısı Maymunu'nun kilidini aç.",
     en: "Unlock Forest Warrior Monkey first."
   },
-  "collection.requiresMonkeyShort": { tr: "Maymun gerekli", en: "Monkey required" },
+  "collection.requiresMonkeyShort": { tr: "Önce Maymunu Aç", en: "Unlock Monkey First" },
   "collection.shop.title": { tr: "Kozmetik Mağaza", en: "Cosmetic Shop" },
-  "collection.shop.featuredMonkey": { tr: "Öne Çıkan Maymun", en: "Featured Monkey" },
-  "collection.shop.featuredSkin": { tr: "Öne Çıkan Skin", en: "Featured Skin" },
-  "collection.shop.bestValue": { tr: "En İyi Değer", en: "Best Value" },
-  "collection.shop.featured": { tr: "Öne Çıkan", en: "Featured" },
-  "collection.shop.monkeys": { tr: "Maymunlar", en: "Monkeys" },
-  "collection.shop.skins": { tr: "Skinler", en: "Skins" },
-  "collection.shop.offers": { tr: "Özel Teklifler", en: "Special Offers" },
-  "collection.shop.futureReady": { tr: "Yakında", en: "Future collections" },
-  "collection.shop.seasonal": { tr: "Sezonluk", en: "Seasonal" },
-  "collection.shop.limited": { tr: "Sınırlı Süre", en: "Limited Time" },
-  "collection.shop.bundles": { tr: "Paketler", en: "Bundles" },
-  "collection.shop.new": { tr: "Yeni", en: "New" },
-  "collection.shop.comingSoon": { tr: "Çok Yakında", en: "Coming Soon" },
+  "collection.shop.premiumSubtitle": { tr: "Kabile görünümünü yalnızca kozmetik ödüllerle özelleştir.", en: "Customize the tribe with cosmetic-only rewards." },
+  "collection.shop.preview": { tr: "Önizle", en: "Preview" },
+  "collection.shop.empty": { tr: "Bu bölümde henüz skin yok.", en: "There are no skins in this section yet." },
+  "collection.shop.section.early_game": { tr: "Erken Oyun Skinleri", en: "Early Game Skins" },
+  "collection.shop.section.festival": { tr: "Festival Skinleri", en: "Festival Skins" },
+  "collection.badge.festival": { tr: "Festival", en: "Festival" },
+  "collection.shop.comingSoon": { tr: "Yakında", en: "Coming Soon" },
+  "collection.disabled.missingArtwork": { tr: "Özgün artwork eksik", en: "Dedicated artwork missing" },
   "collection.unlocked": { tr: "Açıldı!", en: "Unlocked!" },
   "collection.profileLabel": {
     tr: "Maymun Koleksiyonunu Aç",
     en: "Open Monkey Collection"
   },
   "collection.locked": { tr: "🔒 Kilitli", en: "🔒 Locked" },
-  "collection.owned": { tr: "✓ Sahip", en: "✓ Owned" },
+  "collection.owned": { tr: "✓ Sahip Olundu", en: "✓ Owned" },
   "collection.equipped": { tr: "✓ Kuşanıldı", en: "✓ Equipped" },
   "collection.equip": { tr: "Kuşan", en: "Equip" },
   "collection.cancel": { tr: "İptal", en: "Cancel" },
-  "collection.unlock": { tr: "Kilidi Aç", en: "Unlock" },
+  "collection.unlock": { tr: "Satın Al", en: "Buy" },
   "collection.unlockPrompt": {
-    tr: "Bu kozmetiğin kilidini 💎 {price} karşılığında aç?",
-    en: "Unlock this cosmetic for 💎 {price}?"
+    tr: "Bu kozmetiği 💎 {price} Gem karşılığında satın al?",
+    en: "Buy this cosmetic for 💎 {price} Gems?"
   },
   "collection.notEnoughDiamonds": {
-    tr: "Yeterli elmas yok.",
-    en: "Not enough diamonds."
+    tr: "Yeterli gem yok.",
+    en: "Not enough gems."
   },
   "collection.ok": { tr: "Tamam", en: "OK" },
   "collection.rarity.common": { tr: "Yaygın", en: "Common" },
@@ -468,6 +467,46 @@ const dict: Record<string, Entry> = {
   "collection.skin.masterJungleBuilder.description": {
     tr: "En büyük kabile yapılarını ince işçilikle yükseltir.",
     en: "Raises the tribe's greatest structures with master craftsmanship."
+  },
+  "collection.skin.festivalWorker.name": {
+    tr: "Festival İşçisi",
+    en: "Festival Worker"
+  },
+  "collection.skin.festivalWorker.description": {
+    tr: "Çiçekler, yüz boyaları ve süslü muz sepetiyle kabile festivalinin neşesini taşır.",
+    en: "Carries the tribe festival's joy with flowers, face paint, and a decorated banana basket."
+  },
+  "collection.skin.sunParadeWorker.name": {
+    tr: "Güneş Geçidi İşçisi",
+    en: "Sun Parade Worker"
+  },
+  "collection.skin.sunParadeWorker.description": {
+    tr: "Güneş maskesi, festival fenerleri ve çember muz taşıyıcısıyla geçide öncülük eder.",
+    en: "Leads the parade with a sun mask, festival lanterns, and a circular banana carrier."
+  },
+  "collection.skin.watermelonFeastWorker.name": {
+    tr: "Karpuz Şöleni İşçisi",
+    en: "Watermelon Feast Worker"
+  },
+  "collection.skin.watermelonFeastWorker.description": {
+    tr: "Karpuz kabuğunu iş sepetine çevirmiş; ödül gelmeden ziyafete başlamış bile.",
+    en: "Turned a watermelon rind into a work basket—and started the feast before the reward arrived."
+  },
+  "collection.skin.goldenEmperor.name": {
+    tr: "Altın İmparator",
+    en: "Golden Emperor"
+  },
+  "collection.skin.goldenEmperor.description": {
+    tr: "Işıldayan altın kürkü, imparatorluk tacı ve kadim kabile zırhıyla Altın Şef'in nihai ihtişamı.",
+    en: "Golden Chief's ultimate splendor, with luminous golden fur, an imperial crown, and ancient tribal armor."
+  },
+  "collection.skin.celestialMonkeyKing.name": {
+    tr: "Göksel Maymun Kral",
+    en: "Celestial Monkey King"
+  },
+  "collection.skin.celestialMonkeyKing.description": {
+    tr: "Havada süzülen kraliyet tahtı, dev pelerini ve ışık saçan asasıyla kabilenin en prestijli hükümdarı.",
+    en: "The tribe's most prestigious ruler, enthroned above the ground with a grand cape and radiant staff."
   },
   "collection.skin.junglePathfinder.name": {
     tr: "Orman Yol Bulucusu",

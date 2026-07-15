@@ -76,7 +76,7 @@ import type {
 } from "../game/types/game";
 import { theme } from "../theme/theme";
 
-const TUTORIAL_KEY = "monkey-tribe:tutorial-seen";
+const TUTORIAL_KEY = "monkey-tribe:tutorial-seen:v2";
 const PHONE_FRAME_WIDTH = 430;
 const tutorialKeys = ["tut.0", "tut.1", "tut.2", "tut.3"];
 
@@ -1223,11 +1223,22 @@ function TutorialOverlay({
       <View style={styles.modalScrim}>
         <View style={styles.tutorialCard}>
           <PanelTexture dark={false} />
-          <Text style={styles.tutorialKicker}>{t("tut.quickStart", lang)}</Text>
+          <View style={styles.tutorialHeader}>
+            <View style={styles.tutorialStepBadge}>
+              <Text style={styles.tutorialStepBadgeText}>{step + 1}/{tutorialKeys.length}</Text>
+            </View>
+            <View style={styles.tutorialHeaderCopy}>
+              <Text style={styles.tutorialKicker} maxFontSizeMultiplier={theme.maxFontScale}>{t("tut.quickStart", lang)}</Text>
+              <Text style={styles.tutorialTitle} maxFontSizeMultiplier={theme.maxFontScale}>
+                {t(`tut.title.${step}`, lang)}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.tutorialDivider} />
           <View style={styles.tutorialRow}>
-            <TapHint size={52} />
-            <Text style={styles.tutorialStep}>
-              {step + 1}. {t(tutorialKeys[step] ?? "tut.0", lang)}
+            <View style={styles.tutorialHintWrap}><TapHint size={30} /></View>
+            <Text style={styles.tutorialStep} maxFontSizeMultiplier={theme.maxFontScale}>
+              {t(tutorialKeys[step] ?? "tut.0", lang)}
             </Text>
           </View>
           <View style={styles.tutorialDots}>
@@ -1240,10 +1251,10 @@ function TutorialOverlay({
           </View>
           <View style={styles.tutorialActions}>
             <Pressable style={styles.skipButton} onPress={onSkip} onPressIn={() => playSound("tap")}>
-              <Text style={styles.skipText}>{t("tut.skip", lang)}</Text>
+              <Text style={styles.skipText} maxFontSizeMultiplier={theme.maxFontScale}>{t("tut.skip", lang)}</Text>
             </Pressable>
             <Pressable style={styles.nextButton} onPress={onNext} onPressIn={() => playSound("tap")}>
-              <Text style={styles.nextText}>
+              <Text style={styles.nextText} maxFontSizeMultiplier={theme.maxFontScale}>
                 {step === tutorialKeys.length - 1 ? t("tut.play", lang) : t("tut.next", lang)}
               </Text>
             </Pressable>
@@ -2210,42 +2221,100 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(10, 23, 15, 0.68)",
-    padding: theme.spacing.xl
+    backgroundColor: "rgba(6, 16, 10, 0.82)",
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.xl
   },
   tutorialCard: {
     width: "100%",
-    maxWidth: 340,
-    borderRadius: 8,
-    borderWidth: 3,
-    borderColor: "#172f20",
+    maxWidth: 370,
+    minHeight: 360,
+    maxHeight: "92%",
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#8a5b24",
     backgroundColor: theme.colors.panel,
-    padding: theme.spacing.lg,
-    overflow: "hidden"
+    paddingTop: 66,
+    paddingBottom: 60,
+    paddingHorizontal: 62,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.55,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 20
+  },
+  tutorialHeader: {
+    minHeight: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10
+  },
+  tutorialStepBadge: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#d39c35",
+    backgroundColor: "#5d3b18"
+  },
+  tutorialStepBadgeText: {
+    color: "#fff0b3",
+    fontSize: 10,
+    lineHeight: 13,
+    fontFamily: theme.fonts.heavy
+  },
+  tutorialHeaderCopy: {
+    flex: 1,
+    minWidth: 0
   },
   tutorialKicker: {
-    color: "#4d5837",
-    fontSize: 12,
-    fontWeight: "900", fontFamily: theme.fonts.heavy,
+    color: "#74643d",
+    fontSize: 8,
+    lineHeight: 10,
+    fontFamily: theme.fonts.heavy,
     textTransform: "uppercase"
+  },
+  tutorialTitle: {
+    marginTop: 1,
+    color: theme.colors.ink,
+    fontSize: 16,
+    lineHeight: 19,
+    fontFamily: theme.fonts.heavy
+  },
+  tutorialDivider: {
+    height: 1,
+    marginTop: 6,
+    backgroundColor: "rgba(101, 76, 31, 0.26)"
   },
   tutorialRow: {
     flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 10
+  },
+  tutorialHintWrap: {
+    width: 32,
+    height: 32,
     alignItems: "center",
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.sm
+    justifyContent: "center",
+    marginTop: 1
   },
   tutorialStep: {
     flex: 1,
-    minHeight: 70,
+    minHeight: 82,
     color: theme.colors.ink,
-    fontSize: 20,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: theme.fonts.bold
   },
   tutorialDots: {
     flexDirection: "row",
+    justifyContent: "center",
     gap: 6,
-    marginTop: theme.spacing.md
+    marginTop: 5
   },
   tutorialDot: {
     width: 8,
@@ -2259,31 +2328,47 @@ const styles = StyleSheet.create({
   },
   tutorialActions: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    alignItems: "center",
     gap: theme.spacing.sm,
-    marginTop: theme.spacing.lg
+    marginTop: 10
   },
   skipButton: {
-    minHeight: 44,
+    flex: 1,
+    minHeight: 36,
+    alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: theme.spacing.md
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(86, 73, 42, 0.35)",
+    backgroundColor: "rgba(255, 248, 217, 0.36)",
+    paddingHorizontal: 8
   },
   skipText: {
-    color: "#4d5837",
-    fontSize: 15,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+    color: "#62583a",
+    fontSize: 11,
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
   },
   nextButton: {
-    minHeight: 44,
+    flex: 1.2,
+    minHeight: 36,
+    alignItems: "center",
     justifyContent: "center",
-    borderRadius: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#d29b25",
     backgroundColor: theme.colors.banana,
-    paddingHorizontal: theme.spacing.lg
+    paddingHorizontal: 8,
+    shadowColor: "#8c5d14",
+    shadowOpacity: 0.26,
+    shadowRadius: 5,
+    elevation: 4
   },
   nextText: {
     color: theme.colors.ink,
-    fontSize: 15,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+    fontSize: 12,
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
   },
   surfaceTexture: {
     ...StyleSheet.absoluteFillObject

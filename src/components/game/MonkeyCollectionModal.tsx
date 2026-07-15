@@ -11,8 +11,8 @@ import {
   useWindowDimensions
 } from "react-native";
 import {
+  ACTIVE_PROFILE_SKINS,
   PROFILE_MONKEYS,
-  PROFILE_SKINS,
   getCosmeticAppearance,
   getProfileMonkey,
   matchesCosmeticFilter,
@@ -23,6 +23,11 @@ import {
   type ProfileMonkey,
   type ProfileSkin
 } from "../../game/config/profileMonkeys";
+import {
+  COSMETIC_SHOP_SECTIONS,
+  shopSkinsForSection,
+  type CosmeticShopSection
+} from "../../game/config/cosmeticShop";
 import { t } from "../../game/i18n";
 import { useGameStore } from "../../game/state/gameStore";
 import type { Lang } from "../../game/types/game";
@@ -132,9 +137,11 @@ export function MonkeyCollectionModal({
   const [ownershipFilter, setOwnershipFilter] = useState<CosmeticOwnershipFilter>("all");
   const [rarityFilter, setRarityFilter] = useState<CosmeticRarityFilter>("all");
   const [visibleSkinCount, setVisibleSkinCount] = useState(12);
+  const [shopSection, setShopSection] = useState<CosmeticShopSection>("early_game");
   const compact = width < 360;
   const collected = unlocked.length;
-  const completion = Math.round(((collected + ownedSkins.length) / (PROFILE_MONKEYS.length + PROFILE_SKINS.length)) * 100);
+  const activeOwnedSkinCount = ownedSkins.filter((id) => ACTIVE_PROFILE_SKINS.some((skin) => skin.id === id)).length;
+  const completion = Math.round(((collected + activeOwnedSkinCount) / (PROFILE_MONKEYS.length + ACTIVE_PROFILE_SKINS.length)) * 100);
 
   useEffect(() => {
     if (!celebratingId) {
@@ -202,11 +209,10 @@ export function MonkeyCollectionModal({
     matchesCosmeticFilter(unlocked.includes(item.id), item.rarity, ownershipFilter, rarityFilter)
   );
   const selectedMonkeySkins = skinsForMonkey(selectedSkinMonkey).filter((item) =>
+    (!item.disabledReasonKey || ownedSkins.includes(item.id)) &&
     matchesCosmeticFilter(ownedSkins.includes(item.id), item.rarity, ownershipFilter, rarityFilter)
   );
-  const featuredMonkeys = PROFILE_MONKEYS.filter((item) => item.featured).slice(0, 2);
-  const featuredSkins = PROFILE_SKINS.filter((item) => item.featured).slice(0, 4);
-  const bestValueMonkeys = PROFILE_MONKEYS.filter((item) => item.id === "profile_monkey_scout" || item.id === "profile_monkey_warrior");
+  const shopSkins = shopSkinsForSection(shopSection);
 
   const detailOwned = detailSelection?.kind === "monkey"
     ? unlocked.includes(detailSelection.item.id)
@@ -282,7 +288,7 @@ export function MonkeyCollectionModal({
                     {t("collection.progress.monkeysOwned", lang, { owned: collected, total: PROFILE_MONKEYS.length })}
                   </Text>
                   <Text style={styles.skinProgressText} maxFontSizeMultiplier={theme.maxFontScale}>
-                    {t("collection.progress.skinsOwned", lang, { owned: ownedSkins.length, total: PROFILE_SKINS.length })}
+                    {t("collection.progress.skinsOwned", lang, { owned: activeOwnedSkinCount, total: ACTIVE_PROFILE_SKINS.length })}
                   </Text>
                   <View style={styles.progressTrack}>
                     <View style={[styles.progressFill, { width: `${completion}%` }]} />
@@ -382,24 +388,42 @@ export function MonkeyCollectionModal({
                 {activeTab === "shop" ? (
                   <View style={styles.fullWidthSection}>
                     <Text style={styles.sectionTitle}>{t("collection.shop.title", lang)}</Text>
-                    <Text style={styles.shopSectionTitle}>{t("collection.shop.featuredMonkey", lang)}</Text>
-                    <View style={styles.skinGrid}>
-                      {featuredMonkeys.map((monkey) => (
-                        <ShopTile key={monkey.id} name={t(monkey.nameKey, lang)} asset={monkey.portraitAsset} rarity={monkey.rarity} price={monkey.price} owned={unlocked.includes(monkey.id)} equipped={equipped === monkey.id} isNew={newMonkeys.includes(monkey.id)} onPress={() => selectMonkey(monkey)} lang={lang} />
+                    <Text style={styles.shopIntro}>{t("collection.shop.premiumSubtitle", lang)}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shopTabs}>
+                      {COSMETIC_SHOP_SECTIONS.map((section) => (
+                        <SpringPressable key={section} onPress={() => setShopSection(section)} style={[styles.shopTab, shopSection === section ? styles.shopTabActive : null]}>
+                          <Text style={[styles.shopTabText, shopSection === section ? styles.shopTabTextActive : null]}>{t(`collection.shop.section.${section}`, lang)}</Text>
+                        </SpringPressable>
                       ))}
+                    </ScrollView>
+                    <View style={styles.shopSectionHeader}>
+                      <Text style={styles.shopSectionTitle}>{t(`collection.shop.section.${shopSection}`, lang)}</Text>
+                      <Text style={styles.shopSectionCount}>{shopSkins.length}</Text>
                     </View>
-                    <Text style={styles.shopSectionTitle}>{t("collection.shop.featuredSkin", lang)}</Text>
                     <View style={styles.skinGrid}>
-                      {featuredSkins.map((skin) => (
-                        <ShopTile key={skin.id} name={t(skin.nameKey, lang)} asset={getCosmeticAppearance(skin.monkeyId, skin.id).portraitAsset} rarity={skin.rarity} price={skin.price} owned={ownedSkins.includes(skin.id)} equipped={equippedSkin === skin.id} isNew={newSkins.includes(skin.id)} onPress={() => selectSkin(skin)} lang={lang} />
-                      ))}
+                      {shopSkins.map((skin) => {
+                        const monkey = getProfileMonkey(skin.monkeyId);
+                        return (
+                          <ShopTile
+                            key={skin.id}
+                            name={t(skin.nameKey, lang)}
+                            monkeyName={monkey ? t(monkey.nameKey, lang) : ""}
+                            asset={getCosmeticAppearance(skin.monkeyId, skin.id).portraitAsset}
+                            rarity={skin.rarity}
+                            price={skin.price}
+                            purchasable={skin.acquisition === "direct_purchase"}
+                            owned={ownedSkins.includes(skin.id)}
+                            equipped={equippedSkin === skin.id}
+                            isNew={newSkins.includes(skin.id)}
+                            badge={skin.badgeKey ? t(skin.badgeKey, lang) : undefined}
+                            particleColor={skin.particleColor}
+                            onPress={() => selectSkin(skin)}
+                            lang={lang}
+                          />
+                        );
+                      })}
                     </View>
-                    <Text style={styles.shopSectionTitle}>{t("collection.shop.bestValue", lang)}</Text>
-                    <View style={styles.skinGrid}>
-                      {bestValueMonkeys.map((monkey) => (
-                        <ShopTile key={monkey.id} name={t(monkey.nameKey, lang)} asset={monkey.portraitAsset} rarity={monkey.rarity} price={monkey.price} owned={unlocked.includes(monkey.id)} equipped={equipped === monkey.id} isNew={newMonkeys.includes(monkey.id)} onPress={() => selectMonkey(monkey)} lang={lang} />
-                      ))}
-                    </View>
+                    {shopSkins.length === 0 ? <Text style={styles.emptyText}>{t("collection.shop.empty", lang)}</Text> : null}
                   </View>
                 ) : null}
               </ScrollView>
@@ -927,6 +951,7 @@ function SkinCard({
   const presentationGlow = skin.presentationGlow ?? rarity.glow;
   const appearance = getCosmeticAppearance(skin.monkeyId, skin.id);
   const monkey = getProfileMonkey(skin.monkeyId);
+  const purchasable = skin.acquisition === "direct_purchase" && !skin.disabledReasonKey;
   const unlockAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (!celebrating) return;
@@ -948,6 +973,7 @@ function SkinCard({
       style={[styles.skinCard, compact ? styles.skinCardCompact : null, { borderColor: rarity.border, backgroundColor: rarity.surface, shadowColor: presentationGlow }, equipped ? styles.monkeyCardEquipped : null]}
     >
       {isNew ? <View pointerEvents="none" style={styles.newCorner}><Text style={styles.newCornerText}>NEW</Text></View> : null}
+      {skin.badgeKey ? <View pointerEvents="none" style={styles.festivalCorner}><Text style={styles.festivalCornerText}>{t(skin.badgeKey, lang)}</Text></View> : null}
       <AnimatedRarityFx rarity={skin.rarity} color={presentationGlow} />
       <Animated.View style={[styles.skinArtFrame, { borderColor: rarity.border, transform: [{ rotateY: cardFlip }] }]}>
         <View style={[styles.artHalo, { backgroundColor: presentationGlow }]} />
@@ -962,10 +988,12 @@ function SkinCard({
       <Text style={styles.skinMonkeyName} numberOfLines={1}>{monkey ? t(monkey.nameKey, lang) : ""}</Text>
       <Text style={styles.skinDescription} numberOfLines={3}>{t(skin.descriptionKey, lang)}</Text>
       <Text style={[styles.statusText, equipped ? styles.equippedText : null]}>
-        {!monkeyOwned ? t("collection.requiresMonkeyShort", lang) : equipped ? t("collection.equipped", lang) : owned ? t("collection.owned", lang) : t("collection.locked", lang)}
+        {!monkeyOwned ? t("collection.requiresMonkeyShort", lang) : equipped ? t("collection.equipped", lang) : owned ? t("collection.owned", lang) : purchasable ? t("collection.locked", lang) : t("collection.shop.comingSoon", lang)}
       </Text>
-      {!owned ? (
+      {!owned && purchasable ? (
         <View style={styles.priceButton}><AssetImage assetKey="resourceJungleGem" style={styles.priceGem} fallback={<View />} /><Text style={styles.priceText}>{skin.price}</Text></View>
+      ) : !owned ? (
+        <View style={[styles.equipButton, styles.comingSoonButton]}><Text style={styles.equipText}>{t("collection.shop.comingSoon", lang)}</Text></View>
       ) : !equipped ? (
         <View style={styles.equipButton}><Text style={styles.equipText}>{t("collection.equip", lang)}</Text></View>
       ) : (
@@ -976,14 +1004,18 @@ function SkinCard({
   );
 }
 
-function ShopTile({ name, asset, rarity, price, owned, equipped, isNew, onPress, lang }: {
+function ShopTile({ name, monkeyName, asset, rarity, price, purchasable, owned, equipped, isNew, badge, particleColor, onPress, lang }: {
   name: string;
+  monkeyName: string;
   asset: import("../../game/assets/gameAssets").GameAssetKey;
   rarity: CosmeticRarity;
   price: number;
+  purchasable: boolean;
   owned: boolean;
   equipped: boolean;
   isNew: boolean;
+  badge?: string;
+  particleColor?: string;
   onPress: () => void;
   lang: Lang;
 }) {
@@ -991,12 +1023,26 @@ function ShopTile({ name, asset, rarity, price, owned, equipped, isNew, onPress,
   return (
     <SpringPressable onPress={onPress} style={[styles.shopTile, { borderColor: colors.border, backgroundColor: colors.surface, shadowColor: colors.glow }]}>
       {isNew ? <View pointerEvents="none" style={styles.newCorner}><Text style={styles.newCornerText}>NEW</Text></View> : null}
-      <AssetImage assetKey={asset} style={styles.shopTileArt} resizeMode="contain" fallback={<Text style={styles.artFallback}>🐵</Text>} hideFallbackOnLoad />
-      <View style={[styles.shopRarityDot, { backgroundColor: colors.border }]} />
+      {badge ? <View pointerEvents="none" style={styles.festivalCorner}><Text style={styles.festivalCornerText}>{badge}</Text></View> : null}
+      <AnimatedRarityFx rarity={rarity} color={particleColor ?? colors.glow} />
+      <View style={[styles.shopTileArtFrame, { borderColor: colors.border }]}>
+        <View style={[styles.shopTileHalo, { backgroundColor: particleColor ?? colors.glow }]} />
+        <AssetImage assetKey={asset} style={styles.shopTileArt} resizeMode="contain" fallback={<Text style={styles.artFallback}>🐵</Text>} hideFallbackOnLoad />
+      </View>
+      <View style={styles.shopRarityRow}>
+        <View style={[styles.shopRarityDot, { backgroundColor: colors.border }]} />
+        <Text style={[styles.shopRarityText, { color: colors.text }]}>{t(`collection.rarity.${rarity}`, lang)}</Text>
+      </View>
       <Text style={styles.shopTileName} numberOfLines={2}>{name}</Text>
-      <Text style={[styles.shopTileStatus, equipped ? styles.equippedText : null]}>
-        {equipped ? t("collection.equipped", lang) : owned ? t("collection.owned", lang) : `💎 ${price}`}
-      </Text>
+      <Text style={styles.shopTileMonkey} numberOfLines={1}>{monkeyName}</Text>
+      <View style={styles.shopTileBottomRow}>
+        <View style={[styles.shopTileStatusBadge, equipped ? styles.shopEquippedBadge : owned ? styles.shopOwnedBadge : styles.shopPriceBadge]}>
+          <Text style={[styles.shopTileStatus, equipped ? styles.equippedText : null]}>
+            {equipped ? t("collection.equipped", lang) : owned ? t("collection.owned", lang) : purchasable ? `💎 ${price}` : t("collection.shop.comingSoon", lang)}
+          </Text>
+        </View>
+        <View style={styles.previewButton}><Text style={styles.previewButtonText}>{t("collection.shop.preview", lang)}</Text></View>
+      </View>
     </SpringPressable>
   );
 }
@@ -1330,6 +1376,29 @@ const styles = StyleSheet.create({
     lineHeight: 10,
     fontFamily: theme.fonts.heavy
   },
+  festivalCorner: {
+    position: "absolute",
+    zIndex: 7,
+    top: 7,
+    left: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ffd873",
+    backgroundColor: "#8d3b85",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    shadowColor: "#ff95dc",
+    shadowOpacity: 0.55,
+    shadowRadius: 5,
+    elevation: 7
+  },
+  festivalCornerText: {
+    color: "#fff5c9",
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontFamily: theme.fonts.heavy,
+    textTransform: "uppercase"
+  },
   fullWidthSection: {
     width: "100%"
   },
@@ -1341,13 +1410,43 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   shopSectionTitle: {
-    marginTop: 12,
-    marginBottom: 7,
+    marginTop: 0,
+    marginBottom: 0,
     color: "#dcc789",
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontFamily: theme.fonts.heavy,
     textTransform: "uppercase"
+  },
+  shopIntro: {
+    marginTop: -3,
+    marginBottom: 10,
+    color: "#bdb294",
+    fontSize: 9.5,
+    lineHeight: 13,
+    fontFamily: theme.fonts.bold
+  },
+  shopSectionHeader: {
+    width: "100%",
+    minHeight: 34,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(226,177,90,0.22)"
+  },
+  shopSectionCount: {
+    minWidth: 26,
+    overflow: "hidden",
+    borderRadius: 10,
+    backgroundColor: "rgba(231,185,79,0.16)",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    color: "#ead89b",
+    fontSize: 9,
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
   },
   emptyText: {
     width: "100%",
@@ -1456,7 +1555,7 @@ const styles = StyleSheet.create({
   },
   shopTabs: {
     gap: 7,
-    paddingBottom: 10
+    paddingBottom: 12
   },
   shopTab: {
     minHeight: 32,
@@ -1472,53 +1571,132 @@ const styles = StyleSheet.create({
     backgroundColor: "#76501d"
   },
   shopTabText: {
-    color: "#f1dfaf",
+    color: "#bdb294",
     fontSize: 10,
     fontFamily: theme.fonts.heavy
   },
+  shopTabTextActive: {
+    color: "#fff0b3"
+  },
   shopTile: {
+    position: "relative",
     width: "48.4%",
-    minHeight: 190,
+    minHeight: 260,
     alignItems: "center",
-    borderRadius: 15,
+    borderRadius: 18,
     borderWidth: 2,
-    padding: 8,
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
+    overflow: "hidden",
+    padding: 9,
+    shadowOpacity: 0.48,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 6
+    elevation: 8
+  },
+  shopTileArtFrame: {
+    width: "100%",
+    height: 142,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    borderRadius: 13,
+    borderWidth: 1,
+    backgroundColor: "rgba(4,9,6,0.58)"
+  },
+  shopTileHalo: {
+    position: "absolute",
+    width: 118,
+    height: 118,
+    borderRadius: 59,
+    opacity: 0.16
   },
   shopTileArt: {
     width: "100%",
-    height: 118
+    height: 138
+  },
+  shopRarityRow: {
+    minHeight: 12,
+    marginTop: 3,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4
   },
   shopRarityDot: {
-    width: 20,
+    width: 12,
     height: 3,
-    borderRadius: 2,
-    marginTop: 3
+    borderRadius: 2
+  },
+  shopRarityText: {
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontFamily: theme.fonts.heavy,
+    textTransform: "uppercase"
   },
   shopTileName: {
-    minHeight: 32,
-    marginTop: 5,
+    minHeight: 31,
+    marginTop: 3,
     color: theme.colors.paper,
-    fontSize: 11,
+    fontSize: 11.5,
     lineHeight: 15,
     fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
+  shopTileMonkey: {
+    width: "100%",
+    color: "#afa488",
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontFamily: theme.fonts.bold,
+    textAlign: "center"
+  },
+  shopTileBottomRow: {
+    width: "100%",
+    minHeight: 31,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 6
+  },
+  shopTileStatusBadge: {
+    flex: 1,
+    minHeight: 29,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 4
+  },
+  shopPriceBadge: {
+    borderColor: "rgba(115,213,255,0.5)",
+    backgroundColor: "rgba(19,80,105,0.82)"
+  },
+  shopOwnedBadge: {
+    borderColor: "rgba(126,205,91,0.55)",
+    backgroundColor: "rgba(47,104,32,0.84)"
+  },
+  shopEquippedBadge: {
+    borderColor: "#b9ec7b",
+    backgroundColor: "#2c6d20"
+  },
   shopTileStatus: {
     color: "#bdeaff",
-    fontSize: 10,
+    fontSize: 8.5,
     fontFamily: theme.fonts.heavy
   },
-  futurePanel: {
-    marginTop: 14,
-    borderRadius: 13,
+  previewButton: {
+    minWidth: 53,
+    minHeight: 29,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(226, 177, 90, 0.24)",
-    backgroundColor: "rgba(40, 33, 22, 0.76)",
-    padding: 10
+    borderColor: "rgba(231,185,79,0.55)",
+    backgroundColor: "rgba(84,57,24,0.9)",
+    paddingHorizontal: 6
+  },
+  previewButtonText: {
+    color: "#ffe9aa",
+    fontSize: 7.5,
+    fontFamily: theme.fonts.heavy
   },
   loadMoreButton: {
     alignSelf: "center",
@@ -1537,28 +1715,6 @@ const styles = StyleSheet.create({
     color: "#fff0b3",
     fontSize: 10,
     fontFamily: theme.fonts.heavy
-  },
-  futureTitle: {
-    color: "#dbc78f",
-    fontSize: 10,
-    fontFamily: theme.fonts.heavy,
-    textTransform: "uppercase"
-  },
-  futureChips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 7
-  },
-  futureChip: {
-    color: "#9e987f",
-    fontSize: 9,
-    fontFamily: theme.fonts.bold,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 4
   },
   monkeyCard: {
     position: "relative",
@@ -1735,6 +1891,10 @@ const styles = StyleSheet.create({
   },
   equippedButton: {
     backgroundColor: "rgba(39, 81, 34, 0.8)"
+  },
+  comingSoonButton: {
+    borderColor: "rgba(222, 166, 83, 0.72)",
+    backgroundColor: "rgba(105, 72, 30, 0.9)"
   },
   equipText: {
     color: "#eefedc",
