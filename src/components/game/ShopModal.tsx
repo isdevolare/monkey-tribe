@@ -1,6 +1,12 @@
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { playSound } from "../../game/audio/soundManager";
-import { SHOP_ITEMS, type ShopItem } from "../../game/config/shop";
+import { storageCap } from "../../game/config/buildings";
+import {
+  resourceShopCapacityIssues,
+  resourceShopItems,
+  type ResourceShopCapacityIssue,
+  type ShopItem
+} from "../../game/config/shop";
 import { t } from "../../game/i18n";
 import { useGameStore } from "../../game/state/gameStore";
 import type { Lang, Resources } from "../../game/types/game";
@@ -16,7 +22,10 @@ type ShopModalProps = {
 
 export function ShopModal({ visible, lang, onClose }: ShopModalProps) {
   const gems = useGameStore((state) => state.gems);
+  const resources = useGameStore((state) => state.resources);
+  const hallLevel = useGameStore((state) => state.buildings.find((building) => building.type === "clanHall")?.level ?? 1);
   const buy = useGameStore((state) => state.buyShopItem);
+  const shopItems = resourceShopItems(hallLevel);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -38,18 +47,26 @@ export function ShopModal({ visible, lang, onClose }: ShopModalProps) {
           </Text>
 
           <View style={styles.grid}>
-            {SHOP_ITEMS.map((item) => (
-              <ShopCard
-                key={item.id}
-                item={item}
-                lang={lang}
-                affordable={gems >= item.gemCost}
-                onBuy={() => {
-                  playSound("coins");
-                  buy(item.id);
-                }}
-              />
-            ))}
+            {shopItems.map((item) => {
+              const capacityIssues = resourceShopCapacityIssues(
+                item,
+                resources,
+                storageCap(hallLevel)
+              );
+              return (
+                <ShopCard
+                  key={item.id}
+                  item={item}
+                  lang={lang}
+                  affordable={gems >= item.gemCost}
+                  capacityIssues={capacityIssues}
+                  onBuy={() => {
+                    playSound("coins");
+                    buy(item.id);
+                  }}
+                />
+              );
+            })}
           </View>
 
           <Pressable
@@ -74,16 +91,21 @@ function ShopCard({
   item,
   lang,
   affordable,
+  capacityIssues,
   onBuy
 }: {
   item: ShopItem;
   lang: Lang;
   affordable: boolean;
+  capacityIssues: readonly ResourceShopCapacityIssue[];
   onBuy: () => void;
 }) {
   const rewards = (["bananas", "stones", "wood"] as (keyof Resources)[])
     .map((key) => ({ key, amount: item.reward[key] ?? 0 }))
     .filter((entry) => entry.amount > 0);
+
+  const hasCapacity = capacityIssues.length === 0;
+  const enabled = affordable && hasCapacity;
 
   return (
     <View style={styles.shopCard}>
@@ -109,18 +131,41 @@ function ShopCard({
           </View>
         ))}
       </View>
+      {!hasCapacity ? (
+        <View style={styles.storageWarning}>
+          <Text style={styles.storageWarningTitle}>{t("shop.storageShort", lang)}</Text>
+          {capacityIssues.map((issue) => (
+            <Text key={issue.resource} style={styles.storageWarningText} numberOfLines={2}>
+              {t("shop.storageNeed", lang, {
+                resource: t(`res.${issue.resource}`, lang),
+                free: issue.free,
+                required: issue.requiredFree
+              })}
+            </Text>
+          ))}
+        </View>
+      ) : null}
       <SpringPressable
         accessibilityRole="button"
-        accessibilityState={{ disabled: !affordable }}
-        disabled={!affordable}
+        accessibilityState={{ disabled: !enabled }}
+        accessibilityLabel={!hasCapacity ? t("shop.storageShort", lang) : undefined}
+        disabled={!enabled}
         sound={null}
         onPress={onBuy}
-        style={[styles.buy, affordable ? styles.buyReady : styles.buyLocked]}
+        style={[styles.buy, enabled ? styles.buyReady : styles.buyLocked]}
       >
-        <AssetImage assetKey="resourceJungleGem" style={styles.buyGem} fallback={<View />} />
-        <Text style={styles.buyText} maxFontSizeMultiplier={theme.maxFontScale}>
-          {item.gemCost}
-        </Text>
+        {hasCapacity ? (
+          <>
+            <AssetImage assetKey="resourceJungleGem" style={styles.buyGem} fallback={<View />} />
+            <Text style={styles.buyText} maxFontSizeMultiplier={theme.maxFontScale}>
+              {item.gemCost}
+            </Text>
+          </>
+        ) : (
+          <Text style={styles.buyText} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={theme.maxFontScale}>
+            {t("shop.storageShort", lang)}
+          </Text>
+        )}
       </SpringPressable>
     </View>
   );
@@ -253,6 +298,29 @@ const styles = StyleSheet.create({
     color: "#ffe9ad",
     fontSize: theme.type.small,
     fontFamily: theme.fonts.heavy
+  },
+  storageWarning: {
+    width: "100%",
+    minHeight: 34,
+    justifyContent: "center",
+    marginBottom: 5,
+    borderRadius: 7,
+    backgroundColor: "rgba(105, 43, 25, 0.72)",
+    paddingHorizontal: 5,
+    paddingVertical: 3
+  },
+  storageWarningTitle: {
+    color: "#ffb68a",
+    fontSize: 8.5,
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
+  },
+  storageWarningText: {
+    color: "#f3d3b8",
+    fontSize: 7.5,
+    lineHeight: 10,
+    fontFamily: theme.fonts.bold,
+    textAlign: "center"
   },
   buy: {
     flexDirection: "row",

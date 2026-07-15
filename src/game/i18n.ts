@@ -312,7 +312,7 @@ const dict: Record<string, Entry> = {
   "fb.queued.shield_guardian": { tr: "Kalkan Muhafızı kuyruğa alındı", en: "Shield Guardian queued" },
   "fb.queued.crossbowman": { tr: "Arbaletçi kuyruğa alındı", en: "Crossbowman queued" },
   "fb.queueFull": { tr: "Üretim kuyruğu dolu", en: "Production queue is full" },
-  "fb.needGems": { tr: "Yeterli gem yok", en: "Not enough gems" },
+  "fb.needGems": { tr: "Yeterli Gem yok", en: "Not enough Gems" },
   "fb.rushed": { tr: "Üretim hızlandırıldı", en: "Production rushed" },
   "fb.questClaimed": { tr: "Görev ödülü alındı!", en: "Quest reward claimed!" },
   "offline.title": { tr: "Tekrar hoş geldin, şef!", en: "Welcome back, chief!" },
@@ -320,15 +320,27 @@ const dict: Record<string, Entry> = {
   "offline.away": { tr: "{time} uzaktaydın", en: "You were away for {time}" },
   "offline.collect": { tr: "Topla", en: "Collect" },
   "daily.title": { tr: "Günlük Ödül", en: "Daily Reward" },
-  "daily.subtitle": { tr: "7 günlük seride toplam {amount} Gem kazan!", en: "Earn {amount} Gems across the 7-day streak!" },
+  "daily.subtitleScout": { tr: "{amount} Gem topla ve 7. günde Genç İzci'yi aç!", en: "Earn {amount} Gems and unlock Young Scout on Day 7!" },
+  "daily.subtitleRepeat": { tr: "7 günlük seride toplam {amount} Gem kazan!", en: "Earn {amount} Gems across the 7-day streak!" },
   "daily.day": { tr: "{n}. Gün", en: "Day {n}" },
   "daily.claim": { tr: "Ödülü Al", en: "Claim Reward" },
   "daily.comeback": { tr: "Yarın tekrar gel!", en: "Come back tomorrow!" },
   "daily.claimed": { tr: "+{amount} Gem alındı!", en: "+{amount} Gems claimed!" },
+  "daily.scout": { tr: "Genç İzci", en: "Young Scout" },
+  "daily.scoutUnlocked": { tr: "Genç İzci kalıcı olarak açıldı!", en: "Young Scout permanently unlocked!" },
   "shop.title": { tr: "Gem Mağazası", en: "Gem Shop" },
-  "shop.subtitle": { tr: "Baskın ve görev gemlerini kaynağa çevir", en: "Turn raid & quest gems into resources" },
+  "shop.subtitle": { tr: "Baskın ve görev Gemlerini kaynağa çevir", en: "Turn raid & quest Gems into resources" },
   "shop.buy": { tr: "Al", en: "Buy" },
   "shop.bought": { tr: "Satın alındı!", en: "Purchased!" },
+  "shop.storageShort": { tr: "Depoda yer yok", en: "Not enough storage" },
+  "shop.storageNeed": {
+    tr: "{resource}: {free} boş · {required} gerekli",
+    en: "{resource}: {free} free · {required} required"
+  },
+  "shop.storageInsufficient": {
+    tr: "{resource} deposunda {free} boş alan var; {required} gerekli. Gem harcanmadı.",
+    en: "{resource} storage has {free} free; {required} required. No Gems were spent."
+  },
   "shop.bananaPack": { tr: "Muz Paketi", en: "Banana Pack" },
   "shop.stonePack": { tr: "Taş Paketi", en: "Stone Pack" },
   "shop.woodPack": { tr: "Odun Paketi", en: "Wood Pack" },
@@ -353,7 +365,7 @@ const dict: Record<string, Entry> = {
     tr: "Skinler {owned}/{total} · %{percent}",
     en: "Skins {owned}/{total} · {percent}%"
   },
-  "collection.diamonds": { tr: "Gem", en: "Gems" },
+  "collection.gems": { tr: "Gem", en: "Gems" },
   "collection.tab.monkeys": { tr: "Maymunlar", en: "Monkeys" },
   "collection.tab.skins": { tr: "Skinler", en: "Skins" },
   "collection.tab.shop": { tr: "Mağaza", en: "Shop" },
@@ -369,47 +381,53 @@ const dict: Record<string, Entry> = {
   "collection.detail.close": { tr: "Kapat", en: "Close" },
   "collection.detail.equipNow": { tr: "Şimdi Kuşan", en: "Equip Now" },
   "collection.detail.tapToSkip": { tr: "Geçmek için dokun", en: "Tap to skip" },
-  "collection.detail.missing": { tr: "{amount} gem eksik", en: "{amount} gems short" },
-  "collection.requiresMonkey": {
-    tr: "Bu skini açmadan önce ait olduğu maymunu koleksiyonuna eklemelisin.",
-    en: "Collect this skin's monkey before unlocking it."
-  },
-  "collection.requiresScout": {
-    tr: "Önce Genç İzci Maymunu'nun kilidini aç.",
-    en: "Unlock Young Scout Monkey first."
-  },
-  "collection.requiresWarrior": {
-    tr: "Önce Orman Savaşçısı Maymunu'nun kilidini aç.",
-    en: "Unlock Forest Warrior Monkey first."
-  },
-  "collection.requiresMonkeyShort": { tr: "Önce Maymunu Aç", en: "Unlock Monkey First" },
+  "collection.detail.missing": { tr: "{amount} Gem eksik", en: "{amount} Gems short" },
+  "collection.requiresNamedMonkey": { tr: "{name} gerekli", en: "Requires {name}" },
+  "collection.day7Scout": { tr: "7. günde ücretsiz", en: "Free on Day 7" },
   "collection.shop.title": { tr: "Kozmetik Mağaza", en: "Cosmetic Shop" },
   "collection.shop.premiumSubtitle": { tr: "Kabile görünümünü yalnızca kozmetik ödüllerle özelleştir.", en: "Customize the tribe with cosmetic-only rewards." },
-  "collection.shop.preview": { tr: "Önizle", en: "Preview" },
-  "collection.shop.empty": { tr: "Bu bölümde henüz skin yok.", en: "There are no skins in this section yet." },
-  "collection.shop.section.early_game": { tr: "Erken Oyun Skinleri", en: "Early Game Skins" },
-  "collection.shop.section.festival": { tr: "Festival Skinleri", en: "Festival Skins" },
   "collection.badge.festival": { tr: "Festival", en: "Festival" },
-  "collection.shop.comingSoon": { tr: "Yakında", en: "Coming Soon" },
-  "collection.disabled.missingArtwork": { tr: "Özgün artwork eksik", en: "Dedicated artwork missing" },
+  "festival.collection.title": { tr: "🎉 Festival Koleksiyonu", en: "🎉 Festival Collection" },
+  "festival.chest.name": { tr: "Festival Sandığı", en: "Festival Chest" },
+  "festival.chest.launchEvent": { tr: "🎉 Çıkış Etkinliği", en: "🎉 Launch Event" },
+  "festival.chest.discount": { tr: "%50 İNDİRİM", en: "50% OFF" },
+  "festival.chest.open": { tr: "50 Gem ile Aç", en: "Open for 50 Gems" },
+  "festival.chest.pending": { tr: "Ödülü Gör", en: "View Reward" },
+  "festival.chest.completed": { tr: "Festival Koleksiyonu Tamamlandı", en: "Festival Collection Completed" },
+  "festival.chest.details": { tr: "Olasılıklar", en: "Odds" },
+  "festival.chest.fragments": { tr: "Parça", en: "Fragments" },
+  "festival.chest.eligible": { tr: "Uygun ödüller: {count}", en: "Eligible rewards: {count}" },
+  "festival.chest.poolRule": { tr: "Tamamlanan skinler ödül havuzundan çıkarılır.", en: "Completed skins are removed from the reward pool." },
+  "festival.progress": { tr: "{current} / {required} Parça", en: "{current} / {required} Fragments" },
+  "festival.reward.fragments": { tr: "+{amount} Parça • {current}/{required}", en: "+{amount} Fragments • {current}/{required}" },
+  "festival.reward.unlocked": { tr: "+{amount} Parça • Skin açıldı!", en: "+{amount} Fragments • Skin unlocked!" },
+  "festival.reward.newSkin": { tr: "Yeni Skin Açıldı", en: "New Skin Unlocked" },
+  "festival.reward.claim": { tr: "Ödülü Al", en: "Claim" },
+  "festival.dev.title": { tr: "Festival Test Araçları", en: "Festival Test Tools" },
+  "festival.dev.balance": { tr: "+10000 Gem", en: "+10000 Gems" },
+  "festival.dev.reset": { tr: "Festival İlerlemesini Sıfırla", en: "Reset Festival Progress" },
+  "festival.dev.open": { tr: "Test Sandığı Aç", en: "Open Test Chest" },
+  "festival.dev.seed": { tr: "Sandık RNG Seed", en: "Seed Chest RNG" },
+  "festival.dev.force": { tr: "Zorla", en: "Force" },
   "collection.unlocked": { tr: "Açıldı!", en: "Unlocked!" },
   "collection.profileLabel": {
     tr: "Maymun Koleksiyonunu Aç",
     en: "Open Monkey Collection"
   },
   "collection.locked": { tr: "🔒 Kilitli", en: "🔒 Locked" },
+  "collection.unavailable": { tr: "Kullanılamıyor", en: "Unavailable" },
   "collection.owned": { tr: "✓ Sahip Olundu", en: "✓ Owned" },
   "collection.equipped": { tr: "✓ Kuşanıldı", en: "✓ Equipped" },
   "collection.equip": { tr: "Kuşan", en: "Equip" },
   "collection.cancel": { tr: "İptal", en: "Cancel" },
   "collection.unlock": { tr: "Satın Al", en: "Buy" },
   "collection.unlockPrompt": {
-    tr: "Bu kozmetiği 💎 {price} Gem karşılığında satın al?",
-    en: "Buy this cosmetic for 💎 {price} Gems?"
+    tr: "Bu maymunu {price} Gem karşılığında kalıcı olarak aç?",
+    en: "Permanently unlock this monkey for {price} Gems?"
   },
-  "collection.notEnoughDiamonds": {
-    tr: "Yeterli gem yok.",
-    en: "Not enough gems."
+  "collection.notEnoughGems": {
+    tr: "Yeterli Gem yok.",
+    en: "Not enough Gems."
   },
   "collection.ok": { tr: "Tamam", en: "OK" },
   "collection.rarity.common": { tr: "Yaygın", en: "Common" },
@@ -491,6 +509,41 @@ const dict: Record<string, Entry> = {
   "collection.skin.watermelonFeastWorker.description": {
     tr: "Karpuz kabuğunu iş sepetine çevirmiş; ödül gelmeden ziyafete başlamış bile.",
     en: "Turned a watermelon rind into a work basket—and started the feast before the reward arrived."
+  },
+  "collection.skin.bananaDj.name": { tr: "Muz DJ", en: "Banana DJ" },
+  "collection.skin.bananaDj.description": {
+    tr: "Muz kasalarından kurduğu pikapla ormanın ritmini yükseltir.",
+    en: "Turns banana crates into turntables and raises the jungle beat."
+  },
+  "collection.skin.fireDancer.name": { tr: "Ateş Dansçısı", en: "Fire Dancer" },
+  "collection.skin.fireDancer.description": {
+    tr: "Parlayan meşalelerle festival gecesine kıvılcımlar saçar.",
+    en: "Spins glowing torches and sends sparks across the festival night."
+  },
+  "collection.skin.beachWarrior.name": { tr: "Sahil Savaşçısı", en: "Beach Warrior" },
+  "collection.skin.beachWarrior.description": {
+    tr: "Hindistan cevizi zırhı ve sörf kalkanıyla kıyıyı korur.",
+    en: "Guards the shore in coconut armor with a surfboard shield."
+  },
+  "collection.skin.tropicalArcher.name": { tr: "Tropik Okçu", en: "Tropical Archer" },
+  "collection.skin.tropicalArcher.description": {
+    tr: "Renkli tüyleri ve sarmaşık yayıyla festival hedeflerini vurur.",
+    en: "Hits festival targets with bright feathers and a vine-wrapped bow."
+  },
+  "collection.skin.sunsetChief.name": { tr: "Gün Batımı Şefi", en: "Sunset Chief" },
+  "collection.skin.sunsetChief.description": {
+    tr: "Gün batımı renklerindeki tören tacıyla geçide önderlik eder.",
+    en: "Leads the parade beneath a ceremonial crown painted in sunset colors."
+  },
+  "collection.skin.fireMonkey.name": { tr: "Ateş Maymunu", en: "Fire Monkey" },
+  "collection.skin.fireMonkey.description": {
+    tr: "Köz desenleri ve alevli festival maskesiyle gecenin yıldızıdır.",
+    en: "Steals the night with ember markings and a blazing festival mask."
+  },
+  "collection.skin.goldenFestivalKing.name": { tr: "Altın Festival Kralı", en: "Golden Festival King" },
+  "collection.skin.goldenFestivalKing.description": {
+    tr: "Altın ışıklarla süzülen, festival koleksiyonunun mitik hükümdarı.",
+    en: "The Mythic ruler of the Festival Collection, floating in golden light."
   },
   "collection.skin.goldenEmperor.name": {
     tr: "Altın İmparator",
@@ -576,17 +629,14 @@ const dict: Record<string, Entry> = {
   "collection.skin.spiritKing.description": { tr: "Kadim orman ruhlarıyla birlikte yürür.", en: "Walks with the ancient jungle spirits." },
   "time.hours": { tr: "{n} sa", en: "{n}h" },
   "time.minutes": { tr: "{n} dk", en: "{n}m" },
-  "quests.title": { tr: "Görevler", en: "Quests" },
+  "quests.title": { tr: "Günlük Görevler", en: "Daily Missions" },
   "quests.claim": { tr: "Al", en: "Claim" },
   "quests.done": { tr: "Alındı", en: "Done" },
   "quests.empty": { tr: "Şimdilik hepsi bu kadar, şef!", en: "That's all for now, chief!" },
-  "quest.train3": { tr: "3 birim üret", en: "Train 3 units" },
-  "quest.upgrade1": { tr: "Bir bina geliştir", en: "Upgrade a building" },
-  "quest.shift1": { tr: "İşçileri işe gönder", en: "Send workers to work" },
-  "quest.raid1": { tr: "İlk baskını kazan", en: "Win your first raid" },
-  "quest.train12": { tr: "12 birim üret", en: "Train 12 units" },
-  "quest.upgrade5": { tr: "5 kez bina geliştir", en: "Upgrade buildings 5 times" },
-  "quest.raid5": { tr: "5 baskın kazan", en: "Win 5 raids" },
+  "quest.dailyTrain3": { tr: "3 birlik veya işçi üret", en: "Train 3 troops or workers" },
+  "quest.dailyWork2": { tr: "2 kaynak seferi başlat", en: "Start 2 resource expeditions" },
+  "quest.dailyRaid1": { tr: "1 baskın kazan", en: "Win 1 raid" },
+  "quest.dailyTrain8": { tr: "Toplam 8 birlik veya işçi üret", en: "Train 8 troops or workers total" },
   "workerLodge.eyebrow": { tr: "İŞÇİ YÖNETİMİ", en: "WORKER MANAGEMENT" },
   "workerLodge.capacity": {
     tr: "Loca kapasitesi · {used}/{max}",

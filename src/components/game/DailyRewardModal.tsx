@@ -2,7 +2,8 @@ import { Modal, StyleSheet, Text, View } from "react-native";
 import { playSound } from "../../game/audio/soundManager";
 import {
   DAILY_REWARDS,
-  DAILY_WEEKLY_GEMS,
+  DAILY_FIRST_WEEK_GEMS,
+  DAILY_REPEAT_WEEK_GEMS,
   nextDailyRewardDay,
   todayKey,
   type DailyReward
@@ -24,6 +25,8 @@ export function DailyRewardModal({ visible, lang, onClose }: DailyRewardModalPro
   const streak = useGameStore((state) => state.dailyStreak);
   const lastClaim = useGameStore((state) => state.dailyLastClaim);
   const claimDaily = useGameStore((state) => state.claimDaily);
+  const unlockedMonkeys = useGameStore((state) => state.unlockedProfileMonkeys);
+  const scoutOwned = unlockedMonkeys.includes("profile_monkey_scout");
 
   const claimedToday = lastClaim === todayKey();
   // The day highlighted today: the one just claimed, or the next in the streak.
@@ -39,7 +42,9 @@ export function DailyRewardModal({ visible, lang, onClose }: DailyRewardModalPro
             {t("daily.title", lang)}
           </Text>
           <Text style={styles.subtitle} maxFontSizeMultiplier={theme.maxFontScale}>
-            {t("daily.subtitle", lang, { amount: DAILY_WEEKLY_GEMS })}
+            {scoutOwned
+              ? t("daily.subtitleRepeat", lang, { amount: DAILY_REPEAT_WEEK_GEMS })
+              : t("daily.subtitleScout", lang, { amount: DAILY_FIRST_WEEK_GEMS })}
           </Text>
 
           <View style={styles.grid}>
@@ -53,7 +58,7 @@ export function DailyRewardModal({ visible, lang, onClose }: DailyRewardModalPro
                       ? "done"
                       : "today"
                     : "locked";
-              return <DayCell key={day} day={day} reward={reward} status={status} lang={lang} />;
+              return <DayCell key={day} day={day} reward={reward} status={status} lang={lang} scoutOwned={scoutOwned} />;
             })}
           </View>
 
@@ -96,13 +101,17 @@ function DayCell({
   day,
   reward,
   status,
-  lang
+  lang,
+  scoutOwned
 }: {
   day: number;
   reward: DailyReward;
   status: DayStatus;
   lang: Lang;
+  scoutOwned: boolean;
 }) {
+  const gemReward = reward.kind === "gems" || scoutOwned;
+  const amount = reward.kind === "gems" ? reward.amount : reward.duplicateGems;
   return (
     <View
       style={[
@@ -115,12 +124,12 @@ function DayCell({
         {t("daily.day", lang, { n: day })}
       </Text>
       <AssetImage
-        assetKey="resourceJungleGem"
+        assetKey={gemReward ? "resourceJungleGem" : "unitScout"}
         style={styles.cellIcon}
         fallback={<View style={styles.cellIconFallback} />}
       />
       <Text style={styles.cellAmount} numberOfLines={2} adjustsFontSizeToFit maxFontSizeMultiplier={theme.maxFontScale}>
-        {reward.amount}
+        {gemReward ? amount : t("daily.scout", lang)}
       </Text>
       {status === "done" ? (
         <View style={styles.doneOverlay} pointerEvents="none">

@@ -4,9 +4,11 @@ import {
   QUESTS,
   isQuestComplete,
   questProgressValue,
+  resolveQuestReward,
   type QuestDef,
   type QuestReward
 } from "../../game/config/quests";
+import { todayKey } from "../../game/config/dailyRewards";
 import { t } from "../../game/i18n";
 import { useGameStore } from "../../game/state/gameStore";
 import type { Lang } from "../../game/types/game";
@@ -21,9 +23,14 @@ type QuestModalProps = {
 };
 
 export function QuestModal({ visible, lang, onClose }: QuestModalProps) {
-  const progress = useGameStore((state) => state.questProgress);
-  const claimed = useGameStore((state) => state.questsClaimed);
+  const savedProgress = useGameStore((state) => state.questProgress);
+  const savedClaimed = useGameStore((state) => state.questsClaimed);
+  const questDayKey = useGameStore((state) => state.questDayKey);
+  const hallLevel = useGameStore((state) => state.buildings.find((building) => building.type === "clanHall")?.level ?? 1);
   const claimQuest = useGameStore((state) => state.claimQuest);
+  const currentDay = todayKey();
+  const progress = questDayKey === currentDay ? savedProgress : {};
+  const claimed = questDayKey === currentDay ? savedClaimed : [];
 
   // Claimable first, then in-progress, then done — keeps the useful ones on top.
   const ordered = [...QUESTS].sort((a, b) => rank(a) - rank(b));
@@ -56,6 +63,7 @@ export function QuestModal({ visible, lang, onClose }: QuestModalProps) {
                 current={questProgressValue(progress, quest)}
                 done={isQuestComplete(progress, quest)}
                 claimed={claimed.includes(quest.id)}
+                reward={resolveQuestReward(quest, hallLevel)}
                 onClaim={() => {
                   // soundBridge plays the reward jingle when the claim lands.
                   claimQuest(quest.id);
@@ -88,6 +96,7 @@ function QuestRow({
   current,
   done,
   claimed,
+  reward,
   onClaim
 }: {
   quest: QuestDef;
@@ -95,6 +104,7 @@ function QuestRow({
   current: number;
   done: boolean;
   claimed: boolean;
+  reward: QuestReward;
   onClaim: () => void;
 }) {
   const pct = Math.round((current / quest.goal) * 100);
@@ -111,7 +121,7 @@ function QuestRow({
             {current}/{quest.goal}
           </Text>
         </View>
-        <RewardChips reward={quest.reward} />
+        <RewardChips reward={reward} />
       </View>
 
       {claimed ? (

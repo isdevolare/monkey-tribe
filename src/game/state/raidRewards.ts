@@ -5,6 +5,13 @@ export type RaidVictoryCounts = Record<string, number>;
 const REPEAT_REWARD_MULTIPLIERS = [1, 0.6, 0.35] as const;
 const REPEAT_REWARD_FLOOR = 0.2;
 
+/** First clear pays its stars, the first repeat pays 1 Gem, later farming pays none. */
+export function raidGemReward(stars: number, previousVictories: number) {
+  const safeStars = Math.max(0, Math.min(3, Math.floor(stars)));
+  if (previousVictories <= 0) return safeStars;
+  return previousVictories === 1 ? Math.min(1, safeStars) : 0;
+}
+
 /** Reward multiplier for a camp based on its completed victories before this win. */
 export function raidRewardMultiplier(previousVictories: number) {
   const count = Math.max(0, Math.floor(previousVictories));

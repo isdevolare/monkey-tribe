@@ -104,6 +104,7 @@ export type RaidPenalty = {
 export type RaidRewardSummary = {
   loot: Resources;
   multiplier: number;
+  gems: number;
 };
 
 export type Lang = "tr" | "en";
@@ -112,6 +113,28 @@ export type Lang = "tr" | "en";
 // future cosmetics without expanding a compile-time union on every release.
 export type ProfileMonkeyId = string;
 export type ProfileSkinId = string;
+
+export type FestivalFragmentProgress = Partial<Record<ProfileSkinId, number>>;
+
+export type FestivalChestTransaction = {
+  id: string;
+  seed: number;
+  skinId: ProfileSkinId;
+  rarity: "common" | "rare" | "epic" | "legendary" | "mythic";
+  fragments: number;
+  previousFragments: number;
+  nextFragments: number;
+  requiredFragments: number;
+  unlocked: boolean;
+  chargedGems: number;
+  createdAt: number;
+};
+
+export type FestivalChestOpenResult =
+  | { status: "opened"; transaction: FestivalChestTransaction }
+  | { status: "pending"; transaction: FestivalChestTransaction }
+  | { status: "insufficient" }
+  | { status: "complete" };
 
 export type ProfileMonkeyUnlockResult =
   | "unlocked"
@@ -278,6 +301,10 @@ export type VillageSave = {
   equippedProfileSkin?: ProfileSkinId;
   newProfileMonkeys?: ProfileMonkeyId[];
   newProfileSkins?: ProfileSkinId[];
+  festivalFragments?: FestivalFragmentProgress;
+  festivalChestRngSeed?: number;
+  pendingFestivalChest?: FestivalChestTransaction | null;
+  claimedFestivalChest?: FestivalChestTransaction | null;
   productionQueue?: ProductionItem[];
   language?: Lang;
   raidLevel?: number;
@@ -295,6 +322,7 @@ export type VillageSave = {
   activeWorkerLodgeUpgrade?: WorkerLodgeUpgrade | null;
   questProgress?: Partial<Record<QuestMetric, number>>;
   questsClaimed?: string[];
+  questDayKey?: string;
   lastSeenAt?: number;
   dailyStreak?: number;
   dailyLastClaim?: string | null;
@@ -330,6 +358,10 @@ export type GameState = {
   equippedProfileSkin: ProfileSkinId;
   newProfileMonkeys: ProfileMonkeyId[];
   newProfileSkins: ProfileSkinId[];
+  festivalFragments: FestivalFragmentProgress;
+  festivalChestRngSeed: number;
+  pendingFestivalChest: FestivalChestTransaction | null;
+  claimedFestivalChest: FestivalChestTransaction | null;
   productionQueue: ProductionItem[];
   troopUpgrades: TroopUpgradeLevels;
   workerProductionQueue: WorkerProductionItem[];
@@ -351,6 +383,7 @@ export type GameState = {
   lastRaidArmyResult: RaidArmyResult | null;
   questProgress: Partial<Record<QuestMetric, number>>;
   questsClaimed: string[];
+  questDayKey: string;
   offlineReport: OfflineReport | null;
   dailyStreak: number;
   dailyLastClaim: string | null;
@@ -373,10 +406,14 @@ export type GameState = {
   buyShopItem: (id: string) => void;
   unlockProfileMonkey: (id: ProfileMonkeyId) => ProfileMonkeyUnlockResult;
   equipProfileMonkey: (id: ProfileMonkeyId) => void;
-  unlockProfileSkin: (id: ProfileSkinId) => ProfileMonkeyUnlockResult;
   equipProfileSkin: (id: ProfileSkinId) => void;
   markProfileMonkeySeen: (id: ProfileMonkeyId) => void;
   markProfileSkinSeen: (id: ProfileSkinId) => void;
+  openFestivalChest: (options?: { free?: boolean; seed?: number }) => FestivalChestOpenResult;
+  claimFestivalChest: (transactionId: string) => void;
+  addFestivalTestBalance: () => void;
+  resetFestivalProgress: () => void;
+  seedFestivalChestRng: (seed: number) => void;
   trainTroop: (type: TroopType) => void;
   upgradeTroopStat: (type: TroopType, stat: TroopUpgradeStat) => void;
   rushProduction: () => void;

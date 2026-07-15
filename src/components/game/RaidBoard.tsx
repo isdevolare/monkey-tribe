@@ -27,6 +27,7 @@ type RaidBoardProps = {
   stars: number;
   loot: Resources;
   rewardMultiplier: number;
+  gemReward: number;
   penalty: RaidPenalty | null;
   armyResult: RaidArmyResult | null;
   playerIdentityAsset: GameAssetKey;
@@ -77,6 +78,7 @@ export function RaidBoard({
   stars,
   loot,
   rewardMultiplier,
+  gemReward,
   penalty,
   armyResult,
   playerIdentityAsset,
@@ -370,6 +372,7 @@ export function RaidBoard({
                   <RewardChip assetKey="resourceBananaPile" amount={loot.bananas} />
                   <RewardChip assetKey="resourceWoodBundle" amount={loot.wood} />
                   <RewardChip assetKey="resourceStonePile" amount={loot.stones} />
+                  {gemReward > 0 ? <RewardChip assetKey="resourceJungleGem" amount={gemReward} /> : null}
                 </View>
               </>
             ) : null}

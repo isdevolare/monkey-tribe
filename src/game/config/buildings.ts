@@ -93,14 +93,14 @@ const DAY = 24 * HOUR;
 
 export const WORKER_LODGE_UPGRADES: readonly WorkerLodgeUpgradeDefinition[] = [
   { targetLevel: 2, cost: { bananas: 250, stones: 120, wood: 220 }, durationMs: 5 * MINUTE, requiredClanHallLevel: 1 },
-  { targetLevel: 3, cost: { bananas: 700, stones: 350, wood: 600 }, durationMs: 20 * MINUTE, requiredClanHallLevel: 2 },
-  { targetLevel: 4, cost: { bananas: 1_800, stones: 900, wood: 1_500 }, durationMs: HOUR, requiredClanHallLevel: 3 },
-  { targetLevel: 5, cost: { bananas: 4_500, stones: 2_500, wood: 3_800 }, durationMs: 4 * HOUR, requiredClanHallLevel: 4 },
-  { targetLevel: 6, cost: { bananas: 10_000, stones: 6_000, wood: 8_000 }, durationMs: 10 * HOUR, requiredClanHallLevel: 5 },
-  { targetLevel: 7, cost: { bananas: 22_000, stones: 14_000, wood: 18_000 }, durationMs: DAY, requiredClanHallLevel: 6 },
-  { targetLevel: 8, cost: { bananas: 45_000, stones: 30_000, wood: 38_000 }, durationMs: 2 * DAY, requiredClanHallLevel: 7 },
-  { targetLevel: 9, cost: { bananas: 90_000, stones: 65_000, wood: 75_000 }, durationMs: 3 * DAY, requiredClanHallLevel: 8 },
-  { targetLevel: 10, cost: { bananas: 180_000, stones: 135_000, wood: 150_000 }, durationMs: 5 * DAY, requiredClanHallLevel: 9 }
+  { targetLevel: 3, cost: { bananas: 650, stones: 320, wood: 550 }, durationMs: 20 * MINUTE, requiredClanHallLevel: 2 },
+  { targetLevel: 4, cost: { bananas: 1_050, stones: 560, wood: 900 }, durationMs: HOUR, requiredClanHallLevel: 3 },
+  { targetLevel: 5, cost: { bananas: 1_450, stones: 800, wood: 1_250 }, durationMs: 4 * HOUR, requiredClanHallLevel: 4 },
+  { targetLevel: 6, cost: { bananas: 1_850, stones: 1_050, wood: 1_600 }, durationMs: 10 * HOUR, requiredClanHallLevel: 5 },
+  { targetLevel: 7, cost: { bananas: 2_300, stones: 1_350, wood: 2_000 }, durationMs: DAY, requiredClanHallLevel: 6 },
+  { targetLevel: 8, cost: { bananas: 2_750, stones: 1_650, wood: 2_400 }, durationMs: 2 * DAY, requiredClanHallLevel: 7 },
+  { targetLevel: 9, cost: { bananas: 3_200, stones: 2_000, wood: 2_800 }, durationMs: 3 * DAY, requiredClanHallLevel: 8 },
+  { targetLevel: 10, cost: { bananas: 3_550, stones: 2_300, wood: 3_200 }, durationMs: 5 * DAY, requiredClanHallLevel: 9 }
 ];
 
 export function workerLodgeUpgrade(currentLevel: number) {

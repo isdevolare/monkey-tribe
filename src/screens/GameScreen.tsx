@@ -310,8 +310,12 @@ export function GameScreen() {
   );
   const queuedTypes = new Set(state.productionQueue.map((item) => item.type));
   const compactHud = layoutWidth < 370;
-  const claimableQuests = claimableQuestCount(state.questProgress, state.questsClaimed);
-  const dailyAvailable = state.dailyLastClaim !== todayKey();
+  const currentDayKey = todayKey();
+  const claimableQuests = claimableQuestCount(
+    state.questDayKey === currentDayKey ? state.questProgress : {},
+    state.questDayKey === currentDayKey ? state.questsClaimed : []
+  );
+  const dailyAvailable = state.dailyLastClaim !== currentDayKey;
   const attentionNow = Date.now();
   const bananaReadyCount = state.workerExpeditions.filter(
     (entry) => entry.resource === "bananas" && entry.storedReward !== undefined
@@ -465,6 +469,7 @@ export function GameScreen() {
               stars={state.raidStars}
               loot={activeCampLoot}
               rewardMultiplier={state.lastRaidReward?.multiplier ?? 1}
+              gemReward={state.lastRaidReward?.gems ?? 0}
               penalty={state.lastRaidPenalty}
               armyResult={state.lastRaidArmyResult}
               playerIdentityAsset={equippedAppearance.raidAsset}

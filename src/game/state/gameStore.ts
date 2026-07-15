@@ -44,13 +44,23 @@ import {
   troopUpgradeRequirement
 } from "../config/troops";
 import { DAILY_REWARDS, nextDailyRewardDay, resolveDailyReward, todayKey } from "../config/dailyRewards";
-import { QUESTS, isQuestComplete } from "../config/quests";
+import { QUESTS, isQuestComplete, resolveQuestReward } from "../config/quests";
+import {
+  festivalFragmentRequirement,
+  normalizeFestivalSeed,
+  prepareFestivalChestOpen,
+  sanitizeFestivalFragments,
+  sanitizeFestivalTransaction
+} from "../config/festivalCollection";
 import {
   DEFAULT_PROFILE_MONKEY_ID,
   DEFAULT_PROFILE_SKIN_ID,
+  FESTIVAL_PROFILE_SKINS,
+  canEquipProfileSkin,
   getDefaultSkinId,
   getProfileMonkey,
   getProfileSkin,
+  isActiveProfileSkin,
   sanitizeEquippedProfileMonkey,
   sanitizeEquippedProfileSkin,
   sanitizeNewProfileMonkeys,
@@ -58,11 +68,12 @@ import {
   sanitizeOwnedProfileSkins,
   sanitizeUnlockedProfileMonkeys
 } from "../config/profileMonkeys";
-import { SHOP_ITEMS } from "../config/shop";
+import { getResourceShopItem, resourceShopCapacityIssues } from "../config/shop";
 import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import { applyRaidPenalty } from "./raidPenalty";
 import {
+  raidGemReward,
   resolveRaidVictoryReward,
   sanitizeRaidVictoryCounts
 } from "./raidRewards";
@@ -101,6 +112,8 @@ import {
 } from "./workerLodgeUpgrades";
 import type {
   GameState,
+  FestivalChestOpenResult,
+  FestivalChestTransaction,
   GatherTarget,
   IdleWorker,
   Lang,
@@ -133,12 +146,26 @@ import type {
   WorkerProductionItem
 } from "../types/game";
 
-// Cumulative per-metric quest counter (immutably bumped by +1).
+// Daily per-metric mission counter (immutably bumped by +1).
 function bumpQuest(
   progress: Partial<Record<QuestMetric, number>>,
   metric: QuestMetric
 ): Partial<Record<QuestMetric, number>> {
   return { ...progress, [metric]: (progress[metric] ?? 0) + 1 };
+}
+
+function advanceDailyMission(
+  state: Pick<GameState, "questProgress" | "questsClaimed" | "questDayKey">,
+  metric: QuestMetric,
+  now = Date.now()
+) {
+  const day = todayKey(now);
+  const currentDay = state.questDayKey === day;
+  return {
+    questProgress: bumpQuest(currentDay ? state.questProgress : {}, metric),
+    questsClaimed: currentDay ? state.questsClaimed : [],
+    questDayKey: day
+  };
 }
 
 /**
@@ -283,6 +310,10 @@ function createFreshState(now: number) {
     equippedProfileSkin: DEFAULT_PROFILE_SKIN_ID,
     newProfileMonkeys: [] as ProfileMonkeyId[],
     newProfileSkins: [] as ProfileSkinId[],
+    festivalFragments: {},
+    festivalChestRngSeed: normalizeFestivalSeed(now),
+    pendingFestivalChest: null as FestivalChestTransaction | null,
+    claimedFestivalChest: null as FestivalChestTransaction | null,
     productionQueue: [] as ProductionItem[],
     troopUpgrades: sanitizeTroopUpgrades(undefined),
     workerProductionQueue: [] as WorkerProductionItem[],
@@ -304,6 +335,7 @@ function createFreshState(now: number) {
     lastRaidArmyResult: null,
     questProgress: {} as Partial<Record<QuestMetric, number>>,
     questsClaimed: [] as string[],
+    questDayKey: todayKey(),
     offlineReport: null as OfflineReport | null,
     dailyStreak: 0,
     dailyLastClaim: null as string | null,
@@ -781,7 +813,7 @@ function createPlayerUnit(state: GameState, type: TroopType) {
     ...state,
     resources: spendResources(state.resources, cost),
     productionQueue: [...state.productionQueue, queueItem],
-    questProgress: bumpQuest(state.questProgress, "trainAny"),
+    ...advanceDailyMission(state, "trainAny", now),
     feedback: { id: now, text: t(`fb.queued.${type}`, state.language) }
   };
 }
@@ -908,7 +940,7 @@ function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): Ga
         cost: { ...definition.cost },
         requiredClanHallLevel: definition.requiredClanHallLevel
       },
-      questProgress: bumpQuest(state.questProgress, "upgradeAny"),
+      ...advanceDailyMission(state, "upgradeAny", now),
       feedback: {
         id: now,
         text: t("workerLodge.upgradeStarted", state.language, {
@@ -945,7 +977,7 @@ function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): Ga
     ...state,
     buildings,
     resources: spendResources(state.resources, cost),
-    questProgress: bumpQuest(state.questProgress, "upgradeAny"),
+    ...advanceDailyMission(state, "upgradeAny", now),
     feedback: { id: now, text: t("fb.upgraded", state.language, { name, level: level + 1 }) }
   };
 }
@@ -1143,12 +1175,38 @@ export const useGameStore = create<GameState>((set) => ({
       );
       const equippedProfileMonkey = sanitizeEquippedProfileMonkey(
         save.equippedProfileMonkey,
-        unlockedProfileMonkeys
+        unlockedProfileMonkeys,
+        save.equippedProfileSkin
       );
-      const ownedProfileSkins = sanitizeOwnedProfileSkins(
+      const baseOwnedProfileSkins = sanitizeOwnedProfileSkins(
         save.ownedProfileSkins,
         unlockedProfileMonkeys
       );
+      const claimedFestivalChest = sanitizeFestivalTransaction(save.claimedFestivalChest);
+      const savedPendingFestivalChest = sanitizeFestivalTransaction(save.pendingFestivalChest);
+      const pendingFestivalChest = savedPendingFestivalChest?.id === claimedFestivalChest?.id
+        ? null
+        : savedPendingFestivalChest;
+      let festivalFragments = sanitizeFestivalFragments(
+        save.festivalFragments,
+        baseOwnedProfileSkins
+      );
+      if (pendingFestivalChest) {
+        festivalFragments = {
+          ...festivalFragments,
+          [pendingFestivalChest.skinId]: Math.max(
+            festivalFragments[pendingFestivalChest.skinId] ?? 0,
+            pendingFestivalChest.nextFragments
+          )
+        };
+      }
+      const completedFestivalSkins = FESTIVAL_PROFILE_SKINS
+        .filter((skin) => (festivalFragments[skin.id] ?? 0) >= festivalFragmentRequirement(skin.id))
+        .map((skin) => skin.id);
+      const ownedProfileSkins = Array.from(
+        new Set([...baseOwnedProfileSkins, ...completedFestivalSkins])
+      );
+      festivalFragments = sanitizeFestivalFragments(festivalFragments, ownedProfileSkins);
       const equippedProfileSkin = sanitizeEquippedProfileSkin(
         save.equippedProfileSkin,
         equippedProfileMonkey,
@@ -1187,6 +1245,10 @@ export const useGameStore = create<GameState>((set) => ({
         equippedProfileSkin,
         newProfileMonkeys,
         newProfileSkins,
+        festivalFragments,
+        festivalChestRngSeed: normalizeFestivalSeed(save.festivalChestRngSeed, state.festivalChestRngSeed),
+        pendingFestivalChest,
+        claimedFestivalChest,
         productionQueue,
         troopUpgrades,
         workerProductionQueue: reconciledWorkers.queue,
@@ -1204,8 +1266,9 @@ export const useGameStore = create<GameState>((set) => ({
         raidVictoryCounts: sanitizeRaidVictoryCounts(save.raidVictoryCounts),
         lastRaidReward: null,
         lastRaidArmyResult: null,
-        questProgress: save.questProgress ?? {},
-        questsClaimed: save.questsClaimed ?? [],
+        questProgress: save.questDayKey === todayKey() ? save.questProgress ?? {} : {},
+        questsClaimed: save.questDayKey === todayKey() ? save.questsClaimed ?? [] : [],
+        questDayKey: todayKey(),
         dailyStreak: save.dailyStreak ?? 0,
         dailyLastClaim: save.dailyLastClaim ?? null,
         lastProductionAt: Date.now(),
@@ -1385,7 +1448,7 @@ export const useGameStore = create<GameState>((set) => ({
         resources: spendResources(state.resources, definition.cost),
         workerProductionQueue: [...reconciled.queue, item],
         idleWorkers: reconciled.idleWorkers,
-        questProgress: bumpQuest(state.questProgress, "trainAny"),
+        ...advanceDailyMission(state, "trainAny", now),
         feedback: {
           id: now,
           text: t("worker.queued", state.language, {
@@ -1449,7 +1512,7 @@ export const useGameStore = create<GameState>((set) => ({
           idleWorkers: reconciled.idleWorkers.filter((entry) => entry.id !== workerId),
           workerExpeditions: [...lumber.expeditions, expedition],
           lumberCampStorage: lumber.storage,
-          questProgress: bumpQuest(state.questProgress, "workShift"),
+          ...advanceDailyMission(state, "workShift", now),
           feedback: { id: now, text: t("lumberCamp.missionStarted", state.language) }
         };
       }
@@ -1484,7 +1547,7 @@ export const useGameStore = create<GameState>((set) => ({
           idleWorkers: reconciled.idleWorkers.filter((entry) => entry.id !== workerId),
           workerExpeditions: [...quarry.expeditions, expedition],
           stoneQuarryStorage: quarry.storage,
-          questProgress: bumpQuest(state.questProgress, "workShift"),
+          ...advanceDailyMission(state, "workShift", now),
           feedback: { id: now, text: t("stoneQuarry.missionStarted", state.language) }
         };
       }
@@ -1542,7 +1605,7 @@ export const useGameStore = create<GameState>((set) => ({
         idleWorkers: reconciled.idleWorkers.filter((entry) => entry.id !== workerId),
         workerExpeditions: [...grove.expeditions, expedition],
         bananaGroveStorage: grove.storage,
-        questProgress: bumpQuest(state.questProgress, "workShift"),
+        ...advanceDailyMission(state, "workShift", now),
         feedback: {
           id: now,
           text: t("worker.expeditionSent", state.language, {
@@ -1726,32 +1789,45 @@ export const useGameStore = create<GameState>((set) => ({
   claimQuest: (id: string) =>
     set((state) => {
       const quest = QUESTS.find((entry) => entry.id === id);
+      const day = todayKey();
+      const currentDay = state.questDayKey === day;
+      const questProgress = currentDay ? state.questProgress : {};
+      const questsClaimed = currentDay ? state.questsClaimed : [];
       if (
         !quest ||
-        state.questsClaimed.includes(id) ||
-        !isQuestComplete(state.questProgress, quest)
+        questsClaimed.includes(id) ||
+        !isQuestComplete(questProgress, quest)
       ) {
         return state;
       }
       const now = Date.now();
+      const reward = resolveQuestReward(
+        quest,
+        buildingLevel(state.buildings, "clanHall")
+      );
       const resources = { ...state.resources };
       addResourcesCapped(
         resources,
-        quest.reward,
+        reward,
         storageCap(buildingLevel(state.buildings, "clanHall"))
       );
       return {
         ...state,
         resources,
-        gems: state.gems + (quest.reward.gems ?? 0),
-        questsClaimed: [...state.questsClaimed, id],
+        gems: state.gems + (reward.gems ?? 0),
+        questProgress,
+        questsClaimed: [...questsClaimed, id],
+        questDayKey: day,
         feedback: { id: now, text: t("fb.questClaimed", state.language) }
       };
     }),
   dismissOfflineReport: () => set(() => ({ offlineReport: null })),
   buyShopItem: (id: string) =>
     set((state) => {
-      const item = SHOP_ITEMS.find((entry) => entry.id === id);
+      const item = getResourceShopItem(
+        id,
+        buildingLevel(state.buildings, "clanHall")
+      );
       if (!item) {
         return state;
       }
@@ -1762,11 +1838,19 @@ export const useGameStore = create<GameState>((set) => ({
       const cap = storageCap(buildingLevel(state.buildings, "clanHall"));
       // Never let gems buy resources the depot can't hold — block instead
       // of silently eating a paid pack.
-      const overflows = (["bananas", "stones", "wood"] as const).some(
-        (key) => state.resources[key] + (item.reward[key] ?? 0) > cap
-      );
-      if (overflows) {
-        return { ...state, feedback: { id: now, text: t("fb.storageFull", state.language) } };
+      const capacityIssue = resourceShopCapacityIssues(item, state.resources, cap)[0];
+      if (capacityIssue) {
+        return {
+          ...state,
+          feedback: {
+            id: now,
+            text: t("shop.storageInsufficient", state.language, {
+              resource: t(`res.${capacityIssue.resource}`, state.language),
+              free: capacityIssue.free,
+              required: capacityIssue.requiredFree
+            })
+          }
+        };
       }
       return {
         ...state,
@@ -1789,6 +1873,10 @@ export const useGameStore = create<GameState>((set) => ({
       }
       if (state.unlockedProfileMonkeys.includes(id)) {
         result = "owned";
+        return state;
+      }
+      if (monkey.acquisition !== "gems" && monkey.acquisition !== "daily_reward_or_gems") {
+        result = "invalid";
         return state;
       }
       if (state.gems < monkey.price) {
@@ -1832,48 +1920,12 @@ export const useGameStore = create<GameState>((set) => ({
       void persistVillage(next);
       return next;
     }),
-  unlockProfileSkin: (id) => {
-    let result: ProfileMonkeyUnlockResult = "invalid";
-    set((state) => {
-      const skin = getProfileSkin(id);
-      if (!skin) {
-        result = "invalid";
-        return state;
-      }
-      if (!state.unlockedProfileMonkeys.includes(skin.monkeyId)) {
-        result = "requires_monkey";
-        return state;
-      }
-      if (skin.acquisition !== "direct_purchase" || skin.disabledReasonKey) {
-        return state;
-      }
-      if (state.ownedProfileSkins.includes(id)) {
-        result = "owned";
-        return state;
-      }
-      if (state.gems < skin.price) {
-        result = "insufficient";
-        return state;
-      }
-      const next: GameState = {
-        ...state,
-        gems: Math.max(0, state.gems - skin.price),
-        ownedProfileSkins: [...state.ownedProfileSkins, id],
-        newProfileSkins: [...state.newProfileSkins, id]
-      };
-      result = "unlocked";
-      void persistVillage(next);
-      return next;
-    });
-    return result;
-  },
   equipProfileSkin: (id) =>
     set((state) => {
       const skin = getProfileSkin(id);
       if (
+        !canEquipProfileSkin(id, state.ownedProfileSkins, state.unlockedProfileMonkeys) ||
         !skin ||
-        !state.ownedProfileSkins.includes(id) ||
-        !state.unlockedProfileMonkeys.includes(skin.monkeyId) ||
         (state.equippedProfileMonkey === skin.monkeyId && state.equippedProfileSkin === id)
       ) {
         return state;
@@ -1906,6 +1958,93 @@ export const useGameStore = create<GameState>((set) => ({
       void persistVillage(next);
       return next;
     }),
+  openFestivalChest: (options) => {
+    let result: FestivalChestOpenResult = { status: "complete" };
+    set((state) => {
+      const free = __DEV__ && options?.free === true;
+      const prepared = prepareFestivalChestOpen(
+        {
+          gems: state.gems,
+          fragments: state.festivalFragments,
+          ownedSkinIds: state.ownedProfileSkins,
+          unlockedMonkeyIds: state.unlockedProfileMonkeys,
+          rngSeed: state.festivalChestRngSeed,
+          pendingTransaction: state.pendingFestivalChest
+        },
+        {
+          free,
+          seed: __DEV__ ? options?.seed : undefined,
+          now: Date.now()
+        }
+      );
+      result = prepared.result;
+      if (prepared.result.status !== "opened") return state;
+      const transaction = prepared.result.transaction;
+      const next: GameState = {
+        ...state,
+        gems: prepared.snapshot.gems,
+        festivalFragments: prepared.snapshot.fragments,
+        festivalChestRngSeed: prepared.snapshot.rngSeed,
+        pendingFestivalChest: transaction,
+        ownedProfileSkins: [...prepared.snapshot.ownedSkinIds],
+        newProfileSkins: transaction.unlocked
+          ? Array.from(new Set([...state.newProfileSkins, transaction.skinId]))
+          : state.newProfileSkins
+      };
+      void persistVillage(next);
+      return next;
+    });
+    return result;
+  },
+  claimFestivalChest: (transactionId) =>
+    set((state) => {
+      const transaction = state.pendingFestivalChest;
+      if (!transaction || transaction.id !== transactionId) return state;
+      const next: GameState = {
+        ...state,
+        pendingFestivalChest: null,
+        claimedFestivalChest: transaction
+      };
+      void persistVillage(next);
+      return next;
+    }),
+  addFestivalTestBalance: () =>
+    set((state) => {
+      if (!__DEV__) return state;
+      const next: GameState = { ...state, gems: state.gems + 10000 };
+      void persistVillage(next);
+      return next;
+    }),
+  resetFestivalProgress: () =>
+    set((state) => {
+      if (!__DEV__) return state;
+      const festivalIds = new Set(FESTIVAL_PROFILE_SKINS.map((skin) => skin.id));
+      const equippedFestival = festivalIds.has(state.equippedProfileSkin);
+      const next: GameState = {
+        ...state,
+        ownedProfileSkins: state.ownedProfileSkins.filter((id) => !festivalIds.has(id)),
+        newProfileSkins: state.newProfileSkins.filter((id) => !festivalIds.has(id)),
+        equippedProfileSkin: equippedFestival
+          ? getDefaultSkinId(state.equippedProfileMonkey)
+          : state.equippedProfileSkin,
+        festivalFragments: {},
+        festivalChestRngSeed: normalizeFestivalSeed(Date.now()),
+        pendingFestivalChest: null,
+        claimedFestivalChest: null
+      };
+      void persistVillage(next);
+      return next;
+    }),
+  seedFestivalChestRng: (seed) =>
+    set((state) => {
+      if (!__DEV__) return state;
+      const next: GameState = {
+        ...state,
+        festivalChestRngSeed: normalizeFestivalSeed(seed)
+      };
+      void persistVillage(next);
+      return next;
+    }),
   claimDaily: () =>
     set((state) => {
       const today = todayKey();
@@ -1914,15 +2053,33 @@ export const useGameStore = create<GameState>((set) => ({
       const reward = DAILY_REWARDS[day - 1];
       const now = Date.now();
       if (!reward) return state;
-      const grant = resolveDailyReward(reward);
+      const grant = resolveDailyReward(reward, state.unlockedProfileMonkeys);
+      const unlockedProfileMonkeys = grant.unlockMonkeyId
+        ? [...state.unlockedProfileMonkeys, grant.unlockMonkeyId]
+        : state.unlockedProfileMonkeys;
+      const unlockedDefaultSkin = grant.unlockMonkeyId
+        ? getDefaultSkinId(grant.unlockMonkeyId)
+        : null;
       const next: GameState = {
         ...state,
         gems: state.gems + grant.gems,
+        unlockedProfileMonkeys,
+        ownedProfileSkins: unlockedDefaultSkin
+          ? Array.from(new Set([...state.ownedProfileSkins, unlockedDefaultSkin]))
+          : state.ownedProfileSkins,
+        newProfileMonkeys: grant.unlockMonkeyId
+          ? Array.from(new Set([...state.newProfileMonkeys, grant.unlockMonkeyId]))
+          : state.newProfileMonkeys,
+        newProfileSkins: unlockedDefaultSkin
+          ? Array.from(new Set([...state.newProfileSkins, unlockedDefaultSkin]))
+          : state.newProfileSkins,
         dailyStreak: day,
         dailyLastClaim: today,
         feedback: {
           id: now,
-          text: t("daily.claimed", state.language, { amount: grant.gems })
+          text: grant.unlockMonkeyId
+            ? t("daily.scoutUnlocked", state.language)
+            : t("daily.claimed", state.language, { amount: grant.gems })
         }
       };
       void persistVillage(next);
@@ -2109,6 +2266,7 @@ export const useGameStore = create<GameState>((set) => ({
               : aliveCount >= Math.ceil(fighters.length / 2)
                 ? 2
                 : 1;
+          const gemsEarned = camp ? raidGemReward(stars, previousVictories) : 0;
 
           return {
             ...state,
@@ -2125,9 +2283,9 @@ export const useGameStore = create<GameState>((set) => ({
             enemyCampHp: 0,
             raidStars: stars,
             raidVictoryCounts,
-            lastRaidReward: { loot, multiplier: rewardMultiplier },
-            gems: state.gems + stars,
-            questProgress: bumpQuest(state.questProgress, "winRaid"),
+            lastRaidReward: { loot, multiplier: rewardMultiplier, gems: gemsEarned },
+            gems: state.gems + gemsEarned,
+            ...advanceDailyMission(state, "winRaid", now),
             lastRaidPenalty: null,
             lastRaidArmyResult: summarizeRaidArmy(game.units),
             feedback: {
@@ -2345,6 +2503,10 @@ function persistVillage(state: GameState) {
     equippedProfileSkin: state.equippedProfileSkin,
     newProfileMonkeys: state.newProfileMonkeys,
     newProfileSkins: state.newProfileSkins,
+    festivalFragments: state.festivalFragments,
+    festivalChestRngSeed: state.festivalChestRngSeed,
+    pendingFestivalChest: state.pendingFestivalChest,
+    claimedFestivalChest: state.claimedFestivalChest,
     productionQueue: state.productionQueue,
     troopUpgrades: state.troopUpgrades,
     workerProductionQueue: state.workerProductionQueue,
@@ -2359,6 +2521,7 @@ function persistVillage(state: GameState) {
     raidVictoryCounts: state.raidVictoryCounts,
     questProgress: state.questProgress,
     questsClaimed: state.questsClaimed,
+    questDayKey: state.questDayKey,
     dailyStreak: state.dailyStreak,
     dailyLastClaim: state.dailyLastClaim,
     lastSeenAt: Date.now()

@@ -1,24 +1,42 @@
-export type DailyReward = { kind: "gems"; amount: number };
+import { YOUNG_SCOUT_PROFILE_MONKEY_ID } from "./profileMonkeys";
+import type { ProfileMonkeyId } from "../types/game";
+
+export type DailyReward =
+  | { kind: "gems"; amount: number }
+  | { kind: "profile_monkey"; monkeyId: ProfileMonkeyId; duplicateGems: number };
 
 // The calendar uses the existing premium gem balance only. Festival fragments
 // are intentionally not part of daily rewards during cosmetic normalization.
-export const DAILY_REWARDS: DailyReward[] = [
+export const DAILY_REWARDS: readonly DailyReward[] = [
   { kind: "gems", amount: 5 },
   { kind: "gems", amount: 8 },
   { kind: "gems", amount: 12 },
   { kind: "gems", amount: 15 },
   { kind: "gems", amount: 20 },
   { kind: "gems", amount: 30 },
-  { kind: "gems", amount: 5 }
+  { kind: "profile_monkey", monkeyId: YOUNG_SCOUT_PROFILE_MONKEY_ID, duplicateGems: 30 }
 ];
 
-export const DAILY_WEEKLY_GEMS = DAILY_REWARDS.reduce(
-  (total, reward) => total + reward.amount,
+export const DAILY_FIRST_WEEK_GEMS = DAILY_REWARDS.reduce(
+  (total, reward) => total + (reward.kind === "gems" ? reward.amount : 0),
   0
 );
 
-export function resolveDailyReward(reward: DailyReward) {
-  return { gems: reward.amount };
+export const DAILY_REPEAT_WEEK_GEMS = DAILY_REWARDS.reduce(
+  (total, reward) => total + (reward.kind === "gems" ? reward.amount : reward.duplicateGems),
+  0
+);
+
+export function resolveDailyReward(
+  reward: DailyReward,
+  unlockedMonkeys: readonly ProfileMonkeyId[]
+) {
+  if (reward.kind === "gems") {
+    return { gems: reward.amount, unlockMonkeyId: null };
+  }
+  return unlockedMonkeys.includes(reward.monkeyId)
+    ? { gems: reward.duplicateGems, unlockMonkeyId: null }
+    : { gems: 0, unlockMonkeyId: reward.monkeyId };
 }
 
 export function nextDailyRewardDay(

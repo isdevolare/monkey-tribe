@@ -43,6 +43,13 @@ export type GameAssetKey =
   | "festivalWorker"
   | "sunParadeWorker"
   | "watermelonFeastWorker"
+  | "festivalBananaDj"
+  | "festivalFireDancer"
+  | "festivalBeachWarrior"
+  | "festivalTropicalArcher"
+  | "festivalSunsetChief"
+  | "festivalFireMonkey"
+  | "festivalGoldenKing"
   | "goldenEmperor"
   | "celestialMonkeyKing"
   | "unitFighter"
@@ -231,6 +238,34 @@ export const gameAssets = {
   watermelonFeastWorker: {
     ...asset("watermelonFeastWorker", "units", "watermelon_feast_worker.png", "1024x1024 transparent Epic cosmetic unit"),
     source: require("../../../assets/game/units/watermelon_feast_worker.png") as ImageSourcePropType
+  },
+  festivalBananaDj: {
+    ...asset("festivalBananaDj", "units", "festival_banana_dj.png", "1254x1254 transparent Festival cosmetic"),
+    source: require("../../../assets/game/units/festival_banana_dj.png") as ImageSourcePropType
+  },
+  festivalFireDancer: {
+    ...asset("festivalFireDancer", "units", "festival_fire_dancer.png", "1254x1254 transparent Festival cosmetic"),
+    source: require("../../../assets/game/units/festival_fire_dancer.png") as ImageSourcePropType
+  },
+  festivalBeachWarrior: {
+    ...asset("festivalBeachWarrior", "units", "festival_beach_warrior.png", "1254x1254 transparent Festival cosmetic"),
+    source: require("../../../assets/game/units/festival_beach_warrior.png") as ImageSourcePropType
+  },
+  festivalTropicalArcher: {
+    ...asset("festivalTropicalArcher", "units", "festival_tropical_archer.png", "1254x1254 transparent Festival cosmetic"),
+    source: require("../../../assets/game/units/festival_tropical_archer.png") as ImageSourcePropType
+  },
+  festivalSunsetChief: {
+    ...asset("festivalSunsetChief", "units", "festival_sunset_chief.png", "1254x1254 transparent Festival cosmetic"),
+    source: require("../../../assets/game/units/festival_sunset_chief.png") as ImageSourcePropType
+  },
+  festivalFireMonkey: {
+    ...asset("festivalFireMonkey", "units", "festival_fire_monkey.png", "1254x1254 transparent Festival cosmetic"),
+    source: require("../../../assets/game/units/festival_fire_monkey.png") as ImageSourcePropType
+  },
+  festivalGoldenKing: {
+    ...asset("festivalGoldenKing", "units", "festival_golden_festival_king.png", "1254x1254 transparent Mythic Festival cosmetic"),
+    source: require("../../../assets/game/units/festival_golden_festival_king.png") as ImageSourcePropType
   },
   goldenEmperor: {
     ...asset("goldenEmperor", "units", "golden_emperor.png", "1024x1365 transparent Mythic cosmetic unit"),

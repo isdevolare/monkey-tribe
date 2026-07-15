@@ -2,8 +2,8 @@ import type { GameAssetKey } from "../assets/gameAssets";
 import type { ProfileMonkeyId, ProfileSkinId } from "../types/game";
 
 export type CosmeticRarity = "common" | "rare" | "epic" | "legendary" | "mythic";
-export type CosmeticGroup = "early_game" | "festival";
-export type CosmeticAcquisition = "direct_purchase" | "festival_fragments";
+export type CosmeticCatalogStatus = "default" | "festival" | "archived";
+export type ProfileMonkeyAcquisition = "default" | "daily_reward_or_gems" | "gems";
 export type CosmeticOwnershipFilter = "all" | "owned" | "locked";
 export type CosmeticRarityFilter = "all" | CosmeticRarity;
 export type CosmeticVisualEffect =
@@ -26,6 +26,7 @@ export type ProfileMonkey = {
   raidAsset: GameAssetKey;
   victoryAsset: GameAssetKey;
   availableSkinIds: readonly ProfileSkinId[];
+  acquisition: ProfileMonkeyAcquisition;
   featured?: boolean;
 };
 
@@ -41,14 +42,11 @@ export type ProfileSkin = {
   raidAsset?: GameAssetKey;
   victoryAsset?: GameAssetKey;
   effect: CosmeticVisualEffect;
-  group: CosmeticGroup;
-  acquisition: CosmeticAcquisition;
+  catalogStatus: CosmeticCatalogStatus;
   presentationGlow?: string;
   badgeKey?: string;
   previewMotion?: "float";
   particleColor?: string;
-  /** Kept in the catalog for save compatibility, but unavailable to new buyers. */
-  disabledReasonKey?: string;
 };
 
 export type CosmeticAppearance = {
@@ -63,10 +61,18 @@ export type CosmeticAppearance = {
 };
 
 export const DEFAULT_PROFILE_MONKEY_ID: ProfileMonkeyId = "profile_monkey_worker";
+export const YOUNG_SCOUT_PROFILE_MONKEY_ID: ProfileMonkeyId = "profile_monkey_scout";
 export const DEFAULT_PROFILE_SKIN_ID: ProfileSkinId = "skin_worker_default";
 export const FESTIVAL_WORKER_SKIN_ID: ProfileSkinId = "skin_worker_festival";
 export const SUN_PARADE_WORKER_SKIN_ID: ProfileSkinId = "skin_worker_sun_parade";
 export const WATERMELON_FEAST_WORKER_SKIN_ID: ProfileSkinId = "skin_worker_watermelon_feast";
+export const BANANA_DJ_SKIN_ID: ProfileSkinId = "skin_worker_banana_dj";
+export const FIRE_DANCER_SKIN_ID: ProfileSkinId = "skin_scout_fire_dancer";
+export const BEACH_WARRIOR_SKIN_ID: ProfileSkinId = "skin_warrior_beach";
+export const TROPICAL_ARCHER_SKIN_ID: ProfileSkinId = "skin_hunter_tropical_archer";
+export const SUNSET_CHIEF_SKIN_ID: ProfileSkinId = "skin_chief_sunset";
+export const FIRE_MONKEY_SKIN_ID: ProfileSkinId = "skin_scout_fire_monkey";
+export const GOLDEN_FESTIVAL_KING_SKIN_ID: ProfileSkinId = "skin_king_golden_festival";
 export const GOLDEN_EMPEROR_SKIN_ID: ProfileSkinId = "skin_chief_golden_emperor";
 export const CELESTIAL_MONKEY_KING_SKIN_ID: ProfileSkinId = "skin_king_celestial";
 
@@ -99,13 +105,12 @@ const JUNGLE_WORKER_SKINS: readonly ProfileSkin[] = [
   workerSkin(
     FESTIVAL_WORKER_SKIN_ID,
     "collection.skin.festivalWorker",
-    "epic",
+    "common",
     0,
     "purple_glow",
     "festivalWorker",
     {
-      group: "festival",
-      acquisition: "festival_fragments",
+      catalogStatus: "festival",
       badgeKey: "collection.badge.festival",
       presentationGlow: "#ff83d5"
     }
@@ -113,13 +118,12 @@ const JUNGLE_WORKER_SKINS: readonly ProfileSkin[] = [
   workerSkin(
     SUN_PARADE_WORKER_SKIN_ID,
     "collection.skin.sunParadeWorker",
-    "epic",
+    "common",
     0,
     "purple_glow",
     "sunParadeWorker",
     {
-      group: "festival",
-      acquisition: "festival_fragments",
+      catalogStatus: "festival",
       badgeKey: "collection.badge.festival",
       presentationGlow: "#ffba45"
     }
@@ -127,16 +131,24 @@ const JUNGLE_WORKER_SKINS: readonly ProfileSkin[] = [
   workerSkin(
     WATERMELON_FEAST_WORKER_SKIN_ID,
     "collection.skin.watermelonFeastWorker",
-    "epic",
+    "rare",
     0,
     "purple_glow",
     "watermelonFeastWorker",
     {
-      group: "festival",
-      acquisition: "festival_fragments",
+      catalogStatus: "festival",
       badgeKey: "collection.badge.festival",
       presentationGlow: "#ff6470"
     }
+  ),
+  workerSkin(
+    BANANA_DJ_SKIN_ID,
+    "collection.skin.bananaDj",
+    "rare",
+    0,
+    "none",
+    "festivalBananaDj",
+    festivalOptions("#79f4ff")
   )
 ];
 
@@ -153,6 +165,16 @@ const GOLDEN_CHIEF_SKINS: readonly ProfileSkin[] = [
       presentationGlow: "#ffd85c",
       particleColor: "#ffe37d"
     }
+  ),
+  premiumSkin(
+    SUNSET_CHIEF_SKIN_ID,
+    "profile_monkey_chief",
+    "collection.skin.sunsetChief",
+    "legendary",
+    0,
+    "gold_glow",
+    "festivalSunsetChief",
+    festivalOptions("#ff8b52", "#ffd56a")
   )
 ];
 
@@ -172,6 +194,26 @@ const YOUNG_SCOUT_SKINS: readonly ProfileSkin[] = [
     100,
     "purple_glow",
     "scoutMoonlightTracker"
+  ),
+  premiumSkin(
+    FIRE_DANCER_SKIN_ID,
+    "profile_monkey_scout",
+    "collection.skin.fireDancer",
+    "epic",
+    0,
+    "ember_glow",
+    "festivalFireDancer",
+    festivalOptions("#ff713f", "#ffb04d")
+  ),
+  premiumSkin(
+    FIRE_MONKEY_SKIN_ID,
+    "profile_monkey_scout",
+    "collection.skin.fireMonkey",
+    "legendary",
+    0,
+    "ember_glow",
+    "festivalFireMonkey",
+    festivalOptions("#ff4d2f", "#ff8b45")
   )
 ];
 
@@ -192,6 +234,16 @@ const FOREST_WARRIOR_SKINS: readonly ProfileSkin[] = [
     "ember_glow",
     "warriorAncientWarChief",
     "#ff6538"
+  ),
+  premiumSkin(
+    BEACH_WARRIOR_SKIN_ID,
+    "profile_monkey_warrior",
+    "collection.skin.beachWarrior",
+    "epic",
+    0,
+    "none",
+    "festivalBeachWarrior",
+    festivalOptions("#52d9f3")
   )
 ];
 
@@ -212,13 +264,21 @@ const TRIBAL_HUNTER_SKINS: readonly ProfileSkin[] = [
     "gold_glow",
     "hunterRoyalEagleArcher",
     "#ffd86a"
+  ),
+  premiumSkin(
+    TROPICAL_ARCHER_SKIN_ID,
+    "profile_monkey_hunter",
+    "collection.skin.tropicalArcher",
+    "epic",
+    0,
+    "silver_sheen",
+    "festivalTropicalArcher",
+    festivalOptions("#5ce69a")
   )
 ];
 
 const LEGACY_MONKEY_KING_SKINS: readonly ProfileSkin[] = [
-  skin("skin_king_golden", "collection.skin.goldenKing", "legendary", 300, "gold_glow", {
-    disabledReasonKey: "collection.disabled.missingArtwork"
-  }),
+  skin("skin_king_golden", "collection.skin.goldenKing", "legendary", 300, "gold_glow"),
   skin("skin_king_pirate", "collection.skin.pirateKing", "epic", 220, "purple_glow", {
     portraitAsset: "unitEnemyFighter",
     villageAsset: "unitEnemyFighter",
@@ -237,24 +297,16 @@ const LEGACY_MONKEY_KING_SKINS: readonly ProfileSkin[] = [
     raidAsset: "unitFighter",
     victoryAsset: "unitFighter"
   }),
-  skin("skin_king_cyber", "collection.skin.cyberKing", "mythic", 600, "mythic_shimmer", {
-    disabledReasonKey: "collection.disabled.missingArtwork"
-  }),
-  skin("skin_king_lava", "collection.skin.lavaKing", "legendary", 450, "ember_glow", {
-    disabledReasonKey: "collection.disabled.missingArtwork"
-  }),
-  skin("skin_king_pharaoh", "collection.skin.pharaohKing", "legendary", 400, "gold_glow", {
-    disabledReasonKey: "collection.disabled.missingArtwork"
-  }),
+  skin("skin_king_cyber", "collection.skin.cyberKing", "mythic", 600, "mythic_shimmer"),
+  skin("skin_king_lava", "collection.skin.lavaKing", "legendary", 450, "ember_glow"),
+  skin("skin_king_pharaoh", "collection.skin.pharaohKing", "legendary", 400, "gold_glow"),
   skin("skin_king_christmas", "collection.skin.christmasKing", "epic", 250, "purple_glow", {
     portraitAsset: "menuChiefMascot",
     villageAsset: "menuChiefMascot",
     raidAsset: "menuChiefMascot",
     victoryAsset: "menuChiefMascot"
   }),
-  skin("skin_king_spirit", "collection.skin.spiritKing", "mythic", 650, "spirit_glow", {
-    disabledReasonKey: "collection.disabled.missingArtwork"
-  })
+  skin("skin_king_spirit", "collection.skin.spiritKing", "mythic", 650, "spirit_glow")
 ];
 
 const MONKEY_KING_SKINS: readonly ProfileSkin[] = [
@@ -272,6 +324,19 @@ const MONKEY_KING_SKINS: readonly ProfileSkin[] = [
       previewMotion: "float"
     }
   ),
+  premiumSkin(
+    GOLDEN_FESTIVAL_KING_SKIN_ID,
+    "profile_monkey_king",
+    "collection.skin.goldenFestivalKing",
+    "mythic",
+    0,
+    "mythic_shimmer",
+    "festivalGoldenKing",
+    {
+      ...festivalOptions("#ffe46b", "#fff3a8"),
+      previewMotion: "float"
+    }
+  ),
   ...LEGACY_MONKEY_KING_SKINS
 ];
 
@@ -286,19 +351,30 @@ export const PROFILE_SKINS: readonly ProfileSkin[] = [
 ];
 
 export const ACTIVE_PROFILE_SKINS: readonly ProfileSkin[] = PROFILE_SKINS.filter(
-  (entry) => !entry.disabledReasonKey
+  (entry) => entry.catalogStatus !== "archived"
 );
 
-export const EARLY_GAME_PROFILE_SKINS: readonly ProfileSkin[] = ACTIVE_PROFILE_SKINS.filter(
-  (entry) => entry.group === "early_game"
+export const DEFAULT_PROFILE_SKINS: readonly ProfileSkin[] = ACTIVE_PROFILE_SKINS.filter(
+  (entry) => entry.catalogStatus === "default"
 );
 
-export const FESTIVAL_PROFILE_SKINS: readonly ProfileSkin[] = ACTIVE_PROFILE_SKINS.filter(
-  (entry) => entry.group === "festival"
-);
+export const FESTIVAL_PROFILE_SKINS: readonly ProfileSkin[] = [
+  FESTIVAL_WORKER_SKIN_ID,
+  SUN_PARADE_WORKER_SKIN_ID,
+  WATERMELON_FEAST_WORKER_SKIN_ID,
+  BANANA_DJ_SKIN_ID,
+  FIRE_DANCER_SKIN_ID,
+  BEACH_WARRIOR_SKIN_ID,
+  TROPICAL_ARCHER_SKIN_ID,
+  SUNSET_CHIEF_SKIN_ID,
+  FIRE_MONKEY_SKIN_ID,
+  GOLDEN_FESTIVAL_KING_SKIN_ID
+].map((id) => PROFILE_SKINS.find(
+  (entry) => entry.id === id && entry.catalogStatus === "festival"
+)!);
 
-export const SHOP_PROFILE_SKINS: readonly ProfileSkin[] = EARLY_GAME_PROFILE_SKINS.filter(
-  (entry) => entry.acquisition === "direct_purchase" && entry.price > 0
+export const ARCHIVED_PROFILE_SKINS: readonly ProfileSkin[] = PROFILE_SKINS.filter(
+  (entry) => entry.catalogStatus === "archived"
 );
 
 // One catalog entry owns every visual surface. Adding a monkey later is data
@@ -310,48 +386,54 @@ export const PROFILE_MONKEYS: readonly ProfileMonkey[] = [
     "common",
     0,
     "unitWorker",
-    ["skin_worker_default", ...JUNGLE_WORKER_SKINS.map((entry) => entry.id)]
+    activeSkinIds("skin_worker_default", JUNGLE_WORKER_SKINS),
+    "default"
   ),
   monkey(
     "profile_monkey_scout",
     "scout",
     "rare",
-    50,
+    150,
     "unitScout",
-    ["skin_scout_default", ...YOUNG_SCOUT_SKINS.map((entry) => entry.id)]
+    activeSkinIds("skin_scout_default", YOUNG_SCOUT_SKINS),
+    "daily_reward_or_gems"
   ),
   monkey(
     "profile_monkey_warrior",
     "warrior",
     "rare",
-    100,
+    300,
     "unitWarrior",
-    ["skin_warrior_default", ...FOREST_WARRIOR_SKINS.map((entry) => entry.id)]
+    activeSkinIds("skin_warrior_default", FOREST_WARRIOR_SKINS),
+    "gems"
   ),
   monkey(
     "profile_monkey_hunter",
     "hunter",
     "epic",
-    250,
+    500,
     "unitArcher",
-    ["skin_hunter_default", ...TRIBAL_HUNTER_SKINS.map((entry) => entry.id)]
+    activeSkinIds("skin_hunter_default", TRIBAL_HUNTER_SKINS),
+    "gems"
   ),
   monkey(
     "profile_monkey_chief",
     "chief",
     "legendary",
-    400,
+    900,
     "menuChiefMascot",
-    ["skin_chief_default", ...GOLDEN_CHIEF_SKINS.map((entry) => entry.id)],
+    activeSkinIds("skin_chief_default", GOLDEN_CHIEF_SKINS),
+    "gems",
     true
   ),
   monkey(
     "profile_monkey_king",
     "king",
     "mythic",
-    600,
+    2500,
     "unitChief",
-    ["skin_king_default", ...MONKEY_KING_SKINS.map((entry) => entry.id)],
+    activeSkinIds("skin_king_default", MONKEY_KING_SKINS),
+    "gems",
     true
   )
 ];
@@ -371,12 +453,35 @@ export function getProfileMonkey(id: ProfileMonkeyId) {
   return PROFILE_MONKEYS.find((entry) => entry.id === id);
 }
 
+export function isGemPurchasableProfileMonkey(monkey: ProfileMonkey) {
+  return monkey.acquisition === "gems" || monkey.acquisition === "daily_reward_or_gems";
+}
+
+export function canEquipProfileSkin(
+  skinId: ProfileSkinId,
+  ownedSkinIds: readonly ProfileSkinId[],
+  unlockedMonkeyIds: readonly ProfileMonkeyId[]
+) {
+  const skin = getProfileSkin(skinId);
+  return isActiveProfileSkin(skin) &&
+    ownedSkinIds.includes(skinId) &&
+    unlockedMonkeyIds.includes(skin.monkeyId);
+}
+
 export function getProfileSkin(id: ProfileSkinId) {
   return PROFILE_SKINS.find((entry) => entry.id === id);
 }
 
+export function isActiveProfileSkin(skin: ProfileSkin | undefined): skin is ProfileSkin {
+  return skin != null && skin.catalogStatus !== "archived";
+}
+
+export function isArchivedProfileSkin(skin: ProfileSkin | undefined): skin is ProfileSkin {
+  return skin?.catalogStatus === "archived";
+}
+
 export function getDefaultSkinId(monkeyId: ProfileMonkeyId): ProfileSkinId {
-  return PROFILE_SKINS.find((entry) => entry.monkeyId === monkeyId && entry.price === 0)?.id ??
+  return DEFAULT_PROFILE_SKINS.find((entry) => entry.monkeyId === monkeyId)?.id ??
     DEFAULT_PROFILE_SKIN_ID;
 }
 
@@ -384,7 +489,7 @@ export function skinsForMonkey(monkeyId: ProfileMonkeyId) {
   const monkey = getProfileMonkey(monkeyId);
   if (!monkey) return [];
   const ids = new Set(monkey.availableSkinIds);
-  return PROFILE_SKINS.filter((entry) => ids.has(entry.id));
+  return ACTIVE_PROFILE_SKINS.filter((entry) => ids.has(entry.id));
 }
 
 export function sanitizeUnlockedProfileMonkeys(value: unknown): ProfileMonkeyId[] {
@@ -394,8 +499,17 @@ export function sanitizeUnlockedProfileMonkeys(value: unknown): ProfileMonkeyId[
 
 export function sanitizeEquippedProfileMonkey(
   value: unknown,
-  unlocked: readonly ProfileMonkeyId[]
+  unlocked: readonly ProfileMonkeyId[],
+  equippedSkinValue?: unknown
 ): ProfileMonkeyId {
+  if (isProfileSkinId(equippedSkinValue)) {
+    const savedSkin = getProfileSkin(equippedSkinValue);
+    if (isArchivedProfileSkin(savedSkin)) {
+      return unlocked.includes(savedSkin.monkeyId)
+        ? savedSkin.monkeyId
+        : DEFAULT_PROFILE_MONKEY_ID;
+    }
+  }
   return isProfileMonkeyId(value) && unlocked.includes(value)
     ? value
     : DEFAULT_PROFILE_MONKEY_ID;
@@ -422,7 +536,7 @@ export function sanitizeEquippedProfileSkin(
 ): ProfileSkinId {
   if (isProfileSkinId(value) && ownedSkins.includes(value)) {
     const saved = getProfileSkin(value);
-    if (saved?.monkeyId === equippedMonkey) return value;
+    if (isActiveProfileSkin(saved) && saved.monkeyId === equippedMonkey) return value;
   }
   return getDefaultSkinId(equippedMonkey);
 }
@@ -443,7 +557,7 @@ export function sanitizeNewProfileSkins(
 ): ProfileSkinId[] {
   if (!Array.isArray(value)) return [];
   return Array.from(new Set(value.filter((entry): entry is ProfileSkinId =>
-    isProfileSkinId(entry) && owned.includes(entry)
+    isProfileSkinId(entry) && owned.includes(entry) && isActiveProfileSkin(getProfileSkin(entry))
   )));
 }
 
@@ -453,18 +567,30 @@ export function getCosmeticAppearance(
 ): CosmeticAppearance {
   const monkey = getProfileMonkey(monkeyId) ?? getProfileMonkey(DEFAULT_PROFILE_MONKEY_ID)!;
   const requestedSkin = getProfileSkin(skinId);
-  const skinEntry = requestedSkin?.monkeyId === monkey.id
+  const skinEntry = isActiveProfileSkin(requestedSkin) && requestedSkin.monkeyId === monkey.id
     ? requestedSkin
     : getProfileSkin(getDefaultSkinId(monkey.id))!;
   return {
     monkey,
     skin: skinEntry,
-    rarity: skinEntry.price > 0 ? skinEntry.rarity : monkey.rarity,
+    rarity: skinEntry.id === getDefaultSkinId(monkey.id) ? monkey.rarity : skinEntry.rarity,
     effect: skinEntry.effect,
     portraitAsset: skinEntry.portraitAsset ?? monkey.portraitAsset,
     villageAsset: skinEntry.villageAsset ?? monkey.villageAsset,
     raidAsset: skinEntry.raidAsset ?? monkey.raidAsset,
     victoryAsset: skinEntry.victoryAsset ?? monkey.victoryAsset
+  };
+}
+
+function festivalOptions(
+  presentationGlow: string,
+  particleColor?: string
+): Partial<ProfileSkin> {
+  return {
+    catalogStatus: "festival",
+    badgeKey: "collection.badge.festival",
+    presentationGlow,
+    particleColor
   };
 }
 
@@ -488,8 +614,7 @@ function defaultSkin(monkeyId: ProfileMonkeyId, id: ProfileSkinId): ProfileSkin 
     rarity: "common",
     price: 0,
     effect: "none",
-    group: "early_game",
-    acquisition: "direct_purchase"
+    catalogStatus: "default"
   };
 }
 
@@ -509,8 +634,7 @@ function skin(
     rarity,
     price,
     effect,
-    group: "early_game",
-    acquisition: "direct_purchase",
+    catalogStatus: "archived",
     ...options
   };
 }
@@ -532,8 +656,7 @@ function workerSkin(
     rarity,
     price,
     effect,
-    group: "early_game",
-    acquisition: "direct_purchase",
+    catalogStatus: "archived",
     portraitAsset: assetKey,
     villageAsset: assetKey,
     raidAsset: assetKey,
@@ -560,8 +683,7 @@ function premiumSkin(
     rarity,
     price,
     effect,
-    group: "early_game",
-    acquisition: "direct_purchase",
+    catalogStatus: "archived",
     portraitAsset: assetKey,
     villageAsset: assetKey,
     raidAsset: assetKey,
@@ -586,8 +708,7 @@ function scoutSkin(
     rarity,
     price,
     effect,
-    group: "early_game",
-    acquisition: "direct_purchase",
+    catalogStatus: "archived",
     portraitAsset: assetKey,
     villageAsset: assetKey,
     raidAsset: assetKey,
@@ -612,8 +733,7 @@ function warriorSkin(
     rarity,
     price,
     effect,
-    group: "early_game",
-    acquisition: "direct_purchase",
+    catalogStatus: "archived",
     presentationGlow,
     portraitAsset: assetKey,
     villageAsset: assetKey,
@@ -639,14 +759,23 @@ function hunterSkin(
     rarity,
     price,
     effect,
-    group: "early_game",
-    acquisition: "direct_purchase",
+    catalogStatus: "archived",
     presentationGlow,
     portraitAsset: assetKey,
     villageAsset: assetKey,
     raidAsset: assetKey,
     victoryAsset: assetKey
   };
+}
+
+function activeSkinIds(
+  defaultSkinId: ProfileSkinId,
+  skins: readonly ProfileSkin[]
+): readonly ProfileSkinId[] {
+  return [
+    defaultSkinId,
+    ...skins.filter((skin) => skin.catalogStatus === "festival").map((skin) => skin.id)
+  ];
 }
 
 function monkey(
@@ -656,6 +785,7 @@ function monkey(
   price: number,
   asset: GameAssetKey,
   availableSkinIds: readonly ProfileSkinId[],
+  acquisition: ProfileMonkeyAcquisition,
   featured = false
 ): ProfileMonkey {
   return {
@@ -669,6 +799,7 @@ function monkey(
     raidAsset: asset,
     victoryAsset: asset,
     availableSkinIds,
+    acquisition,
     featured
   };
 }

@@ -13,13 +13,16 @@ import {
   getCosmeticAppearance,
   getDefaultSkinId,
   getProfileMonkey,
+  isArchivedProfileSkin,
+  isGemPurchasableProfileMonkey,
   skinsForMonkey,
   type CosmeticRarity,
   type ProfileMonkey,
   type ProfileSkin
 } from "../../game/config/profileMonkeys";
 import { t } from "../../game/i18n";
-import type { Lang, ProfileSkinId } from "../../game/types/game";
+import { festivalFragmentRequirement } from "../../game/config/festivalCollection";
+import type { FestivalFragmentProgress, Lang, ProfileMonkeyId, ProfileSkinId } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 import { AssetImage } from "./AssetImage";
 import { SpringPressable } from "./SpringPressable";
@@ -35,6 +38,8 @@ type DetailProps = {
   owned: boolean;
   equipped: boolean;
   ownedSkinIds: readonly ProfileSkinId[];
+  unlockedMonkeyIds: readonly ProfileMonkeyId[];
+  festivalFragments: FestivalFragmentProgress;
   onClose: () => void;
   onUnlock: () => void;
   onEquip: () => void;
@@ -64,6 +69,8 @@ export function CosmeticDetailModal({
   owned,
   equipped,
   ownedSkinIds,
+  unlockedMonkeyIds,
+  festivalFragments,
   onClose,
   onUnlock,
   onEquip,
@@ -80,15 +87,17 @@ export function CosmeticDetailModal({
   const rarity = skin?.rarity ?? monkey.rarity;
   const colors = RARITY[rarity];
   const presentationGlow = skin?.presentationGlow ?? colors.glow;
-  const price = skin?.price ?? monkey.price;
-  const purchasable = skin == null || (
-    skin.acquisition === "direct_purchase" && !skin.disabledReasonKey
-  );
-  const availableSkins = skinsForMonkey(monkey.id).filter(
-    (entry) => !entry.disabledReasonKey || ownedSkinIds.includes(entry.id)
-  );
+  const price = monkey.price;
+  const archived = isArchivedProfileSkin(skin ?? undefined);
+  const parentOwned = unlockedMonkeyIds.includes(monkey.id);
+  const purchasable = skin == null && isGemPurchasableProfileMonkey(monkey);
+  const availableSkins = skinsForMonkey(monkey.id);
   const title = t((skin ?? monkey).nameKey, lang);
   const description = t((skin ?? monkey).descriptionKey, lang);
+  const festivalRequired = skin?.catalogStatus === "festival" ? festivalFragmentRequirement(skin.id) : 0;
+  const festivalCurrent = skin?.catalogStatus === "festival"
+    ? Math.min(festivalRequired, festivalFragments[skin.id] ?? 0)
+    : 0;
 
   return (
       <View style={styles.detailLayer}>
@@ -126,10 +135,24 @@ export function CosmeticDetailModal({
 
             <View style={styles.stateRow}>
               <Text style={[styles.stateChip, equipped ? styles.equippedChip : owned ? styles.ownedChip : styles.lockedChip]}>
-                {equipped ? t("collection.equipped", lang) : owned ? t("collection.owned", lang) : t("collection.locked", lang)}
+                {archived
+                  ? t("collection.unavailable", lang)
+                  : skin && !parentOwned
+                    ? t("collection.requiresNamedMonkey", lang, { name: t(monkey.nameKey, lang) })
+                    : equipped
+                      ? t("collection.equipped", lang)
+                      : owned
+                        ? t("collection.owned", lang)
+                        : t("collection.locked", lang)}
               </Text>
-              {!owned && purchasable ? <Text style={styles.price}>💎 {price}</Text> : null}
-              {!owned && !purchasable ? <Text style={styles.comingSoon}>{t("collection.shop.comingSoon", lang)}</Text> : null}
+              {!owned && purchasable ? (
+                <View style={styles.priceRow}>
+                  <AssetImage assetKey="resourceJungleGem" style={styles.priceGem} fallback={<View />} hideFallbackOnLoad />
+                  <Text style={styles.price}>{price}</Text>
+                </View>
+              ) : null}
+              {!owned && skin == null && monkey.acquisition === "daily_reward_or_gems" ? <Text style={styles.comingSoon}>{t("collection.day7Scout", lang)}</Text> : null}
+              {!owned && skin?.catalogStatus === "festival" ? <Text style={styles.comingSoon}>{t("festival.progress", lang, { current: festivalCurrent, required: festivalRequired })}</Text> : null}
               {!owned && purchasable && gems < price ? <Text style={styles.shortfall}>{t("collection.detail.missing", lang, { amount: price - gems })}</Text> : null}
             </View>
 
@@ -159,7 +182,11 @@ export function CosmeticDetailModal({
                     <AssetImage assetKey={entryAppearance.portraitAsset} style={styles.skinThumbArt} resizeMode="contain" fallback={<Text>🐵</Text>} hideFallbackOnLoad />
                     <Text style={styles.skinThumbName} numberOfLines={1}>{t(entry.nameKey, lang)}</Text>
                     <Text style={[styles.skinThumbState, entryOwned ? styles.skinThumbOwned : null]}>
-                      {entryOwned ? "✓" : entry.acquisition === "direct_purchase" ? `💎 ${entry.price}` : t("collection.shop.comingSoon", lang)}
+                      {entryOwned
+                        ? "✓"
+                        : entry.catalogStatus === "festival"
+                          ? t("festival.progress", lang, { current: festivalFragments[entry.id] ?? 0, required: festivalFragmentRequirement(entry.id) })
+                          : t("collection.locked", lang)}
                     </Text>
                   </SpringPressable>
                 );
@@ -169,10 +196,18 @@ export function CosmeticDetailModal({
 
           <View style={styles.actions}>
             <SpringPressable onPress={onClose} style={[styles.actionButton, styles.secondaryButton]}><Text style={styles.secondaryText}>{t("collection.detail.close", lang)}</Text></SpringPressable>
-            {!owned && purchasable ? (
-              <SpringPressable onPress={onUnlock} style={[styles.actionButton, styles.unlockButton]}><Text style={styles.actionText}>{t("collection.unlock", lang)} · 💎 {price}</Text></SpringPressable>
+            {archived ? (
+              <View style={[styles.actionButton, styles.unavailableButton]}><Text style={styles.actionText}>{t("collection.unavailable", lang)}</Text></View>
+            ) : skin && !parentOwned ? (
+              <View style={[styles.actionButton, styles.unavailableButton]}><Text style={styles.actionText}>{t("collection.requiresNamedMonkey", lang, { name: t(monkey.nameKey, lang) })}</Text></View>
+            ) : !owned && purchasable ? (
+              <SpringPressable onPress={onUnlock} style={[styles.actionButton, styles.unlockButton]}>
+                <Text style={styles.actionText}>{t("collection.unlock", lang)}</Text>
+                <AssetImage assetKey="resourceJungleGem" style={styles.actionGem} fallback={<View />} hideFallbackOnLoad />
+                <Text style={styles.actionText}>{price}</Text>
+              </SpringPressable>
             ) : !owned ? (
-              <View style={[styles.actionButton, styles.unavailableButton]}><Text style={styles.actionText}>{t("collection.shop.comingSoon", lang)}</Text></View>
+              <View style={[styles.actionButton, styles.unavailableButton]}><Text style={styles.actionText}>{skin?.catalogStatus === "festival" ? t("festival.progress", lang, { current: festivalCurrent, required: festivalRequired }) : t("collection.unavailable", lang)}</Text></View>
             ) : !equipped ? (
               <SpringPressable onPress={onEquip} style={[styles.actionButton, styles.equipButton]}><Text style={styles.actionText}>{t("collection.equip", lang)}</Text></SpringPressable>
             ) : (
@@ -303,6 +338,8 @@ const styles = StyleSheet.create({
   stateRow: { minHeight: 32, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 10 },
   stateChip: { borderRadius: 11, paddingHorizontal: 10, paddingVertical: 5, overflow: "hidden", color: "#f6eed2", fontSize: 10, fontFamily: theme.fonts.heavy },
   ownedChip: { backgroundColor: "#32652a" }, equippedChip: { backgroundColor: "#245d22", color: "#c9ff9d" }, lockedChip: { backgroundColor: "#57472f" },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  priceGem: { width: 18, height: 18 },
   price: { color: "#bfeaff", fontSize: 12, fontFamily: theme.fonts.heavy },
   shortfall: { color: "#f2a69d", fontSize: 9, fontFamily: theme.fonts.bold },
   comingSoon: { color: "#ffd98a", fontSize: 10, fontFamily: theme.fonts.heavy },
@@ -322,10 +359,11 @@ const styles = StyleSheet.create({
   skinThumbName: { width: "100%", color: "#e8ddc2", fontSize: 8, fontFamily: theme.fonts.bold, textAlign: "center" },
   skinThumbState: { marginTop: 2, color: "#aee8ff", fontSize: 8, fontFamily: theme.fonts.heavy }, skinThumbOwned: { color: "#baf397" },
   actions: { flexDirection: "row", gap: 8, borderTopWidth: 1, borderTopColor: "rgba(226,177,90,0.25)", padding: 11, backgroundColor: "rgba(23,25,16,0.98)" },
-  actionButton: { flex: 1, minHeight: 43, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 8 },
+  actionButton: { flex: 1, minHeight: 43, flexDirection: "row", alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 8 },
   secondaryButton: { borderColor: "#80663a", backgroundColor: "#33291c" }, secondaryText: { color: "#ded1ad", fontSize: 11, fontFamily: theme.fonts.heavy },
   unlockButton: { borderColor: "#72d3ff", backgroundColor: "#17536e" }, unavailableButton: { borderColor: "#a97a42", backgroundColor: "#62451f" }, equipButton: { borderColor: "#7dc956", backgroundColor: "#2b681f" }, equippedButton: { borderColor: "#568a3f", backgroundColor: "#244e1e" },
   actionText: { color: "#fff7d9", fontSize: 11, fontFamily: theme.fonts.heavy, textAlign: "center" },
+  actionGem: { width: 17, height: 17, marginLeft: 4 },
   unlockScrim: { ...StyleSheet.absoluteFillObject, zIndex: 120, elevation: 120, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(3,8,5,0.94)" },
   unlockCard: { width: 275, minHeight: 355, alignItems: "center", justifyContent: "center", overflow: "visible", borderRadius: 24, borderWidth: 2, borderColor: "#f2c95c", backgroundColor: "#192114", padding: 18, shadowColor: "#ffd66c", shadowOpacity: 0.65, shadowRadius: 25, elevation: 20 },
   unlockGlow: { position: "absolute", width: 230, height: 230, borderRadius: 115, backgroundColor: "#ffd76a" },
