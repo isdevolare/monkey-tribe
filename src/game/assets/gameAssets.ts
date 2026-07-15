@@ -80,9 +80,11 @@ export type GameAssetKey =
   | "buildingArcherTower"
   | "buildingWarriorBarracks"
   | "unitWarrior"
+  | "unitShieldGuardian"
   | "warriorSavageRaider"
   | "warriorAncientWarChief"
   | "unitArcher"
+  | "unitCrossbowman"
   | "hunterEmeraldRanger"
   | "hunterRoyalEagleArcher"
   | "unitEnemyWarrior"
@@ -366,6 +368,10 @@ export const gameAssets = {
     ...asset("unitWarrior", "units", "unit_warrior_monkey.png", "generated warrior unit"),
     source: require("../../../assets/game/generated/units/unit_warrior_monkey.png") as ImageSourcePropType
   },
+  unitShieldGuardian: {
+    ...asset("unitShieldGuardian", "units", "unit_shield_guardian_monkey.png", "1536x1536 transparent heavy tank unit"),
+    source: require("../../../assets/game/generated/units/unit_shield_guardian_monkey.png") as ImageSourcePropType
+  },
   warriorSavageRaider: {
     ...asset("warriorSavageRaider", "units", "warrior_savage_raider.png", "1024x1024 transparent cosmetic unit"),
     source: require("../../../assets/game/units/warrior_savage_raider.png") as ImageSourcePropType
@@ -377,6 +383,10 @@ export const gameAssets = {
   unitArcher: {
     ...asset("unitArcher", "units", "unit_archer_monkey.png", "generated archer unit"),
     source: require("../../../assets/game/generated/units/unit_archer_monkey.png") as ImageSourcePropType
+  },
+  unitCrossbowman: {
+    ...asset("unitCrossbowman", "units", "unit_crossbowman_monkey.png", "1536x1536 transparent heavy ranged unit"),
+    source: require("../../../assets/game/generated/units/unit_crossbowman_monkey.png") as ImageSourcePropType
   },
   hunterEmeraldRanger: {
     ...asset("hunterEmeraldRanger", "units", "hunter_emerald_ranger.png", "1024x1024 transparent cosmetic unit"),

@@ -8,21 +8,19 @@ import {
   ENEMY_DETECTION_RANGE,
   MOVE_INTERVAL_MS,
   PLAYER_CAMP,
-  PRODUCTION_DURATION_MS,
   PRODUCTION_SLOTS,
   RAID_REWARD,
   RUSH_GEM_COST,
   STARTING_RESOURCES,
   VILLAGE_REGEN_PER_SEC,
   WATCH_TOWER_DAMAGE_REDUCTION,
-  effectiveRaidAttack,
+  WORKER_PRODUCTION_DURATION_MS,
   unitCombatStats,
   unitCost
 } from "../config/constants";
 import {
   DEFAULT_BUILDINGS,
   buildingName,
-  populationCap,
   productionLevelMultiplier,
   storageCap,
   storageCanHoldCost,
@@ -30,6 +28,21 @@ import {
   workerLodgeUpgrade
 } from "../config/buildings";
 import { STRONGHOLD_BASE_LEVEL, getCamp, campName, type RaidCamp } from "../config/camps";
+import {
+  TROOPS,
+  TROOP_TYPES,
+  armyCapacity,
+  armyHousing,
+  calculateTroopPower,
+  isLivingPlayerTroop,
+  isTroopType,
+  migrateTroopType,
+  sanitizeTroopUpgrades,
+  summarizeRaidArmy,
+  trainingFinishAt,
+  troopUpgradeCost,
+  troopUpgradeRequirement
+} from "../config/troops";
 import { DAILY_REWARDS, dayDiff, todayKey } from "../config/dailyRewards";
 import { QUESTS, isQuestComplete } from "../config/quests";
 import {
@@ -113,6 +126,9 @@ import type {
   LumberWorkerClass,
   StoneQuarryCollectionSummary,
   StoneWorkerClass,
+  TroopType,
+  TroopUpgradeLevels,
+  TroopUpgradeStat,
   WorkerCollectionSummary,
   WorkerProductionItem
 } from "../types/game";
@@ -153,7 +169,6 @@ type MutableGame = {
   units: Unit[];
   resources: Resources;
   buildings: VillageBuilding[];
-  maxPopulation: number;
   playerCampHp: number;
   enemyCampHp: number;
   lang: Lang;
@@ -164,13 +179,15 @@ function buildingLevel(buildings: VillageBuilding[], type: VillageBuildingType) 
   return buildings.find((building) => building.type === type)?.level ?? 0;
 }
 
-const UNIT_TYPES: UnitType[] = ["worker", "fighter", "archer", "guardian"];
-
-function isUnitType(value: unknown): value is UnitType {
-  return typeof value === "string" && UNIT_TYPES.includes(value as UnitType);
+function normalizeUnitType(value: unknown): UnitType | null {
+  if (value === "worker") {
+    return "worker";
+  }
+  return migrateTroopType(value);
 }
 
 function sanitizeCombatStats(
+  type: UnitType,
   value: UnitCombatStats | null | undefined,
   fallback: UnitCombatStats
 ): UnitCombatStats {
@@ -186,34 +203,58 @@ function sanitizeCombatStats(
     return { ...fallback };
   }
 
-  return {
+  const stats = {
     maxHp: Math.max(1, Math.round(value.maxHp)),
     attack: Math.max(0, Math.round(value.attack)),
-    range: Math.max(1, Math.round(value.range))
+    range: Math.max(1, Math.round(value.range)),
+    attackIntervalMs: Number.isFinite(value.attackIntervalMs)
+      ? Math.max(250, Math.round(value.attackIntervalMs))
+      : fallback.attackIntervalMs,
+    moveIntervalMs: Number.isFinite(value.moveIntervalMs)
+      ? Math.max(150, Math.round(value.moveIntervalMs))
+      : fallback.moveIntervalMs,
+    resistance: Number.isFinite(value.resistance)
+      ? Math.min(0.75, Math.max(0, value.resistance))
+      : fallback.resistance,
+    armorPenetration: Number.isFinite(value.armorPenetration)
+      ? Math.min(0.9, Math.max(0, value.armorPenetration))
+      : fallback.armorPenetration
+  };
+  return {
+    ...stats,
+    power: isTroopType(type) ? calculateTroopPower(type, stats) : 0
   };
 }
 
 function normalizeProductionQueue(
   queue: ProductionItem[] | undefined,
   nestLevel: number,
-  now: number
+  now: number,
+  upgrades: TroopUpgradeLevels
 ) {
   return (queue ?? [])
-    .filter((item) => isUnitType(item?.type))
-    .map((item, index) => ({
-      id: typeof item.id === "string" ? item.id : `migrated-prod-${now}-${index}`,
-      type: item.type,
-      finishAt: Number.isFinite(item.finishAt) ? item.finishAt : now,
-      combatStats: sanitizeCombatStats(
-        item.combatStats,
-        unitCombatStats(item.type, nestLevel)
-      )
-    })) satisfies ProductionItem[];
+    .map((item, index) => {
+      const type = normalizeUnitType(item?.type);
+      if (!type || type === "worker") {
+        return null;
+      }
+      return {
+        id: typeof item.id === "string" ? item.id : `migrated-prod-${now}-${index}`,
+        type,
+        finishAt: Number.isFinite(item.finishAt) ? item.finishAt : now,
+        combatStats: sanitizeCombatStats(
+          type,
+          item.combatStats,
+          unitCombatStats(type, nestLevel, upgrades)
+        )
+      } satisfies ProductionItem;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 }
 
 // Units that fight in a raid (as opposed to workers).
 function isCombatant(unit: Unit) {
-  return unit.type === "fighter" || unit.type === "archer" || unit.type === "guardian";
+  return isTroopType(unit.type);
 }
 
 function cloneBuildings(buildings: VillageBuilding[]): VillageBuilding[] {
@@ -235,7 +276,6 @@ function createFreshState(now: number) {
     units: createInitialUnits(now),
     resources: { ...STARTING_RESOURCES },
     buildings: cloneBuildings(DEFAULT_BUILDINGS),
-    maxPopulation: populationCap(1),
     gems: 0,
     unlockedProfileMonkeys: [DEFAULT_PROFILE_MONKEY_ID] as ProfileMonkeyId[],
     equippedProfileMonkey: DEFAULT_PROFILE_MONKEY_ID,
@@ -244,6 +284,7 @@ function createFreshState(now: number) {
     newProfileMonkeys: [] as ProfileMonkeyId[],
     newProfileSkins: [] as ProfileSkinId[],
     productionQueue: [] as ProductionItem[],
+    troopUpgrades: sanitizeTroopUpgrades(undefined),
     workerProductionQueue: [] as WorkerProductionItem[],
     idleWorkers: [],
     workerExpeditions: [],
@@ -260,6 +301,7 @@ function createFreshState(now: number) {
     raidVictoryCounts: {} as Record<string, number>,
     lastRaidReward: null,
     lastRaidPenalty: null,
+    lastRaidArmyResult: null,
     questProgress: {} as Partial<Record<QuestMetric, number>>,
     questsClaimed: [] as string[],
     offlineReport: null as OfflineReport | null,
@@ -324,11 +366,6 @@ function spendResources(resources: Resources, cost: Resources): Resources {
   };
 }
 
-function currentPopulation(units: Unit[]) {
-  return units.filter((unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0)
-    .length;
-}
-
 function costText(cost: Resources) {
   const parts = [
     cost.bananas > 0 ? `${cost.bananas} muz` : null,
@@ -359,7 +396,7 @@ function nextStepToward(unit: Unit, target: Position): Position {
 }
 
 function moveUnitToward(unit: Unit, target: Position, now: number) {
-  if (now - unit.lastStepAt < MOVE_INTERVAL_MS) {
+  if (now - unit.lastStepAt < (unit.moveIntervalMs || MOVE_INTERVAL_MS)) {
     return;
   }
 
@@ -388,16 +425,18 @@ function resolveTargetPosition(units: Unit[], target: UnitTarget): Position | nu
 
 function nearestPlayerInRange(enemy: Unit, units: Unit[]) {
   const playerUnits = units.filter(
-    (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
+    (unit) => unit.owner === "player" && isCombatant(unit) && unit.state !== "dead" && unit.hp > 0
   );
   let closest: Unit | null = null;
   let closestDistance = Number.POSITIVE_INFINITY;
 
   for (const player of playerUnits) {
     const range = distance(enemy, player);
-    if (range <= ENEMY_DETECTION_RANGE && range < closestDistance) {
+    const guardianPriority = player.type === "shield_guardian" ? -2 : 0;
+    const score = range + guardianPriority;
+    if (range <= ENEMY_DETECTION_RANGE && score < closestDistance) {
       closest = player;
-      closestDistance = range;
+      closestDistance = score;
     }
   }
 
@@ -430,13 +469,15 @@ function assignEnemyOrders(units: Unit[]) {
   }
 }
 
-function damageUnit(units: Unit[], unitId: string, amount: number) {
+function damageUnit(units: Unit[], unitId: string, amount: number, armorPenetration = 0) {
   const target = units.find((unit) => unit.id === unitId);
   if (!target || target.state === "dead") {
     return;
   }
 
-  target.hp = Math.max(0, target.hp - amount);
+  const effectiveResistance = Math.max(0, target.resistance - armorPenetration);
+  const damage = Math.max(1, Math.round(amount * (1 - effectiveResistance)));
+  target.hp = Math.max(0, target.hp - damage);
   if (target.hp <= 0) {
     target.state = "dead";
     target.target = undefined;
@@ -445,12 +486,7 @@ function damageUnit(units: Unit[], unitId: string, amount: number) {
   }
 }
 
-function processAttacking(
-  unit: Unit,
-  game: MutableGame,
-  now: number,
-  raidCombat: boolean
-) {
+function processAttacking(unit: Unit, game: MutableGame, now: number) {
   if (!unit.target) {
     unit.state = "idle";
     return;
@@ -468,21 +504,14 @@ function processAttacking(
     return;
   }
 
-  if (now - unit.lastActionAt < ATTACK_INTERVAL_MS) {
+  if (now - unit.lastActionAt < (unit.attackIntervalMs || ATTACK_INTERVAL_MS)) {
     return;
   }
 
-  const attack =
-    raidCombat && unit.owner === "player"
-      ? effectiveRaidAttack(
-          unit.type,
-          unit.attack,
-          buildingLevel(game.buildings, "watchTower")
-        )
-      : unit.attack;
+  const attack = unit.attack;
 
   if (unit.target.kind === "unit") {
-    damageUnit(game.units, unit.target.unitId, attack);
+    damageUnit(game.units, unit.target.unitId, attack, unit.armorPenetration);
     game.feedbackText = t(unit.owner === "player" ? "fb.hitEnemy" : "fb.enemyCounter", game.lang);
   } else if (unit.target.kind === "camp") {
     if (unit.target.owner === "player") {
@@ -503,14 +532,14 @@ function processAttacking(
   unit.lastActionAt = now;
 }
 
-function processUnit(unit: Unit, game: MutableGame, now: number, raidCombat = false) {
+function processUnit(unit: Unit, game: MutableGame, now: number) {
   if (unit.state === "dead" || unit.hp <= 0) {
     unit.state = "dead";
     return;
   }
 
   if (unit.state === "attacking") {
-    processAttacking(unit, game, now, raidCombat);
+    processAttacking(unit, game, now);
   }
 }
 
@@ -555,28 +584,40 @@ const ENEMY_DEPLOY_SPOTS: Position[] = [
   { x: 7, y: 3 },
   { x: 6, y: 2 },
   { x: 8, y: 4 },
-  { x: 9, y: 4 }
+  { x: 9, y: 4 },
+  { x: 6, y: 3 },
+  { x: 8, y: 5 },
+  { x: 7, y: 4 },
+  { x: 6, y: 4 },
+  { x: 9, y: 5 },
+  { x: 7, y: 5 }
 ];
 
 function createRaidEnemies(now: number, camp: RaidCamp): Unit[] {
-  const total = camp.enemyCount + (camp.archerCount ?? 0);
-  return Array.from({ length: total }, (_, index) => {
+  const types = TROOP_TYPES.flatMap((type) =>
+    Array.from({ length: camp.defenders[type] }, () => type)
+  );
+  return types.map((type, index) => {
     const spot = ENEMY_DEPLOY_SPOTS[index % ENEMY_DEPLOY_SPOTS.length] ?? { x: 8, y: 2 };
-    const isArcher = index >= camp.enemyCount;
     const unit = createUnit(
       `raid-enemy-${index}-${now}`,
-      isArcher ? "archer" : "fighter",
+      type,
       "enemy",
       spot.x,
       spot.y,
       now
     );
-    unit.hp = camp.enemyHp;
-    unit.maxHp = camp.enemyHp;
-    unit.attack = camp.enemyAttack;
-    if (isArcher) {
-      unit.range = 3;
-    }
+    const hpFactor = type === "shield_guardian" ? 1.7 : type === "crossbowman" ? 1.15 : type === "archer" ? 0.78 : 1;
+    const attackFactor = type === "crossbowman" ? 1.65 : type === "archer" ? 0.85 : type === "shield_guardian" ? 0.7 : 1;
+    unit.hp = Math.round(camp.enemyHp * hpFactor);
+    unit.maxHp = unit.hp;
+    unit.attack = Math.round(camp.enemyAttack * attackFactor);
+    unit.range = type === "crossbowman" ? 4 : type === "archer" ? 3 : 1;
+    unit.resistance = type === "shield_guardian" ? 0.22 : type === "crossbowman" ? 0.06 : 0;
+    unit.armorPenetration = type === "crossbowman" ? 0.3 : 0;
+    unit.attackIntervalMs = type === "crossbowman" ? 1_350 : type === "archer" ? 720 : type === "shield_guardian" ? 1_100 : 850;
+    unit.moveIntervalMs = type === "shield_guardian" ? 520 : type === "crossbowman" ? 410 : type === "archer" ? 300 : 340;
+    unit.power = calculateTroopPower(type, unit);
     return unit;
   });
 }
@@ -624,7 +665,7 @@ function returnPlayerUnitsToVillage(units: Unit[]) {
   let playerIndex = 0;
 
   return units
-    .filter((unit) => unit.owner === "player")
+    .filter(isLivingPlayerTroop)
     .map((unit) => {
       const slot = playerIndex;
       playerIndex += 1;
@@ -633,7 +674,7 @@ function returnPlayerUnitsToVillage(units: Unit[]) {
         ...unit,
         x: PLAYER_CAMP.x + (slot % 2),
         y: PLAYER_CAMP.y - 1 + Math.floor(slot / 2),
-        state: unit.hp > 0 ? ("idle" as const) : ("dead" as const),
+        state: "idle" as const,
         target: undefined,
         gatherTarget: undefined,
         carriedResource: null
@@ -651,9 +692,12 @@ function nearestEnemyUnit(attacker: Unit, units: Unit[]): Unit | null {
     }
 
     const range = distance(attacker, unit);
-    if (range < closestDistance) {
+    const priority = attacker.type === "crossbowman"
+      ? range - Math.min(3, unit.maxHp / 80)
+      : range;
+    if (priority < closestDistance) {
       closest = unit;
-      closestDistance = range;
+      closestDistance = priority;
     }
   }
 
@@ -677,31 +721,21 @@ function assignRaidOrders(units: Unit[]) {
   }
 }
 
-function createPlayerUnit(state: GameState, type: UnitType) {
+function createPlayerUnit(state: GameState, type: TroopType) {
   if (state.gameStatus !== "playing") {
     return state;
   }
 
   const unitLabel = t(`unit.${type}`, state.language);
 
-  if (type === "fighter" && buildingLevel(state.buildings, "trainingNest") <= 0) {
+  const nestLevel = buildingLevel(state.buildings, "trainingNest");
+  if (nestLevel < TROOPS[type].unlockLevel) {
     return {
       ...state,
-      feedback: { id: Date.now(), text: t("fb.needTrainingNest", state.language) }
-    };
-  }
-
-  if (type === "guardian" && buildingLevel(state.buildings, "trainingNest") <= 0) {
-    return {
-      ...state,
-      feedback: { id: Date.now(), text: t("fb.needTrainingNest", state.language) }
-    };
-  }
-
-  if (type === "archer" && buildingLevel(state.buildings, "watchTower") <= 0) {
-    return {
-      ...state,
-      feedback: { id: Date.now(), text: t("fb.needWatchTower", state.language) }
+      feedback: {
+        id: Date.now(),
+        text: t("trainingNest.lockedFeedback", state.language, { level: TROOPS[type].unlockLevel })
+      }
     };
   }
 
@@ -712,14 +746,17 @@ function createPlayerUnit(state: GameState, type: UnitType) {
     };
   }
 
-  if (currentPopulation(state.units) + state.productionQueue.length >= state.maxPopulation) {
+  const queuedTroops = state.productionQueue
+    .map((item) => item.type)
+    .filter(isTroopType);
+  const usedHousing = armyHousing(state.units, queuedTroops);
+  if (usedHousing + TROOPS[type].housing > armyCapacity(nestLevel)) {
     return {
       ...state,
       feedback: { id: Date.now(), text: t("fb.capacityFull", state.language) }
     };
   }
 
-  const nestLevel = buildingLevel(state.buildings, "trainingNest");
   const cost = unitCost(type, nestLevel);
   if (!hasResources(state.resources, cost)) {
     return {
@@ -736,8 +773,8 @@ function createPlayerUnit(state: GameState, type: UnitType) {
   const queueItem: ProductionItem = {
     id: `prod-${type}-${now}-${unitSerial}`,
     type,
-    finishAt: now + PRODUCTION_DURATION_MS[type],
-    combatStats: unitCombatStats(type, nestLevel)
+    finishAt: trainingFinishAt(state.productionQueue, type, now),
+    combatStats: unitCombatStats(type, nestLevel, state.troopUpgrades)
   };
 
   return {
@@ -746,6 +783,60 @@ function createPlayerUnit(state: GameState, type: UnitType) {
     productionQueue: [...state.productionQueue, queueItem],
     questProgress: bumpQuest(state.questProgress, "trainAny"),
     feedback: { id: now, text: t(`fb.queued.${type}`, state.language) }
+  };
+}
+
+function upgradeTroopStat(
+  state: GameState,
+  type: TroopType,
+  stat: TroopUpgradeStat
+): GameState {
+  if (!TROOPS[type].upgradeStats.includes(stat)) {
+    return state;
+  }
+  const now = Date.now();
+  const currentLevel = state.troopUpgrades[type]?.[stat] ?? 0;
+  if (currentLevel >= 5) {
+    return { ...state, feedback: { id: now, text: t("trainingNest.upgradeMax", state.language) } };
+  }
+  const nextLevel = currentLevel + 1;
+  const requiredNestLevel = troopUpgradeRequirement(type, currentLevel);
+  if (buildingLevel(state.buildings, "trainingNest") < requiredNestLevel) {
+    return {
+      ...state,
+      feedback: {
+        id: now,
+        text: t("trainingNest.upgradeLocked", state.language, { level: requiredNestLevel })
+      }
+    };
+  }
+  const cost = troopUpgradeCost(type, stat, nextLevel);
+  if (!hasResources(state.resources, cost)) {
+    return {
+      ...state,
+      feedback: {
+        id: now,
+        text: t("fb.needCost", state.language, {
+          name: t(`unit.${type}`, state.language),
+          cost: costText(cost)
+        })
+      }
+    };
+  }
+  return {
+    ...state,
+    resources: spendResources(state.resources, cost),
+    troopUpgrades: {
+      ...state.troopUpgrades,
+      [type]: { ...state.troopUpgrades[type], [stat]: nextLevel }
+    },
+    feedback: {
+      id: now,
+      text: t("trainingNest.upgradeComplete", state.language, {
+        name: t(`unit.${type}`, state.language),
+        level: nextLevel
+      })
+    }
   };
 }
 
@@ -850,13 +941,10 @@ function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): Ga
     building.type === type ? { ...building, level: building.level + 1 } : building
   );
   const now = Date.now();
-  const shelterLevel = buildingLevel(buildings, "workerShelter");
-
   return {
     ...state,
     buildings,
     resources: spendResources(state.resources, cost),
-    maxPopulation: populationCap(shelterLevel),
     questProgress: bumpQuest(state.questProgress, "upgradeAny"),
     feedback: { id: now, text: t("fb.upgraded", state.language, { name, level: level + 1 }) }
   };
@@ -882,6 +970,7 @@ export const useGameStore = create<GameState>((set) => ({
       raidStars: 0,
       lastRaidReward: null,
       lastRaidPenalty: null,
+      lastRaidArmyResult: null,
       lastProductionAt: Date.now(),
       feedback: null
     })),
@@ -906,6 +995,7 @@ export const useGameStore = create<GameState>((set) => ({
       const cap = storageCap(buildingLevel(buildings, "clanHall"));
 
       const nestLevel = buildingLevel(buildings, "trainingNest");
+      const troopUpgrades = sanitizeTroopUpgrades(save.troopUpgrades);
 
       // Current saves preserve each living unit's exact combat stats and HP.
       // Legacy permanent workers are migrated once into the Lodge's idle
@@ -914,16 +1004,18 @@ export const useGameStore = create<GameState>((set) => ({
       let legacyWorkerCount = 0;
       if (Array.isArray(save.unitRoster)) {
         for (const savedUnit of save.unitRoster) {
-          if (!isUnitType(savedUnit?.type)) {
+          const type = normalizeUnitType(savedUnit?.type);
+          if (!type) {
             continue;
           }
-          if (savedUnit.type === "worker") {
+          if (type === "worker") {
             legacyWorkerCount += 1;
             continue;
           }
           const stats = sanitizeCombatStats(
+            type,
             savedUnit,
-            unitCombatStats(savedUnit.type, nestLevel)
+            unitCombatStats(type, nestLevel, troopUpgrades)
           );
           const hp = Number.isFinite(savedUnit.hp)
             ? Math.min(stats.maxHp, Math.max(0, savedUnit.hp))
@@ -934,8 +1026,8 @@ export const useGameStore = create<GameState>((set) => ({
           unitSerial += 1;
           const spawn = findSpawnPosition(units, "player");
           const unit = createUnit(
-            `player-${savedUnit.type}-${now}-${unitSerial}`,
-            savedUnit.type,
+            `player-${type}-${now}-${unitSerial}`,
+            type,
             "player",
             spawn.x,
             spawn.y,
@@ -946,12 +1038,13 @@ export const useGameStore = create<GameState>((set) => ({
           units.push(unit);
         }
       } else if (save.unitCounts) {
-        for (const [type, count] of Object.entries(save.unitCounts) as [UnitType, number][]) {
-          if (!isUnitType(type)) {
+        for (const [legacyType, count] of Object.entries(save.unitCounts)) {
+          const type = normalizeUnitType(legacyType);
+          if (!type) {
             continue;
           }
           const safeCount = Number.isFinite(count)
-            ? Math.max(0, Math.floor(count))
+            ? Math.max(0, Math.floor(count ?? 0))
             : 0;
           if (type === "worker") {
             legacyWorkerCount += safeCount;
@@ -968,7 +1061,7 @@ export const useGameStore = create<GameState>((set) => ({
                 spawn.x,
                 spawn.y,
                 now,
-                unitCombatStats(type, nestLevel)
+                unitCombatStats(type, nestLevel, troopUpgrades)
               )
             );
           }
@@ -980,7 +1073,8 @@ export const useGameStore = create<GameState>((set) => ({
       const productionQueue = normalizeProductionQueue(
         save.productionQueue?.filter((item) => item.type !== "worker"),
         nestLevel,
-        now
+        now,
+        troopUpgrades
       );
       const legacyQueuedWorkers: WorkerProductionItem[] = (save.productionQueue ?? [])
         .filter((item) => item.type === "worker")
@@ -991,7 +1085,7 @@ export const useGameStore = create<GameState>((set) => ({
             id: `worker-production-${id}`,
             workerId: `worker-${id}`,
             workerClass: "gatherer",
-            startedAt: Math.max(0, finishesAt - PRODUCTION_DURATION_MS.worker),
+            startedAt: Math.max(0, finishesAt - WORKER_PRODUCTION_DURATION_MS),
             finishesAt
           };
         });
@@ -1086,9 +1180,6 @@ export const useGameStore = create<GameState>((set) => ({
         units,
         resources,
         offlineReport,
-        maxPopulation: reconciledWorkerLodgeUpgrade.completed
-          ? populationCap(buildingLevel(buildings, "workerShelter"))
-          : save.maxPopulation,
         gems: save.gems ?? state.gems,
         unlockedProfileMonkeys,
         equippedProfileMonkey,
@@ -1097,6 +1188,7 @@ export const useGameStore = create<GameState>((set) => ({
         newProfileMonkeys,
         newProfileSkins,
         productionQueue,
+        troopUpgrades,
         workerProductionQueue: reconciledWorkers.queue,
         idleWorkers: reconciledWorkers.idleWorkers,
         workerExpeditions,
@@ -1111,6 +1203,7 @@ export const useGameStore = create<GameState>((set) => ({
         raidLevel: Math.max(save.raidLevel ?? STRONGHOLD_BASE_LEVEL, STRONGHOLD_BASE_LEVEL),
         raidVictoryCounts: sanitizeRaidVictoryCounts(save.raidVictoryCounts),
         lastRaidReward: null,
+        lastRaidArmyResult: null,
         questProgress: save.questProgress ?? {},
         questsClaimed: save.questsClaimed ?? [],
         dailyStreak: save.dailyStreak ?? 0,
@@ -1150,6 +1243,21 @@ export const useGameStore = create<GameState>((set) => ({
         return state;
       }
 
+      if (
+        buildingLevel(state.buildings, "trainingNest") <
+        camp.requiredTrainingNestLevel
+      ) {
+        return {
+          ...state,
+          feedback: {
+            id: now,
+            text: t("raidmap.unlockNest", state.language, {
+              level: camp.requiredTrainingNestLevel
+            })
+          }
+        };
+      }
+
       const fighters = state.units.filter(
         (unit) => unit.owner === "player" && isCombatant(unit) && unit.state !== "dead" && unit.hp > 0
       );
@@ -1171,6 +1279,7 @@ export const useGameStore = create<GameState>((set) => ({
         raidStars: 0,
         lastRaidReward: null,
         lastRaidPenalty: null,
+        lastRaidArmyResult: null,
         units: deployRaidUnits(state.units, now, camp),
         lastProductionAt: now,
         feedback: {
@@ -1192,6 +1301,7 @@ export const useGameStore = create<GameState>((set) => ({
         resources: penalized.resources,
         raidStatus: "retreat",
         lastRaidPenalty: { reason: "retreat", amounts: penalized.amounts },
+        lastRaidArmyResult: summarizeRaidArmy(state.units),
         feedback: { id: now, text: t("fb.raidRetreated", state.language) }
       };
     }),
@@ -1203,6 +1313,7 @@ export const useGameStore = create<GameState>((set) => ({
       activeCampId: null,
       lastRaidReward: null,
       lastRaidPenalty: null,
+      lastRaidArmyResult: null,
       units: returnPlayerUnitsToVillage(state.units),
       lastProductionAt: Date.now(),
       feedback: { id: Date.now(), text: t("fb.returned", state.language) }
@@ -1819,9 +1930,8 @@ export const useGameStore = create<GameState>((set) => ({
         feedback: { id: now, text: t("daily.claimed", state.language) }
       };
     }),
-  trainFighter: () => set((state) => createPlayerUnit(state, "fighter")),
-  trainArcher: () => set((state) => createPlayerUnit(state, "archer")),
-  trainGuardian: () => set((state) => createPlayerUnit(state, "guardian")),
+  trainTroop: (type) => set((state) => createPlayerUnit(state, type)),
+  upgradeTroopStat: (type, stat) => set((state) => upgradeTroopStat(state, type, stat)),
   rushProduction: () =>
     set((state) => {
       if (state.productionQueue.length === 0) {
@@ -1874,9 +1984,6 @@ export const useGameStore = create<GameState>((set) => ({
       return {
         ...state,
         buildings: lodgeUpgrade.buildings,
-        maxPopulation: lodgeUpgrade.completed
-          ? populationCap(buildingLevel(lodgeUpgrade.buildings, "workerShelter"))
-          : state.maxPopulation,
         activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
         workerProductionQueue: reconciled.queue,
         idleWorkers: reconciled.idleWorkers,
@@ -1913,9 +2020,6 @@ export const useGameStore = create<GameState>((set) => ({
         units,
         resources: { ...state.resources },
         buildings: cloneBuildings(lodgeUpgrade.buildings),
-        maxPopulation: lodgeUpgrade.completed
-          ? populationCap(buildingLevel(lodgeUpgrade.buildings, "workerShelter"))
-          : state.maxPopulation,
         playerCampHp: state.playerCampHp,
         enemyCampHp: state.enemyCampHp,
         lang: state.language,
@@ -1970,7 +2074,7 @@ export const useGameStore = create<GameState>((set) => ({
 
         for (const unit of units) {
           if (unit.owner === "enemy" || (unit.owner === "player" && isCombatant(unit))) {
-            processUnit(unit, game, now, true);
+            processUnit(unit, game, now);
           }
         }
 
@@ -2019,7 +2123,6 @@ export const useGameStore = create<GameState>((set) => ({
             lumberCampStorage,
             stoneQuarryStorage,
             buildings: game.buildings,
-            maxPopulation: game.maxPopulation,
             activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
             enemyCampHp: 0,
             raidStars: stars,
@@ -2028,6 +2131,7 @@ export const useGameStore = create<GameState>((set) => ({
             gems: state.gems + stars,
             questProgress: bumpQuest(state.questProgress, "winRaid"),
             lastRaidPenalty: null,
+            lastRaidArmyResult: summarizeRaidArmy(game.units),
             feedback: {
               id: now,
               text: t("fb.victoryLoot", state.language, {
@@ -2057,12 +2161,12 @@ export const useGameStore = create<GameState>((set) => ({
             lumberCampStorage,
             stoneQuarryStorage,
             buildings: game.buildings,
-            maxPopulation: game.maxPopulation,
             activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
             enemyCampHp: game.enemyCampHp,
             feedback: { id: now, text: t("fb.raidFailed", state.language) },
             raidStatus: "defeat",
-            lastRaidPenalty: { reason: "defeat", amounts: penalized.amounts }
+            lastRaidPenalty: { reason: "defeat", amounts: penalized.amounts },
+            lastRaidArmyResult: summarizeRaidArmy(game.units)
           };
         }
 
@@ -2077,7 +2181,6 @@ export const useGameStore = create<GameState>((set) => ({
           lumberCampStorage,
           stoneQuarryStorage,
           buildings: game.buildings,
-          maxPopulation: game.maxPopulation,
           activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
           enemyCampHp: game.enemyCampHp,
           feedback: game.feedbackText ? { id: now, text: game.feedbackText } : state.feedback
@@ -2108,10 +2211,12 @@ export const useGameStore = create<GameState>((set) => ({
           unitSerial += 1;
           const spawn = findSpawnPosition(game.units, "player");
           const combatStats = sanitizeCombatStats(
+            item.type,
             item.combatStats,
             unitCombatStats(
               item.type,
-              buildingLevel(game.buildings, "trainingNest")
+              buildingLevel(game.buildings, "trainingNest"),
+              state.troopUpgrades
             )
           );
           game.units.push(
@@ -2153,7 +2258,6 @@ export const useGameStore = create<GameState>((set) => ({
         units: game.units,
         resources: game.resources,
         buildings: game.buildings,
-        maxPopulation: game.maxPopulation,
         playerCampHp: game.playerCampHp,
         enemyCampHp: game.enemyCampHp,
         productionQueue,
@@ -2222,7 +2326,12 @@ function persistVillage(state: GameState) {
         hp: unit.hp,
         maxHp: unit.maxHp,
         attack: unit.attack,
-        range: unit.range
+        range: unit.range,
+        attackIntervalMs: unit.attackIntervalMs,
+        moveIntervalMs: unit.moveIntervalMs,
+        resistance: unit.resistance,
+        armorPenetration: unit.armorPenetration,
+        power: unit.power
       });
     }
   }
@@ -2230,7 +2339,6 @@ function persistVillage(state: GameState) {
   const payload: VillageSave = {
     buildings: state.buildings,
     resources: state.resources,
-    maxPopulation: state.maxPopulation,
     unitRoster,
     gems: state.gems,
     unlockedProfileMonkeys: state.unlockedProfileMonkeys,
@@ -2240,6 +2348,7 @@ function persistVillage(state: GameState) {
     newProfileMonkeys: state.newProfileMonkeys,
     newProfileSkins: state.newProfileSkins,
     productionQueue: state.productionQueue,
+    troopUpgrades: state.troopUpgrades,
     workerProductionQueue: state.workerProductionQueue,
     idleWorkers: state.idleWorkers,
     workerExpeditions: state.workerExpeditions,

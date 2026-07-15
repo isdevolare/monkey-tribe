@@ -15,7 +15,8 @@ import { LivelyUnit } from "./LivelyUnit";
 import { Confetti, SparkBurst } from "./Vfx";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { t } from "../../game/i18n";
-import type { Lang, RaidPenalty, RaidStatus, Resources, Unit } from "../../game/types/game";
+import type { Lang, RaidArmyResult, RaidPenalty, RaidStatus, Resources, TroopType, Unit } from "../../game/types/game";
+import { calculateTroopPower, isTroopType } from "../../game/config/troops";
 import { theme } from "../../theme/theme";
 
 type RaidBoardProps = {
@@ -27,6 +28,7 @@ type RaidBoardProps = {
   loot: Resources;
   rewardMultiplier: number;
   penalty: RaidPenalty | null;
+  armyResult: RaidArmyResult | null;
   playerIdentityAsset: GameAssetKey;
   lang: Lang;
   feedbackText?: string;
@@ -53,13 +55,15 @@ const fighterSpots: Spot[] = [
   { x: 24, y: 66 },
   { x: 34, y: 72 },
   { x: 28, y: 82 },
-  { x: 42, y: 78 }
+  { x: 42, y: 78 }, { x: 18, y: 75 }, { x: 38, y: 62 }, { x: 48, y: 70 },
+  { x: 20, y: 88 }, { x: 35, y: 90 }, { x: 50, y: 86 }, { x: 12, y: 65 }, { x: 46, y: 58 }
 ];
 
 const enemySpots: Spot[] = [
   { x: 72, y: 42 },
   { x: 82, y: 53 },
-  { x: 67, y: 60 }
+  { x: 67, y: 60 }, { x: 88, y: 40 }, { x: 76, y: 62 }, { x: 60, y: 48 },
+  { x: 90, y: 65 }, { x: 58, y: 68 }, { x: 82, y: 30 }
 ];
 
 const CAMP_CENTER: Spot = { x: 73, y: 37 };
@@ -74,6 +78,7 @@ export function RaidBoard({
   loot,
   rewardMultiplier,
   penalty,
+  armyResult,
   playerIdentityAsset,
   lang,
   feedbackText,
@@ -89,14 +94,17 @@ export function RaidBoard({
   const fighters = units.filter(
     (unit) =>
       unit.owner === "player" &&
-      (unit.type === "fighter" || unit.type === "archer") &&
+      isTroopType(unit.type) &&
       unit.state !== "dead" &&
       unit.hp > 0
   );
   const enemies = units.filter(
     (unit) => unit.owner === "enemy" && unit.state !== "dead" && unit.hp > 0
   );
-  const raidPower = fighters.reduce((total, unit) => total + unit.attack, 0);
+  const raidPower = fighters.reduce(
+    (total, unit) => total + calculateTroopPower(unit.type as TroopType, unit),
+    0
+  );
   const resultVisible =
     raidStatus === "victory" || raidStatus === "defeat" || raidStatus === "retreat";
   const victory = raidStatus === "victory";
@@ -239,7 +247,7 @@ export function RaidBoard({
             {striking ? <View style={styles.strikeGlow} pointerEvents="none" /> : null}
             <LivelyUnit seed={index} amplitude={4} style={styles.full}>
               <AssetImage
-                assetKey={playerIdentityAsset}
+                assetKey={troopBattleAsset(unit.type as TroopType)}
                 style={styles.full}
                 fallback={<MonkeyFallback fighter />}
               />
@@ -267,7 +275,7 @@ export function RaidBoard({
             {striking ? <View style={[styles.strikeGlow, styles.strikeGlowEnemy]} pointerEvents="none" /> : null}
             <LivelyUnit seed={index + 3} amplitude={4} style={styles.full}>
               <AssetImage
-                assetKey={unit.type === "archer" ? "unitEnemyArcher" : "unitEnemyWarrior"}
+                assetKey={unit.type === "archer" ? "unitEnemyArcher" : unit.type === "fighter" ? "unitEnemyWarrior" : troopBattleAsset(unit.type as TroopType)}
                 style={styles.full}
                 fallback={<MonkeyFallback fighter enemy />}
               />
@@ -368,6 +376,10 @@ export function RaidBoard({
             {!victory && penalty ? (
               <PenaltySummary penalty={penalty} lang={lang} />
             ) : null}
+            {armyResult ? <View style={styles.armyResultRow}>
+              <Text style={styles.armyResultSurvivors}>{t("raid.result.survivors", lang, { n: armyResult.survivors })}</Text>
+              <Text style={styles.armyResultLosses}>{t("raid.result.losses", lang, { n: armyResult.losses })}</Text>
+            </View> : null}
             <View style={styles.returnButtonWrap}>
               <WoodButton label={t("raid.return", lang)} onPress={onReturn} primary />
             </View>
@@ -387,6 +399,13 @@ export function RaidBoard({
       {victory && resultVisible ? <Confetti width={sceneWidth} height={sceneHeight} /> : null}
     </View>
   );
+}
+
+function troopBattleAsset(type: TroopType): GameAssetKey {
+  if (type === "archer") return "unitArcher";
+  if (type === "shield_guardian") return "unitShieldGuardian";
+  if (type === "crossbowman") return "unitCrossbowman";
+  return "unitWarrior";
 }
 
 function StrongholdCallout({ level, lang }: { level: number; lang: Lang }) {
@@ -836,6 +855,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: "center"
   },
+  armyResultRow: { flexDirection: "row", gap: 14, marginTop: 10 },
+  armyResultSurvivors: { color: "#9be39a", fontSize: 12, fontFamily: theme.fonts.heavy },
+  armyResultLosses: { color: "#f2a08d", fontSize: 12, fontFamily: theme.fonts.heavy },
   penaltyBlock: {
     alignItems: "center",
     marginTop: 12

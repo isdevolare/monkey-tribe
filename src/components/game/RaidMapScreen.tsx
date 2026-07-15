@@ -1,17 +1,23 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Line, Path } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
 import { NineSliceFrame } from "./NineSliceFrame";
 import { SpringPressable } from "./SpringPressable";
 import { WoodButton } from "./WoodButton";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
-import { RAID_CAMPS, campName, strongholdCamp } from "../../game/config/camps";
+import { RAID_CAMPS, campName, strongholdCamp, type RaidCamp } from "../../game/config/camps";
+import { TROOP_TYPES, raidRisk } from "../../game/config/troops";
 import { t } from "../../game/i18n";
-import type { Lang } from "../../game/types/game";
+import type { Lang, TroopType } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type RaidMapScreenProps = {
-  fighterCount: number;
+  troopCounts: Record<TroopType, number>;
+  housingUsed: number;
+  housingCapacity: number;
+  armyPower: number;
+  trainingNestLevel: number;
   raidLevel: number;
   watchTowerLevel: number;
   lang: Lang;
@@ -19,7 +25,9 @@ type RaidMapScreenProps = {
   onClose: () => void;
 };
 
-export function RaidMapScreen({ fighterCount, raidLevel, watchTowerLevel, lang, onAttack, onClose }: RaidMapScreenProps) {
+export function RaidMapScreen({ troopCounts, housingUsed, housingCapacity, armyPower, trainingNestLevel, raidLevel, watchTowerLevel, lang, onAttack, onClose }: RaidMapScreenProps) {
+  const [confirmCamp, setConfirmCamp] = useState<RaidCamp | null>(null);
+  const fighterCount = Object.values(troopCounts).reduce((sum, count) => sum + count, 0);
   const noFighters = fighterCount <= 0;
   // The endless stronghold sits after the handcrafted camps and levels up
   // every time the player razes it.
@@ -39,6 +47,7 @@ export function RaidMapScreen({ fighterCount, raidLevel, watchTowerLevel, lang, 
           const firstTier2 = tier2 && camps[index - 1]?.tier !== 2;
           // Same tier language as the village: higher camps loom larger.
           const artScale = 0.82 + Math.min(camp.level, 7) * 0.05;
+          const locked = trainingNestLevel < camp.requiredTrainingNestLevel;
           return (
           <View key={camp.id}>
           {firstTier2 ? (
@@ -83,8 +92,17 @@ export function RaidMapScreen({ fighterCount, raidLevel, watchTowerLevel, lang, 
                   {t("raidmap.endless", lang)}
                 </Text>
               ) : null}
-              {watchTowerLevel >= 3 ? <Text style={styles.scoutingLine}>{t("raidmap.recommendedPower", lang, { n: Math.round(camp.campHp + camp.enemyCount * camp.enemyHp) })}</Text> : null}
-              {watchTowerLevel >= 5 ? <Text style={styles.scoutingLine}>{t("raidmap.composition", lang, { melee: Math.max(0, camp.enemyCount - (camp.archerCount ?? 0)), archers: camp.archerCount ?? 0 })}</Text> : null}
+              <Text style={styles.scoutingLine}>{t("raidmap.armyPower", lang, { n: armyPower })}</Text>
+              <Text style={styles.scoutingLine}>{t("raidmap.enemyPower", lang, { n: camp.enemyPower })}</Text>
+              <Text style={styles.scoutingLine}>{t("raidmap.recommendedPower", lang, { n: camp.recommendedPower })}</Text>
+              <Text style={styles.riskLine}>{t(`raid.risk.${raidRisk(armyPower, camp.recommendedPower)}`, lang)}</Text>
+              {locked ? <Text style={styles.scoutingLocked}>{t("raidmap.unlockNest", lang, { level: camp.requiredTrainingNestLevel })}</Text> : null}
+              {watchTowerLevel >= 5 ? <Text style={styles.scoutingLine}>{t("raidmap.compositionFull", lang, {
+                fighters: camp.defenders.fighter,
+                guardians: camp.defenders.shield_guardian,
+                archers: camp.defenders.archer,
+                crossbows: camp.defenders.crossbowman
+              })}</Text> : null}
               {watchTowerLevel >= 4 ? <View style={styles.lootRow}>
                 <LootChip assetKey="resourceBanana" amount={camp.loot.bananas} />
                 <LootChip assetKey="resourceWood" amount={camp.loot.wood} />
@@ -94,14 +112,14 @@ export function RaidMapScreen({ fighterCount, raidLevel, watchTowerLevel, lang, 
 
             <SpringPressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: noFighters }}
-              disabled={noFighters}
-              onPress={() => onAttack(camp.id)}
-              style={[styles.attackButton, noFighters ? styles.attackButtonDisabled : null]}
+              accessibilityState={{ disabled: noFighters || locked }}
+              disabled={noFighters || locked}
+              onPress={() => setConfirmCamp(camp)}
+              style={[styles.attackButton, noFighters || locked ? styles.attackButtonDisabled : null]}
             >
               <NineSliceFrame preset="attackPlaque" cornerSize={18} style={StyleSheet.absoluteFill} />
               <Text style={styles.attackText} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
-                {noFighters ? t("raidmap.needFighter", lang) : t("raidmap.attack", lang)}
+                {noFighters ? t("raidmap.needFighter", lang) : locked ? t("raidmap.locked", lang) : t("raidmap.attack", lang)}
               </Text>
             </SpringPressable>
           </View>
@@ -111,6 +129,36 @@ export function RaidMapScreen({ fighterCount, raidLevel, watchTowerLevel, lang, 
       </ScrollView>
 
       <WoodButton label={t("raidmap.close", lang)} onPress={onClose} />
+      <Modal visible={confirmCamp !== null} transparent animationType="fade" onRequestClose={() => setConfirmCamp(null)}>
+        <View style={styles.confirmScrim}>
+          {confirmCamp ? <View style={styles.confirmCard}>
+            <NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} />
+            <Text style={styles.confirmTitle}>{campName(confirmCamp.id, lang)}</Text>
+            <View style={styles.confirmStats}>
+              <Text style={styles.confirmStat}>{t("trainingNest.armyCapacity", lang, { used: housingUsed, max: housingCapacity })}</Text>
+              <Text style={styles.confirmStat}>{t("raidmap.armyPower", lang, { n: armyPower })}</Text>
+              <Text style={styles.confirmStat}>{t("raidmap.enemyPower", lang, { n: confirmCamp.enemyPower })}</Text>
+              <Text style={styles.confirmStat}>{t("raidmap.recommendedPower", lang, { n: confirmCamp.recommendedPower })}</Text>
+            </View>
+            <Text style={styles.confirmRisk}>{t(`raid.risk.${raidRisk(armyPower, confirmCamp.recommendedPower)}`, lang)}</Text>
+            <Text style={styles.confirmWarning}>{t("raid.confirm.warning", lang)}</Text>
+            <View style={styles.rosterRow}>
+              {TROOP_TYPES.filter((type) => troopCounts[type] > 0).map((type) => <View key={type} style={styles.rosterChip}>
+                <AssetImage assetKey={type === "fighter" ? "unitWarrior" : type === "archer" ? "unitArcher" : type === "shield_guardian" ? "unitShieldGuardian" : "unitCrossbowman"} style={styles.rosterIcon} fallback={<View />} />
+                <Text style={styles.rosterText}>{troopCounts[type]}× {t(`unit.${type}`, lang)}</Text>
+              </View>)}
+            </View>
+            <View style={styles.confirmActions}>
+              <WoodButton label={t("raid.confirm.cancel", lang)} onPress={() => setConfirmCamp(null)} />
+              <WoodButton label={t("raid.confirm.continue", lang)} onPress={() => {
+                const id = confirmCamp.id;
+                setConfirmCamp(null);
+                onAttack(id);
+              }} primary />
+            </View>
+          </View> : null}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -226,6 +274,7 @@ const styles = StyleSheet.create({
     fontWeight: "800", fontFamily: theme.fonts.bold
   },
   scoutingLine: { marginTop: 2, color: "#d9c58e", fontSize: 9.5, fontFamily: theme.fonts.bold },
+  riskLine: { marginTop: 3, color: "#ffd95a", fontSize: 10.5, fontFamily: theme.fonts.heavy },
   scoutingLocked: { marginTop: 5, color: "#9d8d75", fontSize: 9.5, fontFamily: theme.fonts.bold },
   cardArt: {
     width: 64,
@@ -352,5 +401,17 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(60, 20, 4, 0.9)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 2
-  }
+  },
+  confirmScrim: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,12,8,0.82)", padding: 18 },
+  confirmCard: { width: "100%", maxWidth: 370, borderRadius: 20, backgroundColor: "#f4df9e", padding: 24, overflow: "hidden" },
+  confirmTitle: { color: theme.colors.ink, fontSize: 20, textAlign: "center", fontFamily: theme.fonts.heavy },
+  confirmStats: { marginTop: 12, gap: 3 },
+  confirmStat: { color: "#4b3b24", fontSize: 13, fontFamily: theme.fonts.bold },
+  confirmRisk: { marginTop: 10, color: "#8a2f1e", fontSize: 18, textAlign: "center", fontFamily: theme.fonts.heavy },
+  confirmWarning: { marginTop: 4, color: "#5b4930", fontSize: 12, textAlign: "center", fontFamily: theme.fonts.bold },
+  rosterRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
+  rosterChip: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 10, backgroundColor: "rgba(91,61,27,0.12)", paddingHorizontal: 7, paddingVertical: 4 },
+  rosterIcon: { width: 28, height: 28 },
+  rosterText: { color: theme.colors.ink, fontSize: 10, fontFamily: theme.fonts.heavy },
+  confirmActions: { flexDirection: "row", gap: 8, marginTop: 16 }
 });

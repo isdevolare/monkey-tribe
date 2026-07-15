@@ -28,7 +28,8 @@ export type TileType =
   | "enemyCamp"
   | "empty";
 
-export type UnitType = "worker" | "fighter" | "archer" | "guardian";
+export type TroopType = "fighter" | "shield_guardian" | "archer" | "crossbowman";
+export type UnitType = "worker" | TroopType;
 export type UnitState =
   | "idle"
   | "moving"
@@ -69,6 +70,11 @@ export type Unit = Position & {
   maxHp: number;
   attack: number;
   range: number;
+  attackIntervalMs: number;
+  moveIntervalMs: number;
+  resistance: number;
+  armorPenetration: number;
+  power: number;
   state: UnitState;
   carriedResource: CarriedResource | null;
   target?: UnitTarget;
@@ -118,6 +124,11 @@ export type UnitCombatStats = {
   maxHp: number;
   attack: number;
   range: number;
+  attackIntervalMs: number;
+  moveIntervalMs: number;
+  resistance: number;
+  armorPenetration: number;
+  power: number;
 };
 
 export type ProductionItem = {
@@ -131,6 +142,25 @@ export type ProductionItem = {
 export type PersistedUnit = UnitCombatStats & {
   type: UnitType;
   hp: number;
+};
+
+export type TroopUpgradeStat =
+  | "health"
+  | "attack"
+  | "resistance"
+  | "attackSpeed"
+  | "armorPenetration";
+
+export type TroopUpgradeLevels = Partial<
+  Record<TroopType, Partial<Record<TroopUpgradeStat, number>>>
+>;
+
+export type RaidArmyResult = {
+  deployed: number;
+  survivors: number;
+  losses: number;
+  survivorTypes: Partial<Record<TroopType, number>>;
+  lostTypes: Partial<Record<TroopType, number>>;
 };
 
 export type ActiveWorkTask = {
@@ -239,7 +269,8 @@ export type QuestMetric = "trainAny" | "upgradeAny" | "winRaid" | "workShift";
 export type VillageSave = {
   buildings: VillageBuilding[];
   resources: Resources;
-  maxPopulation: number;
+  /** Legacy cache; army capacity is always derived from Training Nest level. */
+  maxPopulation?: number;
   gems?: number;
   unlockedProfileMonkeys?: ProfileMonkeyId[];
   equippedProfileMonkey?: ProfileMonkeyId;
@@ -270,7 +301,9 @@ export type VillageSave = {
   /** Exact living roster used by current saves. */
   unitRoster?: PersistedUnit[];
   /** Legacy save field migrated once to unitRoster using the saved Nest level. */
-  unitCounts?: Partial<Record<UnitType, number>>;
+  unitCounts?: Partial<Record<string, number>>;
+  /** Conservative per-troop stat progression owned by the Training Nest. */
+  troopUpgrades?: TroopUpgradeLevels;
 };
 
 // Summary shown when the player returns after being away.
@@ -290,7 +323,6 @@ export type GameState = {
   units: Unit[];
   resources: Resources;
   buildings: VillageBuilding[];
-  maxPopulation: number;
   gems: number;
   unlockedProfileMonkeys: ProfileMonkeyId[];
   equippedProfileMonkey: ProfileMonkeyId;
@@ -299,6 +331,7 @@ export type GameState = {
   newProfileMonkeys: ProfileMonkeyId[];
   newProfileSkins: ProfileSkinId[];
   productionQueue: ProductionItem[];
+  troopUpgrades: TroopUpgradeLevels;
   workerProductionQueue: WorkerProductionItem[];
   idleWorkers: IdleWorker[];
   workerExpeditions: WorkerExpedition[];
@@ -315,6 +348,7 @@ export type GameState = {
   raidVictoryCounts: Record<string, number>;
   lastRaidReward: RaidRewardSummary | null;
   lastRaidPenalty: RaidPenalty | null;
+  lastRaidArmyResult: RaidArmyResult | null;
   questProgress: Partial<Record<QuestMetric, number>>;
   questsClaimed: string[];
   offlineReport: OfflineReport | null;
@@ -343,9 +377,8 @@ export type GameState = {
   equipProfileSkin: (id: ProfileSkinId) => void;
   markProfileMonkeySeen: (id: ProfileMonkeyId) => void;
   markProfileSkinSeen: (id: ProfileSkinId) => void;
-  trainFighter: () => void;
-  trainArcher: () => void;
-  trainGuardian: () => void;
+  trainTroop: (type: TroopType) => void;
+  upgradeTroopStat: (type: TroopType, stat: TroopUpgradeStat) => void;
   rushProduction: () => void;
   openRaidMap: () => void;
   closeRaidMap: () => void;

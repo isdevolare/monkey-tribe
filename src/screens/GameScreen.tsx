@@ -33,7 +33,19 @@ import { BananaGroveModal } from "../components/game/BananaGroveModal";
 import { LumberCampModal, StoneQuarryModal } from "../components/game/LumberCampModal";
 import { playSound } from "../game/audio/soundManager";
 import type { GameAssetKey } from "../game/assets/gameAssets";
-import { RUSH_GEM_COST, unitCost } from "../game/config/constants";
+import { RUSH_GEM_COST } from "../game/config/constants";
+import {
+  MAX_TROOP_UPGRADE_LEVEL,
+  TROOPS,
+  TROOP_TYPES,
+  armyCapacity,
+  armyHousing,
+  armyPower,
+  troopCombatStats,
+  troopCountByType,
+  troopUpgradeCost,
+  troopUpgradeRequirement
+} from "../game/config/troops";
 import {
   buildingEffect,
   buildingName,
@@ -56,6 +68,9 @@ import type {
   Resources,
   Unit,
   UnitType,
+  TroopType,
+  TroopUpgradeLevels,
+  TroopUpgradeStat,
   VillageBuilding,
   VillageBuildingType
 } from "../game/types/game";
@@ -143,17 +158,13 @@ export function GameScreen() {
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const villageScrollRef = useRef<ScrollView>(null);
   const lang = state.language;
-  const population = state.units.filter(
-    (unit) => unit.owner === "player" && unit.state !== "dead" && unit.hp > 0
-  ).length;
+  const queuedTroopTypes = state.productionQueue
+    .map((item) => item.type)
+    .filter((type): type is TroopType => TROOP_TYPES.includes(type as TroopType));
+  const housingUsed = armyHousing(state.units, queuedTroopTypes);
+  const currentArmyPower = armyPower(state.units);
+  const troopCounts = troopCountByType(state.units);
   const clanLevel = levelOf(state.buildings, "clanHall");
-  const fighterCount = state.units.filter(
-    (unit) =>
-      unit.owner === "player" &&
-      (unit.type === "fighter" || unit.type === "archer" || unit.type === "guardian") &&
-      unit.state !== "dead" &&
-      unit.hp > 0
-  ).length;
   const activeCamp = getCamp(state.activeCampId ?? "");
   const activeCampLoot =
     state.lastRaidReward?.loot ?? activeCamp?.loot ?? { bananas: 0, stones: 0, wood: 0 };
@@ -292,25 +303,7 @@ export function GameScreen() {
     setTutorialStep((step) => step + 1);
   }
 
-  // Troop prices climb with the Training Nest (stronger recruits cost more).
   const nestLevel = levelOf(state.buildings, "trainingNest");
-  const troopCosts = {
-    fighter: unitCost("fighter", nestLevel),
-    archer: unitCost("archer", nestLevel),
-    guardian: unitCost("guardian", nestLevel)
-  };
-  const trainFighterDisabled =
-    nestLevel <= 0 ||
-    population >= state.maxPopulation ||
-    !hasResources(state.resources, troopCosts.fighter);
-  const trainArcherDisabled =
-    levelOf(state.buildings, "watchTower") <= 0 ||
-    population >= state.maxPopulation ||
-    !hasResources(state.resources, troopCosts.archer);
-  const trainGuardianDisabled =
-    nestLevel <= 0 ||
-    population >= state.maxPopulation ||
-    !hasResources(state.resources, troopCosts.guardian);
   const equippedAppearance = getCosmeticAppearance(
     state.equippedProfileMonkey,
     state.equippedProfileSkin
@@ -440,8 +433,8 @@ export function GameScreen() {
           <ResourceChip label="Taş" value={Math.floor(state.resources.stones)} assetKey="resourceStone" compact={compactHud} />
           <ResourceChip label="Odun" value={Math.floor(state.resources.wood)} assetKey="resourceWood" compact={compactHud} />
           <ResourceChip
-            label="Nüfus"
-            value={`${population}/${state.maxPopulation}`}
+            label={t("res.population", lang)}
+            value={`${housingUsed}/${armyCapacity(nestLevel)}`}
             assetKey="resourcePopulation"
             compact={compactHud}
           />
@@ -450,7 +443,11 @@ export function GameScreen() {
         {state.gameMode === "raidMap" ? (
           <FadeIn key="raidmap">
             <RaidMapScreen
-              fighterCount={fighterCount}
+              troopCounts={troopCounts}
+              housingUsed={housingUsed}
+              housingCapacity={armyCapacity(nestLevel)}
+              armyPower={currentArmyPower}
+              trainingNestLevel={nestLevel}
               raidLevel={state.raidLevel}
               watchTowerLevel={levelOf(state.buildings, "watchTower")}
               lang={lang}
@@ -469,6 +466,7 @@ export function GameScreen() {
               loot={activeCampLoot}
               rewardMultiplier={state.lastRaidReward?.multiplier ?? 1}
               penalty={state.lastRaidPenalty}
+              armyResult={state.lastRaidArmyResult}
               playerIdentityAsset={equippedAppearance.raidAsset}
               lang={lang}
               maxSize={Math.min(width - theme.spacing.md * 2, 404)}
@@ -543,17 +541,17 @@ export function GameScreen() {
                 {inlineSelectedBuilding === "trainingNest" ? (
                   <TrainingNestControls
                     lang={lang}
-                    population={population}
-                    maxPopulation={state.maxPopulation}
-                    costs={troopCosts}
+                    level={nestLevel}
+                    housingUsed={housingUsed}
+                    maxPopulation={armyCapacity(nestLevel)}
+                    armyPowerValue={currentArmyPower}
+                    resources={state.resources}
+                    troopCounts={troopCounts}
+                    troopUpgrades={state.troopUpgrades}
                     queue={state.productionQueue}
                     queuedTypes={queuedTypes}
-                    fighterDisabled={trainFighterDisabled}
-                    archerDisabled={trainArcherDisabled}
-                    guardianDisabled={trainGuardianDisabled}
-                    onTrainFighter={state.trainFighter}
-                    onTrainArcher={state.trainArcher}
-                    onTrainGuardian={state.trainGuardian}
+                    onTrain={state.trainTroop}
+                    onUpgradeTroop={state.upgradeTroopStat}
                     onRush={state.rushProduction}
                   />
                 ) : inlineSelectedBuilding === "watchTower" ? (
@@ -565,6 +563,7 @@ export function GameScreen() {
                     victoryCounts={state.raidVictoryCounts}
                     lang={lang}
                     pulse={raidPulse}
+                    armyPowerValue={currentArmyPower}
                     onRaid={() => {
                       clearBuildingSelection();
                       state.openRaidMap();
@@ -738,7 +737,9 @@ function queueUnitAsset(type: UnitType): GameAssetKey {
   if (type === "archer") {
     return "unitArcher";
   }
-  if (type === "fighter" || type === "guardian") {
+  if (type === "shield_guardian") return "unitShieldGuardian";
+  if (type === "crossbowman") return "unitCrossbowman";
+  if (type === "fighter") {
     return "unitWarrior";
   }
   return "unitWorker";
@@ -746,54 +747,122 @@ function queueUnitAsset(type: UnitType): GameAssetKey {
 
 function TrainingNestControls({
   lang,
-  population,
+  level,
+  housingUsed,
   maxPopulation,
-  costs,
+  armyPowerValue,
+  resources,
+  troopCounts,
+  troopUpgrades,
   queue,
   queuedTypes,
-  fighterDisabled,
-  archerDisabled,
-  guardianDisabled,
-  onTrainFighter,
-  onTrainArcher,
-  onTrainGuardian,
+  onTrain,
+  onUpgradeTroop,
   onRush
 }: {
   lang: Lang;
-  population: number;
+  level: number;
+  housingUsed: number;
   maxPopulation: number;
-  costs: Record<"fighter" | "archer" | "guardian", Resources>;
+  armyPowerValue: number;
+  resources: Resources;
+  troopCounts: Record<TroopType, number>;
+  troopUpgrades: TroopUpgradeLevels;
   queue: ProductionItem[];
   queuedTypes: Set<UnitType>;
-  fighterDisabled: boolean;
-  archerDisabled: boolean;
-  guardianDisabled: boolean;
-  onTrainFighter: () => void;
-  onTrainArcher: () => void;
-  onTrainGuardian: () => void;
+  onTrain: (type: TroopType) => void;
+  onUpgradeTroop: (type: TroopType, stat: TroopUpgradeStat) => void;
   onRush: () => void;
 }) {
   return <>
     <View style={styles.buildingOwnedPanel}>
       <View style={styles.ownershipHeader}>
-        <Text style={styles.ownershipTitle}>{t("trainingNest.units", lang)}</Text>
-        <Text style={styles.capacityBadge}>{t("trainingNest.armyCapacity", lang, { used: population, max: maxPopulation })}</Text>
+        <View>
+          <Text style={styles.ownershipTitle}>{t("trainingNest.title", lang)}</Text>
+          <Text style={styles.ownershipMeta}>{t("common.levelBadge", lang, { n: level })} · {t("trainingNest.nextCapacity", lang, { n: armyCapacity(Math.min(10, level + 1)) })}</Text>
+        </View>
+        <View style={styles.armySummaryStack}>
+          <Text style={styles.capacityBadge}>{t("trainingNest.armyCapacity", lang, { used: housingUsed, max: maxPopulation })}</Text>
+          <Text style={styles.powerBadge}>{t("trainingNest.armyPower", lang, { n: armyPowerValue })}</Text>
+        </View>
       </View>
-      <View style={styles.trainingCards}>
-        <ActionCard title={t("unit.fighter", lang)} cost={costs.fighter} glyph="X" assetKey="unitWarrior" disabled={fighterDisabled} active={queuedTypes.has("fighter")} onPress={onTrainFighter} />
-        <ActionCard title={t("unit.archer", lang)} cost={costs.archer} glyph="A" assetKey="unitArcher" disabled={archerDisabled} active={queuedTypes.has("archer")} onPress={onTrainArcher} />
-        <ActionCard title={t("unit.guardian", lang)} cost={costs.guardian} glyph="G" assetKey="unitWarrior" disabled={guardianDisabled} active={queuedTypes.has("guardian")} onPress={onTrainGuardian} />
+      <Text style={styles.trainingSectionTitle}>{t("trainingNest.units", lang)}</Text>
+      <View style={styles.troopCardGrid}>
+        {TROOP_TYPES.map((type) => {
+          const troop = TROOPS[type];
+          const stats = troopCombatStats(type, troopUpgrades);
+          const locked = level < troop.unlockLevel;
+          const capacityBlocked = housingUsed + troop.housing > maxPopulation;
+          const disabled = locked || capacityBlocked || !hasResources(resources, troop.cost) || queue.length >= 5;
+          return <View key={type} style={[styles.troopTrainingCard, locked ? styles.troopTrainingCardLocked : null]}>
+            <AssetImage assetKey={troop.artwork} style={styles.troopCardArt} fallback={<View />} />
+            <View style={styles.troopCardCopy}>
+              <Text style={styles.troopCardName} numberOfLines={1} adjustsFontSizeToFit>{t(`unit.${type}`, lang)}</Text>
+              <Text style={styles.troopRole} numberOfLines={2}>{t(troop.roleKey, lang)}</Text>
+              <Text style={styles.troopMeta}>{t("trainingNest.cardMeta", lang, { housing: troop.housing, seconds: troop.trainingDurationMs / 1000, power: stats.power })}</Text>
+              <Text style={styles.troopMeta}>{t("trainingNest.owned", lang, { n: troopCounts[type] })}</Text>
+              <CostChips cost={troop.cost} />
+            </View>
+            {locked ? <View style={styles.troopLock}><Text style={styles.troopLockText}>{t("trainingNest.unlockLevel", lang, { level: troop.unlockLevel })}</Text></View> : null}
+            <SpringPressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={() => onTrain(type)} style={[styles.trainTroopButton, disabled ? styles.trainTroopButtonDisabled : null, queuedTypes.has(type) ? styles.trainTroopButtonActive : null]}>
+              <Text style={styles.trainTroopButtonText}>{capacityBlocked ? t("trainingNest.full", lang) : t("trainingNest.train", lang)}</Text>
+            </SpringPressable>
+          </View>;
+        })}
       </View>
     </View>
     <ProductionQueue queue={queue} lang={lang} onRush={onRush} />
+    <View style={styles.queuePanel}>
+      <Text style={styles.queueTitle}>{t("trainingNest.currentArmy", lang)}</Text>
+      <View style={styles.currentArmyRow}>
+        {TROOP_TYPES.map((type) => <View key={type} style={styles.currentArmyChip}>
+          <AssetImage assetKey={TROOPS[type].artwork} style={styles.currentArmyIcon} fallback={<View />} />
+          <Text style={styles.currentArmyCount}>{troopCounts[type]}×</Text>
+          <Text style={styles.currentArmyName} numberOfLines={1}>{t(`unit.${type}`, lang)}</Text>
+        </View>)}
+      </View>
+    </View>
+    <View style={styles.queuePanel}>
+      <Text style={styles.queueTitle}>{t("trainingNest.upgrades", lang)}</Text>
+      {TROOP_TYPES.map((type) => <View key={type} style={styles.troopUpgradeGroup}>
+        <Text style={styles.troopUpgradeName}>{t(`unit.${type}`, lang)}</Text>
+        {TROOPS[type].upgradeStats.map((stat) => {
+          const currentLevel = troopUpgrades[type]?.[stat] ?? 0;
+          const nextLevel = Math.min(MAX_TROOP_UPGRADE_LEVEL, currentLevel + 1);
+          const currentStats = troopCombatStats(type, troopUpgrades);
+          const nextUpgrades: TroopUpgradeLevels = { ...troopUpgrades, [type]: { ...troopUpgrades[type], [stat]: nextLevel } };
+          const nextStats = troopCombatStats(type, nextUpgrades);
+          const requirement = troopUpgradeRequirement(type, currentLevel);
+          const cost = troopUpgradeCost(type, stat, nextLevel);
+          const maxed = currentLevel >= MAX_TROOP_UPGRADE_LEVEL;
+          const disabled = maxed || level < requirement || !hasResources(resources, cost);
+          return <View key={stat} style={styles.troopUpgradeRow}>
+            <View style={styles.troopUpgradeCopy}>
+              <Text style={styles.troopUpgradeStat}>{t(`trainingNest.stat.${stat}`, lang)} · {currentLevel}/{MAX_TROOP_UPGRADE_LEVEL}</Text>
+              <Text style={styles.troopUpgradeValues}>{formatTroopStat(stat, currentStats)} → {formatTroopStat(stat, nextStats)}</Text>
+              {!maxed ? <CostChips cost={cost} /> : null}
+            </View>
+            <SpringPressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={() => onUpgradeTroop(type, stat)} style={[styles.troopUpgradeButton, disabled ? styles.trainTroopButtonDisabled : null]}>
+              <Text style={styles.troopUpgradeButtonText}>{maxed ? t("trainingNest.max", lang) : level < requirement ? `${t("common.levelShort", lang)} ${requirement}` : t("upgrade.button", lang)}</Text>
+            </SpringPressable>
+          </View>;
+        })}
+      </View>)}
+    </View>
   </>;
+}
+
+function formatTroopStat(stat: TroopUpgradeStat, stats: ReturnType<typeof troopCombatStats>) {
+  if (stat === "health") return String(stats.maxHp);
+  if (stat === "attack") return String(stats.attack);
+  if (stat === "resistance") return `${Math.round(stats.resistance * 100)}%`;
+  if (stat === "attackSpeed") return `${(1000 / stats.attackIntervalMs).toFixed(2)}/s`;
+  return `${Math.round(stats.armorPenetration * 100)}%`;
 }
 
 function WatchTowerControls({ level, lang }: { level: number; lang: Lang }) {
   const unlocks = [
     { level: 1, key: "watchTower.unlock.damage" },
-    { level: 2, key: "watchTower.unlock.archer" },
-    { level: 3, key: "watchTower.unlock.power" },
     { level: 4, key: "watchTower.unlock.rewards" },
     { level: 5, key: "watchTower.unlock.composition" }
   ];
@@ -816,6 +885,7 @@ function ClanHallControls({
   victoryCounts,
   lang,
   pulse,
+  armyPowerValue,
   onRaid
 }: {
   level: number;
@@ -823,6 +893,7 @@ function ClanHallControls({
   victoryCounts: Record<string, number>;
   lang: Lang;
   pulse: Animated.Value;
+  armyPowerValue: number;
   onRaid: () => void;
 }) {
   const victories = Object.values(victoryCounts).reduce((sum, count) => sum + count, 0);
@@ -840,6 +911,7 @@ function ClanHallControls({
       </Animated.View>
     </View>
     <View style={styles.raidSummaryRow}>
+      <SummaryStat label={t("trainingNest.armyPowerLabel", lang)} value={armyPowerValue} />
       <SummaryStat label={t("clanHall.unlockedCamps", lang)} value={RAID_CAMPS.length + 1} />
       <SummaryStat label={t("clanHall.victories", lang)} value={victories} />
       <SummaryStat label={t("clanHall.stronghold", lang)} value={raidLevel} />
@@ -1630,7 +1702,37 @@ const styles = StyleSheet.create({
   ownershipTitle: { color: theme.colors.paper, fontSize: 14, fontWeight: "900", fontFamily: theme.fonts.heavy, textTransform: "uppercase" },
   ownershipMeta: { color: "#d8ccb0", fontSize: 11, fontWeight: "800", fontFamily: theme.fonts.bold },
   capacityBadge: { color: "#f1cd74", fontSize: 12, fontWeight: "900", fontFamily: theme.fonts.heavy },
+  powerBadge: { color: "#9be39a", fontSize: 11, textAlign: "right", fontFamily: theme.fonts.heavy },
+  armySummaryStack: { alignItems: "flex-end", gap: 2 },
+  trainingSectionTitle: { color: "#d8ccb0", fontSize: 11, textTransform: "uppercase", fontFamily: theme.fonts.heavy },
   trainingCards: { flexDirection: "row", gap: 6 },
+  troopCardGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  troopTrainingCard: { width: "48.8%", minHeight: 188, borderRadius: 12, borderWidth: 1, borderColor: "rgba(226,177,90,0.34)", backgroundColor: "rgba(23,28,18,0.86)", padding: 7, overflow: "hidden" },
+  troopTrainingCardLocked: { opacity: 0.72 },
+  troopCardArt: { width: "100%", height: 76 },
+  troopCardCopy: { flex: 1 },
+  troopCardName: { color: theme.colors.paper, fontSize: 13, fontFamily: theme.fonts.heavy },
+  troopRole: { minHeight: 24, color: "#c9b991", fontSize: 9.5, lineHeight: 12, fontFamily: theme.fonts.bold },
+  troopMeta: { color: "#9be39a", fontSize: 8.5, lineHeight: 11, fontFamily: theme.fonts.bold },
+  troopLock: { position: "absolute", left: 6, right: 6, top: 54, borderRadius: 7, backgroundColor: "rgba(44,25,14,0.9)", padding: 4 },
+  troopLockText: { color: "#ffd58a", fontSize: 9, textAlign: "center", fontFamily: theme.fonts.heavy },
+  trainTroopButton: { minHeight: 30, alignItems: "center", justifyContent: "center", marginTop: 5, borderRadius: 8, backgroundColor: "#d69227" },
+  trainTroopButtonActive: { borderWidth: 1, borderColor: "#fff1a8" },
+  trainTroopButtonDisabled: { opacity: 0.42 },
+  trainTroopButtonText: { color: "#2d2515", fontSize: 10, fontFamily: theme.fonts.heavy },
+  currentArmyRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 7 },
+  currentArmyChip: { width: "48.8%", minHeight: 44, flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 9, backgroundColor: "rgba(28,32,20,0.86)", padding: 5 },
+  currentArmyIcon: { width: 36, height: 36 },
+  currentArmyCount: { color: "#f1cd74", fontSize: 12, fontFamily: theme.fonts.heavy },
+  currentArmyName: { flex: 1, color: "#ddd1af", fontSize: 9, fontFamily: theme.fonts.bold },
+  troopUpgradeGroup: { marginTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(255,255,255,0.12)", paddingTop: 6 },
+  troopUpgradeName: { color: "#f1cd74", fontSize: 12, fontFamily: theme.fonts.heavy },
+  troopUpgradeRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(255,255,255,0.07)", paddingVertical: 4 },
+  troopUpgradeCopy: { flex: 1 },
+  troopUpgradeStat: { color: "#e6dbba", fontSize: 10.5, fontFamily: theme.fonts.heavy },
+  troopUpgradeValues: { color: "#9be39a", fontSize: 10, fontFamily: theme.fonts.bold },
+  troopUpgradeButton: { width: 70, minHeight: 34, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: "#d69227" },
+  troopUpgradeButtonText: { color: "#2d2515", fontSize: 9.5, textAlign: "center", fontFamily: theme.fonts.heavy },
   unlockRow: { minHeight: 28, flexDirection: "row", alignItems: "center", gap: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(255,255,255,0.08)" },
   unlockMark: { width: 20, color: "#91df70", fontSize: 13, fontWeight: "900" },
   unlockText: { flex: 1, color: "#eee2c1", fontSize: 11.5, fontWeight: "800", fontFamily: theme.fonts.bold },
@@ -1731,56 +1833,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: theme.spacing.sm,
     minHeight: 56
-  },
-  footerUnitIcon: {
-    width: 22,
-    height: 22
-  },
-  footerUnitIconFallback: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(255, 224, 151, 0.25)"
-  },
-  barracksFooter: {
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 248, 217, 0.12)"
-  },
-  rosterCol: {
-    gap: 6
-  },
-  guardianButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    minHeight: 44,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "rgba(120, 200, 255, 0.5)",
-    backgroundColor: "rgba(40, 70, 95, 0.85)",
-    paddingHorizontal: theme.spacing.md
-  },
-  guardianButtonDisabled: {
-    opacity: 0.5
-  },
-  guardianButtonText: {
-    color: "#dff1ff",
-    fontSize: 13,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
-  },
-  rosterTitle: {
-    color: "#e2b15a",
-    fontSize: 12.5,
-    fontWeight: "900", fontFamily: theme.fonts.heavy,
-    textTransform: "uppercase"
-  },
-  rosterChips: {
-    flexDirection: "row",
-    gap: theme.spacing.sm
   },
   rosterChip: {
     flexDirection: "row",

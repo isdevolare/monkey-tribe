@@ -1,4 +1,5 @@
-import type { Position, Resources, UnitCombatStats, UnitType } from "../types/game";
+import type { Position, Resources, TroopUpgradeLevels, UnitCombatStats, UnitType } from "../types/game";
+import { TROOPS, isTroopType, troopCombatStats } from "./troops";
 
 export const BOARD_SIZE = 10;
 
@@ -16,60 +17,13 @@ export const MOVE_INTERVAL_MS = 380;
 export const ATTACK_INTERVAL_MS = 850;
 export const ENEMY_DETECTION_RANGE = 4;
 export const WATCH_TOWER_DAMAGE_REDUCTION = 1;
-export const WATCH_TOWER_ARCHER_BONUS_PER_LEVEL = 0.05;
 
-export function watchTowerArcherBonusPercent(watchTowerLevel: number) {
-  const level = Number.isFinite(watchTowerLevel)
-    ? Math.max(1, Math.floor(watchTowerLevel))
-    : 1;
-  return Math.round((level - 1) * WATCH_TOWER_ARCHER_BONUS_PER_LEVEL * 100);
-}
-
-/** Raid-only derived attack; saved unit stats remain unchanged. */
-export function effectiveRaidAttack(
-  type: UnitType,
-  savedAttack: number,
-  watchTowerLevel: number
-) {
-  if (type !== "archer") {
-    return savedAttack;
-  }
-  const multiplier = 1 + watchTowerArcherBonusPercent(watchTowerLevel) / 100;
-  return Math.round(savedAttack * multiplier);
-}
-
-export const UNIT_COSTS: Record<UnitType, Resources> = {
-  worker: { bananas: 10, stones: 0, wood: 0 },
-  fighter: { bananas: 15, stones: 5, wood: 3 },
-  archer: { bananas: 18, stones: 8, wood: 6 },
-  guardian: { bananas: 25, stones: 20, wood: 10 }
-};
-
-// Training Nest levels buff newly queued troops by +10% hp/attack per
-// level past 1. Training cost grows more slowly at +5% per level.
-export const TROOP_BONUS_PER_NEST_LEVEL = 0.1;
-export const TROOP_COST_PER_NEST_LEVEL = 0.05;
-
-export function troopStatMultiplier(nestLevel: number) {
-  return 1 + TROOP_BONUS_PER_NEST_LEVEL * Math.max(0, nestLevel - 1);
-}
-
-export function troopCostMultiplier(nestLevel: number) {
-  return 1 + TROOP_COST_PER_NEST_LEVEL * Math.max(0, nestLevel - 1);
-}
+const WORKER_COST: Resources = { bananas: 10, stones: 0, wood: 0 };
 
 /** Cost to train `type` at the given Training Nest level (workers exempt). */
 export function unitCost(type: UnitType, nestLevel: number): Resources {
-  const base = UNIT_COSTS[type];
-  if (type === "worker") {
-    return base;
-  }
-  const factor = troopCostMultiplier(nestLevel);
-  return {
-    bananas: Math.round(base.bananas * factor),
-    stones: Math.round(base.stones * factor),
-    wood: Math.round(base.wood * factor)
-  };
+  void nestLevel;
+  return type === "worker" ? { ...WORKER_COST } : { ...TROOPS[type].cost };
 }
 
 export const RAID_REWARD: Resources = {
@@ -78,13 +32,8 @@ export const RAID_REWARD: Resources = {
   wood: 10
 };
 
-// How long each unit takes to train in the production queue.
-export const PRODUCTION_DURATION_MS: Record<UnitType, number> = {
-  worker: 5000,
-  fighter: 9000,
-  archer: 11000,
-  guardian: 13000
-};
+// Workers use their own Lodge queue; troop durations live only in troops.ts.
+export const WORKER_PRODUCTION_DURATION_MS = 5_000;
 
 // Gems to instantly finish the whole production queue.
 export const RUSH_GEM_COST = 2;
@@ -92,25 +41,28 @@ export const RUSH_GEM_COST = 2;
 // Max items that can be queued at once.
 export const PRODUCTION_SLOTS = 5;
 
-export const UNIT_STATS: Record<
-  UnitType,
-  { hp: number; attack: number; range: number }
-> = {
-  worker: { hp: 24, attack: 2, range: 1 },
-  fighter: { hp: 56, attack: 10, range: 1 },
-  archer: { hp: 34, attack: 7, range: 3 },
-  // Tank: soaks damage up front, hits softly.
-  guardian: { hp: 110, attack: 6, range: 1 }
-};
+const WORKER_STATS = { hp: 24, attack: 2, range: 1 };
 
 /** Final unit stats fixed at queue time. Workers always use their base stats. */
-export function unitCombatStats(type: UnitType, nestLevel: number): UnitCombatStats {
-  const base = UNIT_STATS[type];
-  const factor = type === "worker" ? 1 : troopStatMultiplier(nestLevel);
+export function unitCombatStats(
+  type: UnitType,
+  nestLevel: number,
+  upgrades: TroopUpgradeLevels = {}
+): UnitCombatStats {
+  void nestLevel;
+  if (isTroopType(type)) {
+    return troopCombatStats(type, upgrades);
+  }
+  const base = WORKER_STATS;
   return {
-    maxHp: Math.round(base.hp * factor),
-    attack: Math.round(base.attack * factor),
-    range: base.range
+    maxHp: base.hp,
+    attack: base.attack,
+    range: base.range,
+    attackIntervalMs: ATTACK_INTERVAL_MS,
+    moveIntervalMs: MOVE_INTERVAL_MS,
+    resistance: 0,
+    armorPenetration: 0,
+    power: 0
   };
 }
 

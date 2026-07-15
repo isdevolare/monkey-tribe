@@ -1,4 +1,4 @@
-import { UNIT_COSTS } from "../config/constants";
+import { unitCost } from "../config/constants";
 import type { RaidPenaltyReason, Resources } from "../types/game";
 
 type PenaltyRule = {
@@ -37,12 +37,13 @@ export function applyRaidPenalty(currentResources: Resources, reason: RaidPenalt
   const resources = { ...currentResources };
   const amounts: Resources = { bananas: 0, stones: 0, wood: 0 };
   const rules = RAID_PENALTY_RULES[reason];
+  const fighterCost = unitCost("fighter", 1);
 
   for (const key of RESOURCE_KEYS) {
     const current = Number.isFinite(resources[key]) ? Math.max(0, resources[key]) : 0;
     const rule = rules[key];
     const target = clamp(Math.round(current * rule.percent), rule.min, rule.max);
-    const spendableResource = Math.max(0, Math.floor(current - UNIT_COSTS.fighter[key]));
+    const spendableResource = Math.max(0, Math.floor(current - fighterCost[key]));
     const penalty = Math.min(target, spendableResource);
 
     amounts[key] = penalty;

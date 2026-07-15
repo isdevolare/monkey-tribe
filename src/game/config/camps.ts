@@ -1,5 +1,5 @@
 import { t, type Lang } from "../i18n";
-import type { Resources } from "../types/game";
+import type { Resources, TroopType } from "../types/game";
 
 export function campName(id: string, lang: Lang) {
   if (id.startsWith("stronghold-")) {
@@ -13,10 +13,12 @@ export type RaidCamp = {
   name: string;
   level: number;
   campHp: number;
-  enemyCount: number;
-  archerCount?: number;
+  defenders: Record<TroopType, number>;
   enemyHp: number;
   enemyAttack: number;
+  enemyPower: number;
+  recommendedPower: number;
+  requiredTrainingNestLevel: number;
   loot: Resources;
   /** Difficulty band: 1 = starter ladder, 2 = hard mode with richer loot. */
   tier?: 2;
@@ -25,47 +27,55 @@ export type RaidCamp = {
 // Leveled enemy camps the player can raid, easiest first.
 export const RAID_CAMPS: RaidCamp[] = [
   {
-    // Tuned so a single fresh fighter can clear it: one soft defender.
     id: "patrol",
     name: "Korsan Devriyesi",
     level: 1,
-    campHp: 70,
-    enemyCount: 1,
-    enemyHp: 30,
-    enemyAttack: 6,
+    campHp: 90,
+    defenders: { fighter: 2, shield_guardian: 0, archer: 0, crossbowman: 0 },
+    enemyHp: 42,
+    enemyAttack: 7,
+    enemyPower: 50,
+    recommendedPower: 48,
+    requiredTrainingNestLevel: 1,
     loot: { bananas: 60, stones: 20, wood: 25 }
   },
   {
     id: "camp",
     name: "Korsan Kampı",
     level: 2,
-    campHp: 110,
-    enemyCount: 2,
-    archerCount: 1,
-    enemyHp: 40,
+    campHp: 125,
+    defenders: { fighter: 2, shield_guardian: 0, archer: 1, crossbowman: 0 },
+    enemyHp: 46,
     enemyAttack: 8,
+    enemyPower: 78,
+    recommendedPower: 75,
+    requiredTrainingNestLevel: 1,
     loot: { bananas: 120, stones: 45, wood: 50 }
   },
   {
     id: "fort",
     name: "Korsan Üssü",
     level: 3,
-    campHp: 160,
-    enemyCount: 3,
-    archerCount: 1,
-    enemyHp: 44,
+    campHp: 165,
+    defenders: { fighter: 3, shield_guardian: 1, archer: 1, crossbowman: 0 },
+    enemyHp: 50,
     enemyAttack: 9,
+    enemyPower: 112,
+    recommendedPower: 108,
+    requiredTrainingNestLevel: 3,
     loot: { bananas: 220, stones: 80, wood: 90 }
   },
   {
     id: "den",
     name: "Yağmacı Sığınağı",
     level: 4,
-    campHp: 200,
-    enemyCount: 3,
-    archerCount: 2,
-    enemyHp: 52,
+    campHp: 215,
+    defenders: { fighter: 3, shield_guardian: 1, archer: 2, crossbowman: 0 },
+    enemyHp: 56,
     enemyAttack: 11,
+    enemyPower: 158,
+    recommendedPower: 150,
+    requiredTrainingNestLevel: 3,
     loot: { bananas: 300, stones: 110, wood: 120 }
   },
   {
@@ -73,10 +83,12 @@ export const RAID_CAMPS: RaidCamp[] = [
     name: "Bataklık Karakolu",
     level: 5,
     campHp: 250,
-    enemyCount: 4,
-    archerCount: 2,
+    defenders: { fighter: 3, shield_guardian: 2, archer: 2, crossbowman: 1 },
     enemyHp: 58,
     enemyAttack: 12,
+    enemyPower: 225,
+    recommendedPower: 215,
+    requiredTrainingNestLevel: 5,
     loot: { bananas: 400, stones: 150, wood: 170 }
   },
   {
@@ -84,10 +96,12 @@ export const RAID_CAMPS: RaidCamp[] = [
     name: "Kafatası Tepesi",
     level: 6,
     campHp: 300,
-    enemyCount: 4,
-    archerCount: 3,
+    defenders: { fighter: 4, shield_guardian: 2, archer: 2, crossbowman: 1 },
     enemyHp: 64,
     enemyAttack: 13,
+    enemyPower: 265,
+    recommendedPower: 250,
+    requiredTrainingNestLevel: 5,
     loot: { bananas: 520, stones: 200, wood: 220 }
   },
   {
@@ -95,10 +109,12 @@ export const RAID_CAMPS: RaidCamp[] = [
     name: "Gölge Limanı",
     level: 7,
     campHp: 360,
-    enemyCount: 5,
-    archerCount: 3,
+    defenders: { fighter: 4, shield_guardian: 2, archer: 3, crossbowman: 1 },
     enemyHp: 70,
     enemyAttack: 15,
+    enemyPower: 300,
+    recommendedPower: 285,
+    requiredTrainingNestLevel: 5,
     loot: { bananas: 660, stones: 260, wood: 280 }
   },
 
@@ -109,10 +125,12 @@ export const RAID_CAMPS: RaidCamp[] = [
     name: "Kızıl Koy",
     level: 8,
     campHp: 420,
-    enemyCount: 5,
-    archerCount: 3,
+    defenders: { fighter: 4, shield_guardian: 3, archer: 3, crossbowman: 1 },
     enemyHp: 78,
     enemyAttack: 16,
+    enemyPower: 330,
+    recommendedPower: 315,
+    requiredTrainingNestLevel: 6,
     loot: { bananas: 800, stones: 320, wood: 340 },
     tier: 2
   },
@@ -121,10 +139,12 @@ export const RAID_CAMPS: RaidCamp[] = [
     name: "Zehir Bataklığı",
     level: 9,
     campHp: 470,
-    enemyCount: 5,
-    archerCount: 4,
+    defenders: { fighter: 4, shield_guardian: 3, archer: 3, crossbowman: 2 },
     enemyHp: 84,
     enemyAttack: 17,
+    enemyPower: 365,
+    recommendedPower: 350,
+    requiredTrainingNestLevel: 7,
     loot: { bananas: 950, stones: 380, wood: 400 },
     tier: 2
   },
@@ -133,10 +153,12 @@ export const RAID_CAMPS: RaidCamp[] = [
     name: "Fırtına Burnu",
     level: 10,
     campHp: 520,
-    enemyCount: 6,
-    archerCount: 4,
+    defenders: { fighter: 5, shield_guardian: 3, archer: 3, crossbowman: 2 },
     enemyHp: 90,
     enemyAttack: 18,
+    enemyPower: 405,
+    recommendedPower: 385,
+    requiredTrainingNestLevel: 7,
     loot: { bananas: 1100, stones: 440, wood: 470 },
     tier: 2
   },
@@ -145,10 +167,12 @@ export const RAID_CAMPS: RaidCamp[] = [
     name: "Kemik Vadisi",
     level: 11,
     campHp: 570,
-    enemyCount: 6,
-    archerCount: 4,
+    defenders: { fighter: 5, shield_guardian: 3, archer: 4, crossbowman: 2 },
     enemyHp: 92,
     enemyAttack: 18,
+    enemyPower: 445,
+    recommendedPower: 425,
+    requiredTrainingNestLevel: 8,
     loot: { bananas: 1300, stones: 520, wood: 550 },
     tier: 2
   },
@@ -157,10 +181,12 @@ export const RAID_CAMPS: RaidCamp[] = [
     name: "Kor Kayalıkları",
     level: 12,
     campHp: 620,
-    enemyCount: 6,
-    archerCount: 5,
+    defenders: { fighter: 5, shield_guardian: 4, archer: 4, crossbowman: 2 },
     enemyHp: 96,
     enemyAttack: 19,
+    enemyPower: 495,
+    recommendedPower: 470,
+    requiredTrainingNestLevel: 9,
     loot: { bananas: 1500, stones: 600, wood: 640 },
     tier: 2
   },
@@ -169,10 +195,12 @@ export const RAID_CAMPS: RaidCamp[] = [
     name: "Kara Hisar",
     level: 13,
     campHp: 680,
-    enemyCount: 6,
-    archerCount: 5,
+    defenders: { fighter: 5, shield_guardian: 4, archer: 4, crossbowman: 3 },
     enemyHp: 100,
     enemyAttack: 20,
+    enemyPower: 550,
+    recommendedPower: 525,
+    requiredTrainingNestLevel: 9,
     loot: { bananas: 1750, stones: 700, wood: 740 },
     tier: 2
   },
@@ -181,10 +209,12 @@ export const RAID_CAMPS: RaidCamp[] = [
     name: "Korsan Armadası",
     level: 14,
     campHp: 680,
-    enemyCount: 6,
-    archerCount: 5,
+    defenders: { fighter: 6, shield_guardian: 4, archer: 4, crossbowman: 3 },
     enemyHp: 104,
     enemyAttack: 20,
+    enemyPower: 620,
+    recommendedPower: 585,
+    requiredTrainingNestLevel: 10,
     loot: { bananas: 2000, stones: 800, wood: 850 },
     tier: 2
   }
@@ -205,10 +235,17 @@ export function strongholdCamp(level: number): RaidCamp {
     name: "Korsan Kalesi",
     level,
     campHp: 720 + tier * 70,
-    enemyCount: Math.min(6 + Math.floor(tier / 4), 7),
-    archerCount: 5,
+    defenders: {
+      fighter: Math.min(6 + Math.floor(tier / 4), 8),
+      shield_guardian: Math.min(4 + Math.floor(tier / 5), 6),
+      archer: 5,
+      crossbowman: Math.min(3 + Math.floor(tier / 6), 5)
+    },
     enemyHp: 110 + tier * 7,
     enemyAttack: 21 + tier * 2,
+    enemyPower: 660 + tier * 45,
+    recommendedPower: 625 + tier * 42,
+    requiredTrainingNestLevel: 10,
     loot: {
       bananas: 2200 + tier * 180,
       stones: 880 + tier * 70,
