@@ -20,9 +20,12 @@ import { RaidMapScreen } from "../components/game/RaidMapScreen";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { DailyRewardModal } from "../components/game/DailyRewardModal";
 import { NineSliceFrame } from "../components/game/NineSliceFrame";
+import { FestivalChestFlow } from "../components/game/FestivalChestFlow";
+import { FestivalChestModal } from "../components/game/FestivalChestModal";
 import { GemStoreModal } from "../components/game/GemStoreModal";
 import { MonkeyCollectionModal } from "../components/game/MonkeyCollectionModal";
 import { OfflineModal } from "../components/game/OfflineModal";
+import { ShopHubModal } from "../components/game/ShopHubModal";
 import { QuestModal } from "../components/game/QuestModal";
 import { ShopModal } from "../components/game/ShopModal";
 import { SpringPressable } from "../components/game/SpringPressable";
@@ -147,6 +150,9 @@ export function GameScreen() {
   const [showQuests, setShowQuests] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [showGemStore, setShowGemStore] = useState(false);
+  const [showShopHub, setShowShopHub] = useState(false);
+  const [showFestivalChest, setShowFestivalChest] = useState(false);
+  const [showMonkeyShop, setShowMonkeyShop] = useState(false);
   const [showCollection, setShowCollection] = useState(false);
   const [showWorkerLodge, setShowWorkerLodge] = useState(false);
   const [showBananaGrove, setShowBananaGrove] = useState(false);
@@ -424,6 +430,14 @@ export function GameScreen() {
               <Text style={styles.gemPlus} maxFontSizeMultiplier={theme.maxFontScale}>+</Text>
             </Pressable>
             <TopIcon
+              label={t("shopHub.title", lang)}
+              glyph="🛖"
+              onPress={() => {
+                playSound("open");
+                setShowShopHub(true);
+              }}
+            />
+            <TopIcon
               label="Ayarlar"
               glyph="⚙"
               onPress={() => {
@@ -623,6 +637,16 @@ export function GameScreen() {
 
       <DailyRewardModal visible={showDaily} lang={lang} onClose={() => setShowDaily(false)} />
 
+      <ShopHubModal
+        visible={showShopHub}
+        lang={lang}
+        onClose={() => setShowShopHub(false)}
+        onOpenGemStore={() => setShowGemStore(true)}
+        onOpenFestivalChest={() => setShowFestivalChest(true)}
+        onOpenMonkeys={() => setShowMonkeyShop(true)}
+        onOpenResourceShop={() => setShowShop(true)}
+      />
+
       <ShopModal
         visible={showShop}
         lang={lang}
@@ -630,15 +654,33 @@ export function GameScreen() {
         onOpenGemStore={() => setShowGemStore(true)}
       />
 
+      {/* Profile: identity & cosmetics only — no shop content. */}
       <MonkeyCollectionModal
         visible={showCollection}
         lang={lang}
         onClose={() => setShowCollection(false)}
+      />
+
+      {/* Shop hub "Maymunlar": monkey purchase catalog. */}
+      <MonkeyCollectionModal
+        mode="shop"
+        visible={showMonkeyShop}
+        lang={lang}
+        onClose={() => setShowMonkeyShop(false)}
         onOpenGemStore={() => setShowGemStore(true)}
-        onOpenResourceShop={() => setShowShop(true)}
+      />
+
+      <FestivalChestModal
+        visible={showFestivalChest}
+        lang={lang}
+        onClose={() => setShowFestivalChest(false)}
+        onOpenGemStore={() => setShowGemStore(true)}
       />
 
       <GemStoreModal visible={showGemStore} lang={lang} onClose={() => setShowGemStore(false)} />
+
+      {/* Global Festival Chest reveal + pending transaction recovery. */}
+      <FestivalChestFlow lang={lang} />
 
       <WorkerLodgeModal
         visible={showWorkerLodge}

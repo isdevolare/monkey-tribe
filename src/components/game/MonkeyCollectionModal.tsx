@@ -37,18 +37,21 @@ import {
 } from "./CosmeticDetailModal";
 import { SpringPressable } from "./SpringPressable";
 import { FestivalCollectionPanel } from "./FestivalCollectionPanel";
-import { BuyGemsButton } from "./GemStoreModal";
-import { CosmeticChestOpeningModal } from "./CosmeticChestOpeningModal";
 
 type MonkeyCollectionModalProps = {
   visible: boolean;
   lang: Lang;
   onClose: () => void;
-  onOpenGemStore: () => void;
-  onOpenResourceShop: () => void;
+  /**
+   * "profile": identity & cosmetics only — no purchase actions anywhere.
+   * "shop": monkey purchase catalog opened from the Shop hub.
+   */
+  mode?: "profile" | "shop";
+  /** Shop mode only: insufficient-Gems dialog links to the Gem Store. */
+  onOpenGemStore?: () => void;
 };
 
-const RARITY_THEME: Record<
+export const RARITY_THEME: Record<
   CosmeticRarity,
   { border: string; badge: string; glow: string; surface: string; text: string }
 > = {
@@ -112,8 +115,8 @@ export function MonkeyCollectionModal({
   visible,
   lang,
   onClose,
-  onOpenGemStore,
-  onOpenResourceShop
+  mode = "profile",
+  onOpenGemStore
 }: MonkeyCollectionModalProps) {
   const { width, height } = useWindowDimensions();
   const gems = useGameStore((state) => state.gems);
@@ -129,14 +132,13 @@ export function MonkeyCollectionModal({
   const equipSkin = useGameStore((state) => state.equipProfileSkin);
   const markMonkeySeen = useGameStore((state) => state.markProfileMonkeySeen);
   const markSkinSeen = useGameStore((state) => state.markProfileSkinSeen);
-  const pendingFestivalChest = useGameStore((state) => state.pendingFestivalChest);
-  const claimFestivalChest = useGameStore((state) => state.claimFestivalChest);
+  const shopMode = mode === "shop";
   const [pending, setPending] = useState<ProfileMonkey | null>(null);
   const [showInsufficient, setShowInsufficient] = useState(false);
   const [celebratingId, setCelebratingId] = useState<ProfileMonkey["id"] | null>(null);
   const [detailSelection, setDetailSelection] = useState<CosmeticDetailSelection | null>(null);
   const [unlockFeedback, setUnlockFeedback] = useState<CosmeticDetailSelection | null>(null);
-  const [activeTab, setActiveTab] = useState<"monkeys" | "skins" | "shop">("monkeys");
+  const [activeTab, setActiveTab] = useState<"monkeys" | "skins" | "festival">("monkeys");
   const [selectedSkinMonkey, setSelectedSkinMonkey] = useState(equipped);
   const [ownershipFilter, setOwnershipFilter] = useState<CosmeticOwnershipFilter>("all");
   const [rarityFilter, setRarityFilter] = useState<CosmeticRarityFilter>("all");
@@ -198,30 +200,6 @@ export function MonkeyCollectionModal({
   const selectedMonkeySkins = skinsForMonkey(selectedSkinMonkey).filter((item) =>
     matchesCosmeticFilter(ownedSkins.includes(item.id), item.rarity, ownershipFilter, rarityFilter)
   );
-  const pendingFestivalSkin = pendingFestivalChest
-    ? FESTIVAL_PROFILE_SKINS.find((skin) => skin.id === pendingFestivalChest.skinId)
-    : undefined;
-  const pendingFestivalParent = pendingFestivalSkin
-    ? getProfileMonkey(pendingFestivalSkin.monkeyId)
-    : undefined;
-  const festivalPresentation = pendingFestivalChest && pendingFestivalSkin
-    ? {
-        id: pendingFestivalChest.id,
-        title: t("festival.chest.name", lang),
-        rewardName: t(pendingFestivalSkin.nameKey, lang),
-        rewardAsset: getCosmeticAppearance(pendingFestivalSkin.monkeyId, pendingFestivalSkin.id).portraitAsset,
-        rarity: pendingFestivalSkin.rarity,
-        accent: RARITY_THEME[pendingFestivalSkin.rarity].border,
-        glow: pendingFestivalSkin.presentationGlow ?? RARITY_THEME[pendingFestivalSkin.rarity].glow,
-        fragments: pendingFestivalChest.fragments,
-        previousFragments: pendingFestivalChest.previousFragments,
-        nextFragments: pendingFestivalChest.nextFragments,
-        requiredFragments: pendingFestivalChest.requiredFragments,
-        unlocked: pendingFestivalChest.unlocked,
-        parentName: pendingFestivalParent ? t(pendingFestivalParent.nameKey, lang) : "",
-        parentOwned: unlocked.includes(pendingFestivalSkin.monkeyId)
-      }
-    : null;
 
   const detailOwned = detailSelection?.kind === "monkey"
     ? unlocked.includes(detailSelection.item.id)
@@ -255,7 +233,7 @@ export function MonkeyCollectionModal({
   return (
     <>
       <Modal
-        visible={visible && pendingFestivalChest == null}
+        visible={visible}
         transparent
         animationType="fade"
         statusBarTranslucent
@@ -273,7 +251,7 @@ export function MonkeyCollectionModal({
             <View style={styles.header}>
               <View style={styles.headerTopRow}>
                 <Text style={styles.title} maxFontSizeMultiplier={theme.maxFontScale}>
-                  {t("collection.title", lang)}
+                  {shopMode ? `🐵 ${t("collection.tab.monkeys", lang)}` : t("collection.title", lang)}
                 </Text>
                 <SpringPressable
                   accessibilityRole="button"
@@ -285,7 +263,7 @@ export function MonkeyCollectionModal({
                 </SpringPressable>
               </View>
               <Text style={styles.subtitle} maxFontSizeMultiplier={theme.maxFontScale}>
-                {t("collection.subtitle", lang)}
+                {shopMode ? t("shopHub.monkeysDesc", lang) : t("collection.subtitle", lang)}
               </Text>
               <View style={[styles.summaryRow, compact ? styles.summaryRowCompact : null]}>
                 <View style={styles.progressSummary}>
@@ -322,21 +300,23 @@ export function MonkeyCollectionModal({
                   </View>
                 </View>
               </View>
-              <View style={styles.primaryTabs}>
-                {(["monkeys", "skins", "shop"] as const).map((tab) => (
-                  <SpringPressable
-                    key={tab}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: activeTab === tab }}
-                    onPress={() => setActiveTab(tab)}
-                    style={[styles.primaryTab, activeTab === tab ? styles.primaryTabActive : null]}
-                  >
-                    <Text style={[styles.primaryTabText, activeTab === tab ? styles.primaryTabTextActive : null]}>
-                      {t(`collection.tab.${tab}`, lang)}
-                    </Text>
-                  </SpringPressable>
-                ))}
-              </View>
+              {!shopMode ? (
+                <View style={styles.primaryTabs}>
+                  {(["monkeys", "skins", "festival"] as const).map((tab) => (
+                    <SpringPressable
+                      key={tab}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: activeTab === tab }}
+                      onPress={() => setActiveTab(tab)}
+                      style={[styles.primaryTab, activeTab === tab ? styles.primaryTabActive : null]}
+                    >
+                      <Text style={[styles.primaryTabText, activeTab === tab ? styles.primaryTabTextActive : null]}>
+                        {t(`collection.tab.${tab}`, lang)}
+                      </Text>
+                    </SpringPressable>
+                  ))}
+                </View>
+              ) : null}
             </View>
 
             {visible ? (
@@ -346,7 +326,7 @@ export function MonkeyCollectionModal({
                 showsVerticalScrollIndicator={false}
                 bounces={false}
               >
-                {activeTab !== "shop" ? (
+                {activeTab !== "festival" ? (
                   <FilterControls
                     lang={lang}
                     ownership={ownershipFilter}
@@ -365,6 +345,7 @@ export function MonkeyCollectionModal({
                       equipped={equipped === monkey.id}
                       isNew={newMonkeys.includes(monkey.id)}
                       unlockCelebrating={celebratingId === monkey.id}
+                      showPrice={shopMode}
                       onPress={() => selectMonkey(monkey)}
                     />
                   )) : null}
@@ -393,30 +374,9 @@ export function MonkeyCollectionModal({
                     {visibleSkinCount < selectedMonkeySkins.length ? <SpringPressable onPress={() => setVisibleSkinCount((count) => count + 12)} style={styles.loadMoreButton}><Text style={styles.loadMoreText}>{t("collection.showMore", lang)}</Text></SpringPressable> : null}
                   </View>
                 ) : null}
-                {activeTab === "shop" ? (
+                {activeTab === "festival" ? (
                   <View style={styles.fullWidthSection}>
-                    <Text style={styles.sectionTitle}>{t("collection.shop.title", lang)}</Text>
-                    <Text style={styles.shopIntro}>{t("collection.shop.premiumSubtitle", lang)}</Text>
-                    <View style={styles.storeEntryRow}>
-                      <BuyGemsButton lang={lang} onPress={onOpenGemStore} style={styles.storeEntryButton} />
-                      <SpringPressable
-                        accessibilityRole="button"
-                        accessibilityLabel={t("gemStore.resourceShop", lang)}
-                        onPress={() => {
-                          onClose();
-                          onOpenResourceShop();
-                        }}
-                        style={[styles.storeEntryButton, styles.resourceShopButton]}
-                      >
-                        <AssetImage assetKey="resourceBanana" style={styles.resourceShopIcon} fallback={<View />} hideFallbackOnLoad />
-                        <Text style={styles.resourceShopText}>{t("gemStore.resourceShop", lang)}</Text>
-                      </SpringPressable>
-                    </View>
-                    <FestivalCollectionPanel
-                      lang={lang}
-                      onSelectSkin={selectSkin}
-                      onInsufficient={() => setShowInsufficient(true)}
-                    />
+                    <FestivalCollectionPanel lang={lang} onSelectSkin={selectSkin} />
                   </View>
                 ) : null}
               </ScrollView>
@@ -431,6 +391,7 @@ export function MonkeyCollectionModal({
             ownedSkinIds={ownedSkins}
             unlockedMonkeyIds={unlocked}
             festivalFragments={festivalFragments}
+            purchaseEnabled={shopMode}
             onClose={() => setDetailSelection(null)}
             onUnlock={requestDetailUnlock}
             onEquip={equipDetail}
@@ -519,37 +480,25 @@ export function MonkeyCollectionModal({
                   {t("collection.ok", lang)}
                 </Text>
               </SpringPressable>
-              <SpringPressable
-                accessibilityRole="button"
-                accessibilityLabel={t("gemStore.open", lang)}
-                onPress={() => {
-                  setShowInsufficient(false);
-                  onOpenGemStore();
-                }}
-                style={[styles.dialogButton, styles.unlockButton]}
-              >
-                <Text style={styles.unlockText} maxFontSizeMultiplier={theme.maxFontScale}>
-                  {t("gemStore.open", lang)}
-                </Text>
-              </SpringPressable>
+              {onOpenGemStore ? (
+                <SpringPressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("gemStore.open", lang)}
+                  onPress={() => {
+                    setShowInsufficient(false);
+                    onOpenGemStore();
+                  }}
+                  style={[styles.dialogButton, styles.unlockButton]}
+                >
+                  <Text style={styles.unlockText} maxFontSizeMultiplier={theme.maxFontScale}>
+                    {t("gemStore.open", lang)}
+                  </Text>
+                </SpringPressable>
+              ) : null}
             </View>
           </View>
         </View>
       </Modal>
-
-      <CosmeticChestOpeningModal
-        presentation={festivalPresentation}
-        lang={lang}
-        onEquip={() => {
-          if (!pendingFestivalChest || !pendingFestivalSkin) return;
-          equipSkin(pendingFestivalSkin.id);
-          claimFestivalChest(pendingFestivalChest.id);
-        }}
-        onClose={() => {
-          if (pendingFestivalChest) claimFestivalChest(pendingFestivalChest.id);
-        }}
-      />
-
     </>
   );
 }
@@ -562,6 +511,7 @@ function CollectionCard({
   equipped,
   isNew,
   unlockCelebrating,
+  showPrice,
   onPress
 }: {
   monkey: ProfileMonkey;
@@ -571,6 +521,8 @@ function CollectionCard({
   equipped: boolean;
   isNew: boolean;
   unlockCelebrating: boolean;
+  /** Shop mode shows Gem prices; Profile mode points at the Shop instead. */
+  showPrice: boolean;
   onPress: () => void;
 }) {
   const rarity = RARITY_THEME[monkey.rarity];
@@ -709,7 +661,7 @@ function CollectionCard({
       </View>
 
       {!owned ? (
-        isGemPurchasableProfileMonkey(monkey) ? (
+        showPrice && isGemPurchasableProfileMonkey(monkey) ? (
           <View style={styles.priceArea}>
             <View style={styles.priceButton}>
               <AssetImage
@@ -728,7 +680,11 @@ function CollectionCard({
           </View>
         ) : (
           <View style={[styles.equipButton, styles.comingSoonButton]}>
-            <Text style={styles.equipText}>{t("collection.day7Scout", lang)}</Text>
+            <Text style={styles.equipText} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={theme.maxFontScale}>
+              {monkey.acquisition === "daily_reward_or_gems"
+                ? t("collection.day7Scout", lang)
+                : t("collection.detail.inShop", lang)}
+            </Text>
           </View>
         )
       ) : !equipped ? (
@@ -1390,43 +1346,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: theme.fonts.heavy,
     marginBottom: 8
-  },
-  shopIntro: {
-    marginTop: -3,
-    marginBottom: 10,
-    color: "#bdb294",
-    fontSize: 9.5,
-    lineHeight: 13,
-    fontFamily: theme.fonts.bold
-  },
-  storeEntryRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 12
-  },
-  storeEntryButton: {
-    flex: 1
-  },
-  resourceShopButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    minHeight: 40,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "rgba(226, 177, 90, 0.55)",
-    backgroundColor: "rgba(74, 52, 24, 0.94)",
-    paddingHorizontal: 14
-  },
-  resourceShopIcon: {
-    width: 17,
-    height: 17
-  },
-  resourceShopText: {
-    color: "#ffe6a6",
-    fontSize: 12,
-    fontFamily: theme.fonts.heavy
   },
   noticeActions: {
     width: "100%",

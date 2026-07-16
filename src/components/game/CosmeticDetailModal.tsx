@@ -40,6 +40,12 @@ type DetailProps = {
   ownedSkinIds: readonly ProfileSkinId[];
   unlockedMonkeyIds: readonly ProfileMonkeyId[];
   festivalFragments: FestivalFragmentProgress;
+  /**
+   * When false (Profile context) the detail view is browse/equip only: no
+   * price row and no unlock button — locked purchasable monkeys point at the
+   * Shop instead. Defaults to true (Shop context).
+   */
+  purchaseEnabled?: boolean;
   onClose: () => void;
   onUnlock: () => void;
   onEquip: () => void;
@@ -71,6 +77,7 @@ export function CosmeticDetailModal({
   ownedSkinIds,
   unlockedMonkeyIds,
   festivalFragments,
+  purchaseEnabled = true,
   onClose,
   onUnlock,
   onEquip,
@@ -145,7 +152,7 @@ export function CosmeticDetailModal({
                         ? t("collection.owned", lang)
                         : t("collection.locked", lang)}
               </Text>
-              {!owned && purchasable ? (
+              {!owned && purchasable && purchaseEnabled ? (
                 <View style={styles.priceRow}>
                   <AssetImage assetKey="resourceJungleGem" style={styles.priceGem} fallback={<View />} hideFallbackOnLoad />
                   <Text style={styles.price}>{price}</Text>
@@ -153,7 +160,7 @@ export function CosmeticDetailModal({
               ) : null}
               {!owned && skin == null && monkey.acquisition === "daily_reward_or_gems" ? <Text style={styles.comingSoon}>{t("collection.day7Scout", lang)}</Text> : null}
               {!owned && skin?.catalogStatus === "festival" ? <Text style={styles.comingSoon}>{t("festival.progress", lang, { current: festivalCurrent, required: festivalRequired })}</Text> : null}
-              {!owned && purchasable && gems < price ? <Text style={styles.shortfall}>{t("collection.detail.missing", lang, { amount: price - gems })}</Text> : null}
+              {!owned && purchasable && purchaseEnabled && gems < price ? <Text style={styles.shortfall}>{t("collection.detail.missing", lang, { amount: price - gems })}</Text> : null}
             </View>
 
             <Text style={styles.sectionTitle}>{t("collection.detail.villagePreview", lang)}</Text>
@@ -200,6 +207,8 @@ export function CosmeticDetailModal({
               <View style={[styles.actionButton, styles.unavailableButton]}><Text style={styles.actionText}>{t("collection.unavailable", lang)}</Text></View>
             ) : skin && !parentOwned ? (
               <View style={[styles.actionButton, styles.unavailableButton]}><Text style={styles.actionText}>{t("collection.requiresNamedMonkey", lang, { name: t(monkey.nameKey, lang) })}</Text></View>
+            ) : !owned && purchasable && !purchaseEnabled ? (
+              <View style={[styles.actionButton, styles.unavailableButton]}><Text style={styles.actionText}>{t("collection.detail.inShop", lang)}</Text></View>
             ) : !owned && purchasable ? (
               <SpringPressable onPress={onUnlock} style={[styles.actionButton, styles.unlockButton]}>
                 <Text style={styles.actionText}>{t("collection.unlock", lang)}</Text>

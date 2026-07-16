@@ -32,20 +32,20 @@ const RARITY_COLORS: Record<CosmeticRarity, string> = {
   mythic: "#fff08a"
 };
 
-export function FestivalCollectionPanel({
+/**
+ * Shop-side Festival Chest purchase card plus the odds table. Lives in the
+ * Shop hub; the cosmetic collection grid below stays on the Profile screen.
+ */
+export function FestivalChestPanel({
   lang,
-  onSelectSkin,
   onInsufficient
 }: {
   lang: Lang;
-  onSelectSkin: (skin: ProfileSkin) => void;
   onInsufficient: () => void;
 }) {
-  const gems = useGameStore((state) => state.gems);
   const fragments = useGameStore((state) => state.festivalFragments);
   const owned = useGameStore((state) => state.ownedProfileSkins);
   const unlockedMonkeys = useGameStore((state) => state.unlockedProfileMonkeys);
-  const equippedSkin = useGameStore((state) => state.equippedProfileSkin);
   const pending = useGameStore((state) => state.pendingFestivalChest);
   const openChest = useGameStore((state) => state.openFestivalChest);
   const unfinished = unfinishedFestivalSkins(fragments, owned);
@@ -119,7 +119,29 @@ export function FestivalCollectionPanel({
         })}
         <Text style={styles.poolRule}>{t("festival.chest.poolRule", lang)}</Text>
       </View>
+    </>
+  );
+}
 
+/**
+ * Profile-side Festival skin collection grid: fragment progress, rarity and
+ * owned/equipped states only — no purchase actions live here anymore.
+ */
+export function FestivalCollectionPanel({
+  lang,
+  onSelectSkin
+}: {
+  lang: Lang;
+  onSelectSkin: (skin: ProfileSkin) => void;
+}) {
+  const fragments = useGameStore((state) => state.festivalFragments);
+  const owned = useGameStore((state) => state.ownedProfileSkins);
+  const unlockedMonkeys = useGameStore((state) => state.unlockedProfileMonkeys);
+  const equippedSkin = useGameStore((state) => state.equippedProfileSkin);
+  const unfinished = unfinishedFestivalSkins(fragments, owned);
+
+  return (
+    <>
       <View style={styles.collectionHeader}>
         <Text style={styles.collectionTitle}>{t("festival.collection.title", lang)}</Text>
         <Text style={styles.collectionCount}>{FESTIVAL_PROFILE_SKINS.length - unfinished.length}/{FESTIVAL_PROFILE_SKINS.length}</Text>
@@ -189,7 +211,7 @@ const styles = StyleSheet.create({
   openButton: { minHeight: 42, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1.5, borderColor: "#ffe07a", backgroundColor: "#a25b18" },
   disabledButton: { opacity: 0.55, backgroundColor: "#4e4b42" },
   openButtonText: { color: "#fff6cd", fontSize: 12, fontFamily: theme.fonts.heavy, textAlign: "center" },
-  detailsCard: { width: "100%", borderRadius: 14, borderWidth: 1, borderColor: "rgba(244, 187, 94, 0.4)", backgroundColor: "rgba(35, 27, 38, 0.94)", padding: 10 },
+  detailsCard: { width: "100%", marginTop: 10, borderRadius: 14, borderWidth: 1, borderColor: "rgba(244, 187, 94, 0.4)", backgroundColor: "rgba(35, 27, 38, 0.94)", padding: 10 },
   detailsTitle: { color: "#ffe09a", fontSize: 13, fontFamily: theme.fonts.heavy, marginBottom: 5 },
   oddsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 22 },
   oddsRarity: { fontSize: 10, fontFamily: theme.fonts.heavy },
@@ -198,7 +220,7 @@ const styles = StyleSheet.create({
   collectionHeader: { width: "100%", flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 },
   collectionTitle: { color: "#fff0b5", fontSize: 15, fontFamily: theme.fonts.heavy },
   collectionCount: { color: "#fface1", fontSize: 11, fontFamily: theme.fonts.heavy },
-  grid: { width: "100%", flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 9 },
+  grid: { width: "100%", flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 9, marginTop: 8 },
   skinCard: { width: "48.5%", minHeight: 272, borderRadius: 15, borderWidth: 1.5, backgroundColor: "rgba(37, 26, 39, 0.98)", padding: 8, overflow: "hidden" },
   skinArtFrame: { width: "100%", height: 126, alignItems: "center", justifyContent: "center", borderRadius: 11, borderWidth: 1, backgroundColor: "rgba(7, 12, 9, 0.72)", overflow: "hidden" },
   skinArt: { width: "100%", height: "100%" },
