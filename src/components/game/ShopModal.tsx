@@ -29,8 +29,10 @@ export function ShopModal({ visible, lang, onClose, onOpenGemStore }: ShopModalP
   const buy = useGameStore((state) => state.buyShopItem);
   const shopItems = resourceShopItems();
 
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => undefined}>
           <View style={styles.header}>

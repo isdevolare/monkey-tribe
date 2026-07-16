@@ -36,8 +36,10 @@ export function ShopHubModal({
   const gems = useGameStore((state) => state.gems);
   const insets = useSafeAreaInsets();
 
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={[styles.scrim, { paddingTop: Math.max(insets.top, 14), paddingBottom: Math.max(insets.bottom, 14) }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.card}>

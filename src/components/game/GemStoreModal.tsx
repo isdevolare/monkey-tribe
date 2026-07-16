@@ -139,8 +139,10 @@ export function GemStoreModal({ visible, lang, onClose }: GemStoreModalProps) {
   const insets = useSafeAreaInsets();
   const [comingSoon, setComingSoon] = useState(false);
 
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <View style={[styles.scrim, { paddingTop: Math.max(insets.top, 14), paddingBottom: Math.max(insets.bottom, 14) }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.card}>

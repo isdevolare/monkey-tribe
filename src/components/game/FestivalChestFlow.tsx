@@ -47,6 +47,8 @@ export function FestivalChestFlow({ lang }: { lang: Lang }) {
       }
     : null;
 
+  if (!presentation) return null;
+
   return (
     <CosmeticChestOpeningModal
       presentation={presentation}

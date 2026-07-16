@@ -232,10 +232,12 @@ export function MonkeyCollectionModal({
     setUnlockFeedback(null);
   }
 
+  if (!visible) return null;
+
   return (
     <>
       <Modal
-        visible={visible}
+        visible
         transparent
         animationType="fade"
         statusBarTranslucent

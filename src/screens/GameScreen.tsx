@@ -139,6 +139,8 @@ function formatAmount(value: number) {
   return String(value);
 }
 
+type ShopScreen = "hub" | "gems" | "festival" | "monkeys" | "resources" | null;
+
 export function GameScreen() {
   const state = useGameStore();
   const insets = useSafeAreaInsets();
@@ -148,11 +150,7 @@ export function GameScreen() {
   const [tutorialStep, setTutorialStep] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showQuests, setShowQuests] = useState(false);
-  const [showShop, setShowShop] = useState(false);
-  const [showGemStore, setShowGemStore] = useState(false);
-  const [showShopHub, setShowShopHub] = useState(false);
-  const [showFestivalChest, setShowFestivalChest] = useState(false);
-  const [showMonkeyShop, setShowMonkeyShop] = useState(false);
+  const [shopScreen, setShopScreen] = useState<ShopScreen>(null);
   const [showCollection, setShowCollection] = useState(false);
   const [showWorkerLodge, setShowWorkerLodge] = useState(false);
   const [showBananaGrove, setShowBananaGrove] = useState(false);
@@ -425,7 +423,7 @@ export function GameScreen() {
               accessibilityLabel={t("gemStore.title", lang)}
               onPress={() => {
                 playSound("open");
-                setShowGemStore(true);
+                setShopScreen("gems");
               }}
               style={styles.gemPill}
             >
@@ -438,7 +436,7 @@ export function GameScreen() {
               glyph="🛖"
               onPress={() => {
                 playSound("open");
-                setShowShopHub(true);
+                setShopScreen("hub");
               }}
             />
             <TopIcon
@@ -663,20 +661,20 @@ export function GameScreen() {
       <DailyRewardModal visible={showDaily} lang={lang} onClose={() => setShowDaily(false)} />
 
       <ShopHubModal
-        visible={showShopHub}
+        visible={shopScreen === "hub"}
         lang={lang}
-        onClose={() => setShowShopHub(false)}
-        onOpenGemStore={() => setShowGemStore(true)}
-        onOpenFestivalChest={() => setShowFestivalChest(true)}
-        onOpenMonkeys={() => setShowMonkeyShop(true)}
-        onOpenResourceShop={() => setShowShop(true)}
+        onClose={() => setShopScreen(null)}
+        onOpenGemStore={() => setShopScreen("gems")}
+        onOpenFestivalChest={() => setShopScreen("festival")}
+        onOpenMonkeys={() => setShopScreen("monkeys")}
+        onOpenResourceShop={() => setShopScreen("resources")}
       />
 
       <ShopModal
-        visible={showShop}
+        visible={shopScreen === "resources"}
         lang={lang}
-        onClose={() => setShowShop(false)}
-        onOpenGemStore={() => setShowGemStore(true)}
+        onClose={() => setShopScreen(null)}
+        onOpenGemStore={() => setShopScreen("gems")}
       />
 
       {/* Profile: identity & cosmetics only — no shop content. */}
@@ -689,20 +687,20 @@ export function GameScreen() {
       {/* Shop hub "Maymunlar": monkey purchase catalog. */}
       <MonkeyCollectionModal
         mode="shop"
-        visible={showMonkeyShop}
+        visible={shopScreen === "monkeys"}
         lang={lang}
-        onClose={() => setShowMonkeyShop(false)}
-        onOpenGemStore={() => setShowGemStore(true)}
+        onClose={() => setShopScreen(null)}
+        onOpenGemStore={() => setShopScreen("gems")}
       />
 
       <FestivalChestModal
-        visible={showFestivalChest}
+        visible={shopScreen === "festival"}
         lang={lang}
-        onClose={() => setShowFestivalChest(false)}
-        onOpenGemStore={() => setShowGemStore(true)}
+        onClose={() => setShopScreen(null)}
+        onOpenGemStore={() => setShopScreen("gems")}
       />
 
-      <GemStoreModal visible={showGemStore} lang={lang} onClose={() => setShowGemStore(false)} />
+      <GemStoreModal visible={shopScreen === "gems"} lang={lang} onClose={() => setShopScreen(null)} />
 
       {/* Global Festival Chest reveal + pending transaction recovery. */}
       <FestivalChestFlow lang={lang} />

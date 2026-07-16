@@ -27,9 +27,11 @@ export function FestivalChestModal({ visible, lang, onClose, onOpenGemStore }: F
   const insets = useSafeAreaInsets();
   const pending = useGameStore((state) => state.pendingFestivalChest);
 
+  if (!visible || pending != null) return null;
+
   return (
     <Modal
-      visible={visible && pending == null}
+      visible
       transparent
       animationType="fade"
       statusBarTranslucent
