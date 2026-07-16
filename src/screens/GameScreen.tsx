@@ -190,6 +190,24 @@ export function GameScreen() {
     setShowStoneQuarry(false);
   }, []);
 
+  const collectBananaGroveReward = useCallback(() => {
+    if (state.collectBananaGrove()) {
+      playSound("reward");
+    }
+  }, [state.collectBananaGrove]);
+
+  const collectLumberCampReward = useCallback(() => {
+    if (state.collectLumberCamp()) {
+      playSound("reward");
+    }
+  }, [state.collectLumberCamp]);
+
+  const collectStoneQuarryReward = useCallback(() => {
+    if (state.collectStoneQuarry()) {
+      playSound("reward");
+    }
+  }, [state.collectStoneQuarry]);
+
   const selectBuilding = useCallback((type: VillageBuildingType) => {
     playSound("tap");
     setSelectedBuilding(type);
@@ -377,7 +395,10 @@ export function GameScreen() {
               (state.gameMode === "village" ? VILLAGE_SHORTCUT_DOCK_HEIGHT + 12 : 0)
           }
         ]}
+        scrollEnabled={state.gameMode !== "village" || inlineSelectedBuilding !== null}
         bounces={false}
+        alwaysBounceVertical={false}
+        overScrollMode="never"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>
@@ -547,6 +568,9 @@ export function GameScreen() {
                   stoneQuarryStorage={state.stoneQuarryStorage}
                   stoneQuarryCapacity={stoneQuarryCapacity(levelOf(state.buildings, "stoneQuarry"))}
                   onBuildingPress={selectBuilding}
+                  onCollectBananas={collectBananaGroveReward}
+                  onCollectWood={collectLumberCampReward}
+                  onCollectStone={collectStoneQuarryReward}
                 />
               </View>
             </View>

@@ -45,6 +45,9 @@ type VillageBoardProps = {
   stoneQuarryStorage?: number;
   stoneQuarryCapacity?: number;
   onBuildingPress: (type: VillageBuildingType) => void;
+  onCollectBananas: () => void;
+  onCollectWood: () => void;
+  onCollectStone: () => void;
 };
 
 type Point = {
@@ -104,7 +107,10 @@ export function VillageBoard({
   stoneWorkers = [],
   stoneQuarryStorage = 0,
   stoneQuarryCapacity = 100,
-  onBuildingPress
+  onBuildingPress,
+  onCollectBananas,
+  onCollectWood,
+  onCollectStone
 }: VillageBoardProps) {
   const { width } = useWindowDimensions();
   const sceneWidth = Math.min(width - theme.spacing.sm * 2, maxSize);
@@ -184,14 +190,8 @@ export function VillageBoard({
             lang={lang}
             selected={selectedType === building.type}
             bananaWorkers={building.type === "bananaGrove" ? bananaWorkers : []}
-            bananaGroveStorage={building.type === "bananaGrove" ? bananaGroveStorage : 0}
-            bananaGroveCapacity={building.type === "bananaGrove" ? bananaGroveCapacity : 100}
             lumberWorkers={building.type === "lumberCamp" ? lumberWorkers : []}
-            lumberCampStorage={building.type === "lumberCamp" ? lumberCampStorage : 0}
-            lumberCampCapacity={building.type === "lumberCamp" ? lumberCampCapacity : 100}
             stoneWorkers={building.type === "stoneQuarry" ? stoneWorkers : []}
-            stoneQuarryStorage={building.type === "stoneQuarry" ? stoneQuarryStorage : 0}
-            stoneQuarryCapacity={building.type === "stoneQuarry" ? stoneQuarryCapacity : 100}
             onAccessibilityPress={() => onBuildingPress(building.type)}
           />
         ))}
@@ -204,6 +204,45 @@ export function VillageBoard({
         onPress={handleBoardPress}
         style={styles.hitLayer}
       />
+
+      <View pointerEvents="box-none" style={styles.collectLayer}>
+        <ResourceCollectBadge
+          amount={bananaGroveStorage}
+          assetKey="resourceBanana"
+          layout={BUILDING_LAYOUT.bananaGrove}
+          ready={
+            bananaGroveStorage > 0 ||
+            bananaWorkers.some((worker) => worker.storedReward !== undefined)
+          }
+          storageFull={bananaGroveStorage >= bananaGroveCapacity}
+          label={t("workerLodge.collect", lang)}
+          onPress={onCollectBananas}
+        />
+        <ResourceCollectBadge
+          amount={lumberCampStorage}
+          assetKey="resourceWood"
+          layout={BUILDING_LAYOUT.lumberCamp}
+          ready={
+            lumberCampStorage > 0 ||
+            lumberWorkers.some((worker) => worker.storedReward !== undefined)
+          }
+          storageFull={lumberCampStorage >= lumberCampCapacity}
+          label={t("workerLodge.collect", lang)}
+          onPress={onCollectWood}
+        />
+        <ResourceCollectBadge
+          amount={stoneQuarryStorage}
+          assetKey="resourceStone"
+          layout={BUILDING_LAYOUT.stoneQuarry}
+          ready={
+            stoneQuarryStorage > 0 ||
+            stoneWorkers.some((worker) => worker.storedReward !== undefined)
+          }
+          storageFull={stoneQuarryStorage >= stoneQuarryCapacity}
+          label={t("workerLodge.collect", lang)}
+          onPress={onCollectStone}
+        />
+      </View>
 
       {upgradeFx ? (
         <View
@@ -487,14 +526,8 @@ const MemoBuildingSprite = memo(
     a.building.type === b.building.type &&
     a.building.level === b.building.level &&
     a.selected === b.selected &&
-    a.bananaGroveStorage === b.bananaGroveStorage &&
-    a.bananaGroveCapacity === b.bananaGroveCapacity &&
     a.bananaWorkers === b.bananaWorkers &&
-    a.lumberCampStorage === b.lumberCampStorage &&
-    a.lumberCampCapacity === b.lumberCampCapacity &&
     a.lumberWorkers === b.lumberWorkers &&
-    a.stoneQuarryStorage === b.stoneQuarryStorage &&
-    a.stoneQuarryCapacity === b.stoneQuarryCapacity &&
     a.stoneWorkers === b.stoneWorkers &&
     a.lang === b.lang
 );
@@ -624,14 +657,8 @@ function BuildingSprite({
   selected,
   onAccessibilityPress,
   bananaWorkers,
-  bananaGroveStorage,
-  bananaGroveCapacity,
   lumberWorkers,
-  lumberCampStorage,
-  lumberCampCapacity,
-  stoneWorkers,
-  stoneQuarryStorage,
-  stoneQuarryCapacity
+  stoneWorkers
 }: {
   building: VillageBuilding;
   layout: { point: Point; size: number; asset: GameAssetKey };
@@ -639,14 +666,8 @@ function BuildingSprite({
   selected: boolean;
   onAccessibilityPress: () => void;
   bananaWorkers: WorkerExpedition[];
-  bananaGroveStorage: number;
-  bananaGroveCapacity: number;
   lumberWorkers: WorkerExpedition[];
-  lumberCampStorage: number;
-  lumberCampCapacity: number;
   stoneWorkers: WorkerExpedition[];
-  stoneQuarryStorage: number;
-  stoneQuarryCapacity: number;
 }) {
   const { point, asset } = layout;
   const size = layout.size;
@@ -678,17 +699,13 @@ function BuildingSprite({
       <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
       <BuildingIdleDetails type={building.type} />
       {building.type === "bananaGrove" ? (
-        <BananaGroveActivity
-          workers={bananaWorkers}
-          storage={bananaGroveStorage}
-          capacity={bananaGroveCapacity}
-        />
+        <BananaGroveActivity workers={bananaWorkers} />
       ) : null}
       {building.type === "lumberCamp" ? (
-        <ResourceWorkplaceActivity kind="lumber" workers={lumberWorkers} storage={lumberCampStorage} capacity={lumberCampCapacity} />
+        <ResourceWorkplaceActivity kind="lumber" workers={lumberWorkers} />
       ) : null}
       {building.type === "stoneQuarry" ? (
-        <ResourceWorkplaceActivity kind="stone" workers={stoneWorkers} storage={stoneQuarryStorage} capacity={stoneQuarryCapacity} />
+        <ResourceWorkplaceActivity kind="stone" workers={stoneWorkers} />
       ) : null}
       {props.map((prop) => (
         <View
@@ -733,7 +750,7 @@ function BuildingSprite({
   );
 }
 
-function BananaGroveActivity({ workers, storage, capacity }: { workers: WorkerExpedition[]; storage: number; capacity: number }) {
+function BananaGroveActivity({ workers }: { workers: WorkerExpedition[] }) {
   const spots = [
     { left: -5, top: 54 },
     { left: 61, top: 55 },
@@ -749,36 +766,68 @@ function BananaGroveActivity({ workers, storage, capacity }: { workers: WorkerEx
           <AssetImage assetKey={BANANA_WORKER_ASSETS[worker.workerClass as BananaWorkerClass]} style={styles.full} fallback={<View />} hideFallbackOnLoad />
         </View>
       ))}
-      {storage > 0 ? (
-        <View style={[styles.harvestBadge, storage >= capacity && styles.harvestBadgeFull]}>
-          <View style={styles.harvestIconWell}>
-            <AssetImage assetKey="resourceBanana" style={styles.harvestIcon} fallback={<View />} hideFallbackOnLoad />
-          </View>
-          <Text style={styles.harvestAmount}>{Math.floor(storage)}</Text>
-        </View>
-      ) : null}
     </View>
   );
 }
 
-function ResourceWorkplaceActivity({ kind, workers, storage, capacity }: { kind: "lumber" | "stone"; workers: WorkerExpedition[]; storage: number; capacity: number }) {
-  const pulse = useRef(new Animated.Value(0)).current;
+function ResourceWorkplaceActivity({ kind, workers }: { kind: "lumber" | "stone"; workers: WorkerExpedition[] }) {
   const worker = workers[0];
-  const ready = worker?.storedReward !== undefined;
-  useEffect(() => {
-    if (!ready && storage <= 0) { pulse.setValue(0); return; }
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: 1, duration: 850, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 0, duration: 850, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
-    ]));
-    loop.start();
-    return () => loop.stop();
-  }, [pulse, ready, storage]);
-  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
   return <View pointerEvents="none" style={StyleSheet.absoluteFill}>
     {worker ? <View style={styles.lumberWorker}><AssetImage assetKey={kind === "lumber" ? LUMBER_WORKER_ASSETS[worker.workerClass as LumberWorkerClass] : STONE_WORKER_ASSETS[worker.workerClass as StoneWorkerClass]} style={styles.full} fallback={<View />} hideFallbackOnLoad /></View> : null}
-    {ready || storage > 0 ? <Animated.View style={[styles.harvestBadge, storage >= capacity && styles.harvestBadgeFull, { transform: [{ scale }] }]}><View style={styles.harvestIconWell}><AssetImage assetKey={kind === "lumber" ? "resourceWood" : "resourceStone"} style={styles.harvestIcon} fallback={<View />} hideFallbackOnLoad /></View><Text style={styles.harvestAmount}>{Math.floor(storage)}</Text></Animated.View> : null}
   </View>;
+}
+
+function ResourceCollectBadge({
+  amount,
+  assetKey,
+  layout,
+  ready,
+  storageFull,
+  label,
+  onPress
+}: {
+  amount: number;
+  assetKey: "resourceBanana" | "resourceWood" | "resourceStone";
+  layout: { point: Point; size: number };
+  ready: boolean;
+  storageFull: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  if (!ready) return null;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${Math.floor(amount)}`}
+      hitSlop={6}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.collectBadgeTarget,
+        {
+          left: `${layout.point.x - layout.size * 0.32}%`,
+          top: `${layout.point.y - layout.size * 0.96}%`,
+          width: `${layout.size * 0.64}%`,
+          transform: [{ scale: pressed ? 0.96 : 1 }]
+        }
+      ]}
+    >
+      <View
+        pointerEvents="none"
+        style={[styles.collectBadgeSurface, storageFull ? styles.collectBadgeFull : null]}
+      >
+        <AssetImage
+          assetKey={assetKey}
+          style={styles.collectBadgeIcon}
+          fallback={<View />}
+          hideFallbackOnLoad
+        />
+        <Text style={styles.collectBadgeAmount} maxFontSizeMultiplier={theme.maxFontScale}>
+          {Math.floor(amount)}
+        </Text>
+      </View>
+    </Pressable>
+  );
 }
 
 function SceneBackground() {
@@ -986,6 +1035,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 300
   },
+  collectLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 450,
+    elevation: 18
+  },
   buildingLayer: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 200
@@ -1018,48 +1072,43 @@ const styles = StyleSheet.create({
     zIndex: 5
   },
   lumberWorker: { position: "absolute", width: "52%", height: "52%", left: "24%", top: "51%", zIndex: 5 },
-  harvestBadge: {
+  collectBadgeTarget: {
     position: "absolute",
-    top: "-28%",
-    left: "18%",
-    minWidth: "64%",
-    height: "38%",
+    minWidth: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+    elevation: 18
+  },
+  collectBadgeSurface: {
+    minWidth: 44,
+    height: 30,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
-    paddingHorizontal: 4,
+    gap: 4,
+    paddingHorizontal: 7,
     borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: "#e7bf64",
-    backgroundColor: "rgba(24, 20, 11, 0.96)",
+    borderWidth: 1.25,
+    borderColor: "rgba(231, 191, 100, 0.9)",
+    backgroundColor: "rgba(31, 36, 20, 0.96)",
     shadowColor: "#f6cc68",
-    shadowOpacity: 0.52,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 6,
-    zIndex: 9
+    shadowOpacity: 0.32,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 12
   },
-  harvestBadgeFull: { backgroundColor: "rgba(91, 55, 16, 0.98)", borderColor: "#ffe18a" },
-  harvestIconWell: {
-    width: "42%",
-    height: "84%",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(255, 225, 138, 0.48)",
-    backgroundColor: "rgba(73, 55, 25, 0.92)"
+  collectBadgeFull: {
+    backgroundColor: "rgba(72, 53, 20, 0.98)",
+    borderColor: "#ffe18a"
   },
-  harvestIcon: { width: "88%", height: "88%" },
-  harvestAmount: {
-    minWidth: "34%",
+  collectBadgeIcon: { width: 24, height: 24 },
+  collectBadgeAmount: {
     color: "#fff1bd",
-    fontSize: 8.5,
-    lineHeight: 11,
+    fontSize: 12,
+    lineHeight: 16,
     textAlign: "center",
-    fontWeight: "900",
     fontFamily: theme.fonts.heavy
   },
   // Soft contact shadow so buildings sit in the ground instead of floating.
