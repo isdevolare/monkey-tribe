@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import Svg, {
   Circle,
   Defs,
@@ -98,7 +98,7 @@ function Disc({ rim }: { rim: string }) {
 
 function Base({ children, rim }: { children: ReactNode; rim: string }) {
   return (
-    <Svg width="100%" height="100%" viewBox="0 0 100 100">
+    <Svg pointerEvents="none" width="100%" height="100%" viewBox="0 0 100 100">
       <Disc rim={rim} />
       {children}
     </Svg>
@@ -257,7 +257,7 @@ function LegendaryArt() {
   );
 }
 
-export function GemPackArtwork({ variant }: { variant: GemArtVariant }) {
+export const GemPackArtwork = memo(function GemPackArtwork({ variant }: { variant: GemArtVariant }) {
   switch (variant) {
     case "pouch_small":
       return <PouchArt large={false} />;
@@ -272,4 +272,4 @@ export function GemPackArtwork({ variant }: { variant: GemArtVariant }) {
     case "treasure_legendary":
       return <LegendaryArt />;
   }
-}
+});

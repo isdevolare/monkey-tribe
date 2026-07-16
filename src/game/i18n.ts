@@ -334,6 +334,7 @@ const dict: Record<string, Entry> = {
   "gemStore.subtitle": { tr: "Festival hazineni Gem paketleriyle güçlendir", en: "Stock up on Gems for the festival" },
   "gemStore.balance": { tr: "Bakiye", en: "Balance" },
   "gemStore.bonus": { tr: "+%{percent} Bonus", en: "+{percent}% Bonus" },
+  "gemStore.bestValue": { tr: "En İyi Değer", en: "Best Value" },
   "gemStore.gemsLabel": { tr: "Gem", en: "Gems" },
   "gemStore.comingSoon": { tr: "Yakında", en: "Coming Soon" },
   "gemStore.unavailableNote": { tr: "Satın alma sistemi hazırlanıyor", en: "Purchases coming soon" },

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { memo, useCallback, useState } from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { playSound } from "../../game/audio/soundManager";
 import { GEM_PACKS, type GemPack } from "../../game/config/gemPacks";
@@ -22,107 +22,78 @@ type Tier = {
   surface: string;
   border: string;
   borderWidth: number;
-  glow: string;
-  glowRadius: number;
   halo: string;
-  haloOpacity: number;
   accent: string;
   buttonBg: string;
   buttonBorder: string;
-  pulse: boolean;
-  /** The legendary best-value pack: extra glow, gold backlight and sparkles. */
+  /** The legendary best-value pack gets stronger static framing. */
   featured?: boolean;
 };
 
 /**
- * Per-pack visual tier. Cards grow progressively richer (leather pouch →
- * legendary jungle hoard) in glow, border, lighting and artwork scale without
- * becoming noisy. Keyed by the stable GEM_PACKS id (economy is never touched).
+ * Per-pack visual tier. All six cards share one restrained jungle-and-gold
+ * language; only the artwork and small static accents grow richer by tier.
  */
 const TIERS: Record<string, Tier> = {
   gem_pouch: {
     variant: "pouch_small",
-    surface: "rgba(48, 36, 22, 0.9)",
-    border: "rgba(178, 126, 66, 0.7)",
-    borderWidth: 1.5,
-    glow: "#6d4423",
-    glowRadius: 6,
-    halo: "#7bd39a",
-    haloOpacity: 0.12,
-    accent: "#e7d7b0",
-    buttonBg: "rgba(120, 84, 40, 0.95)",
-    buttonBorder: "rgba(226, 177, 90, 0.55)",
-    pulse: false
+    surface: "#19251b",
+    border: "rgba(211, 170, 88, 0.5)",
+    borderWidth: 1.25,
+    halo: "rgba(66, 170, 96, 0.14)",
+    accent: "#eff9e9",
+    buttonBg: "#2f733d",
+    buttonBorder: "rgba(145, 211, 118, 0.62)"
   },
   gem_bundle: {
     variant: "pouch_large",
-    surface: "rgba(54, 40, 24, 0.92)",
-    border: "rgba(200, 143, 78, 0.8)",
-    borderWidth: 1.5,
-    glow: "#8a5a2c",
-    glowRadius: 8,
-    halo: "#7bd39a",
-    haloOpacity: 0.16,
-    accent: "#f0dcac",
-    buttonBg: "rgba(138, 96, 44, 0.96)",
-    buttonBorder: "rgba(233, 190, 110, 0.6)",
-    pulse: false
+    surface: "#1a281d",
+    border: "rgba(217, 177, 91, 0.56)",
+    borderWidth: 1.25,
+    halo: "rgba(69, 181, 101, 0.16)",
+    accent: "#eff9e9",
+    buttonBg: "#327a41",
+    buttonBorder: "rgba(151, 220, 124, 0.68)"
   },
   gem_crate: {
     variant: "chest_wood",
-    surface: "rgba(52, 38, 22, 0.94)",
-    border: "rgba(214, 164, 77, 0.85)",
-    borderWidth: 1.75,
-    glow: "#b07d2e",
-    glowRadius: 10,
-    halo: "#8ef0a8",
-    haloOpacity: 0.2,
-    accent: "#ffe6a6",
-    buttonBg: "rgba(150, 102, 40, 0.97)",
-    buttonBorder: "rgba(255, 213, 122, 0.7)",
-    pulse: false
+    surface: "#1c2a1d",
+    border: "rgba(224, 184, 96, 0.62)",
+    borderWidth: 1.5,
+    halo: "rgba(75, 192, 107, 0.18)",
+    accent: "#f4faeb",
+    buttonBg: "#347f43",
+    buttonBorder: "rgba(157, 227, 129, 0.72)"
   },
   gem_vault: {
     variant: "chest_gold",
-    surface: "rgba(58, 44, 20, 0.95)",
-    border: "#ffd76a",
-    borderWidth: 2,
-    glow: "#ffcf5e",
-    glowRadius: 13,
-    halo: "#ffe9a8",
-    haloOpacity: 0.24,
-    accent: "#fff0b3",
-    buttonBg: "rgba(176, 125, 30, 0.98)",
-    buttonBorder: "#ffe08a",
-    pulse: true
+    surface: "#1e2d20",
+    border: "rgba(232, 194, 104, 0.7)",
+    borderWidth: 1.5,
+    halo: "rgba(87, 205, 117, 0.2)",
+    accent: "#f7fceb",
+    buttonBg: "#378747",
+    buttonBorder: "rgba(166, 233, 137, 0.78)"
   },
   gem_treasury: {
     variant: "chest_royal",
-    surface: "rgba(48, 30, 62, 0.96)",
-    border: "#b98bff",
-    borderWidth: 2.25,
-    glow: "#b072ff",
-    glowRadius: 15,
-    halo: "#d7b6ff",
-    haloOpacity: 0.26,
-    accent: "#f0d6ff",
-    buttonBg: "rgba(96, 58, 152, 0.98)",
-    buttonBorder: "#ffd76a",
-    pulse: true
+    surface: "#202f21",
+    border: "rgba(239, 201, 109, 0.78)",
+    borderWidth: 1.75,
+    halo: "rgba(95, 214, 125, 0.22)",
+    accent: "#fbffed",
+    buttonBg: "#3a8d4a",
+    buttonBorder: "rgba(176, 239, 145, 0.84)"
   },
   gem_hoard: {
     variant: "treasure_legendary",
-    surface: "rgba(52, 43, 18, 0.98)",
-    border: "#ffe89a",
-    borderWidth: 3.25,
-    glow: "#ffe07a",
-    glowRadius: 24,
-    halo: "#ffe9a0",
-    haloOpacity: 0.34,
-    accent: "#fff4bd",
-    buttonBg: "rgba(182, 128, 26, 0.99)",
-    buttonBorder: "#fff0b3",
-    pulse: true,
+    surface: "#27351d",
+    border: "#efca67",
+    borderWidth: 2.75,
+    halo: "rgba(239, 202, 103, 0.22)",
+    accent: "#fff8d8",
+    buttonBg: "#438f43",
+    buttonBorder: "#f0d273",
     featured: true
   }
 };
@@ -138,6 +109,7 @@ export function GemStoreModal({ visible, lang, onClose }: GemStoreModalProps) {
   const gems = useGameStore((state) => state.gems);
   const insets = useSafeAreaInsets();
   const [comingSoon, setComingSoon] = useState(false);
+  const openComingSoon = useCallback(() => setComingSoon(true), []);
 
   if (!visible) return null;
 
@@ -176,7 +148,7 @@ export function GemStoreModal({ visible, lang, onClose }: GemStoreModalProps) {
             bounces={false}
           >
             {GEM_PACKS.map((pack) => (
-              <GemPackCard key={pack.id} pack={pack} lang={lang} onBuy={() => setComingSoon(true)} />
+              <GemPackCard key={pack.id} pack={pack} lang={lang} onBuy={openComingSoon} />
             ))}
             <UsagePanel lang={lang} />
           </ScrollView>
@@ -188,156 +160,82 @@ export function GemStoreModal({ visible, lang, onClose }: GemStoreModalProps) {
   );
 }
 
-function GemPackCard({ pack, lang, onBuy }: { pack: GemPack; lang: Lang; onBuy: () => void }) {
+const GemPackCard = memo(function GemPackCard({ pack, lang, onBuy }: { pack: GemPack; lang: Lang; onBuy: () => void }) {
   const tier = TIERS[pack.id] ?? TIERS.gem_pouch!;
-  const scale = useRef(new Animated.Value(1)).current;
-  const shine = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // Subtle one-shot intro shine.
-    shine.setValue(0);
-    Animated.timing(shine, { toValue: 1, duration: 240, delay: 60, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
-    if (!tier.pulse) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.quad), useNativeDriver: true })
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse, shine, tier.pulse]);
-
-  const hovered = useRef(false);
-  function runShine() {
-    shine.setValue(0);
-    Animated.timing(shine, { toValue: 1, duration: 240, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
-  }
-  function animateTo(value: number, speed: number) {
-    Animated.spring(scale, { toValue: value, speed, bounciness: 6, useNativeDriver: true }).start();
-  }
-  function hoverIn() {
-    hovered.current = true;
-    animateTo(1.035, 60);
-    runShine();
-  }
-  function hoverOut() {
-    hovered.current = false;
-    animateTo(1, 40);
-  }
-  const shineX = shine.interpolate({ inputRange: [0, 1], outputRange: [-240, 240] });
-  const haloOpacity = tier.pulse
-    ? pulse.interpolate({ inputRange: [0, 1], outputRange: [tier.haloOpacity, Math.min(0.55, tier.haloOpacity + 0.22)] })
-    : tier.haloOpacity;
-  // Featured extras reuse the existing pulse — no new animation is introduced.
-  const goldGlowOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.52] });
-  const sparkleOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.95] });
   const referencePrice = `$${pack.referenceUsdPrice.toFixed(2)}`;
-
-  const artFrame = (
-    <View style={[styles.artFrame, tier.featured ? styles.artFrameFeatured : null]}>
-      {tier.featured ? (
-        <Animated.View pointerEvents="none" style={[styles.artGoldGlow, { opacity: goldGlowOpacity }]} />
-      ) : null}
-      <Animated.View
-        style={[styles.artHalo, tier.featured ? styles.artHaloFeatured : null, { backgroundColor: tier.halo, opacity: haloOpacity }]}
-      />
-      <View style={[styles.artInner, tier.featured ? styles.artInnerFeatured : null]}>
-        <GemPackArtwork variant={tier.variant} />
-      </View>
-      {tier.featured ? (
-        <>
-          <Animated.View pointerEvents="none" style={[styles.sparkle, styles.sparkleA, { opacity: sparkleOpacity }]} />
-          <Animated.View pointerEvents="none" style={[styles.sparkle, styles.sparkleB, { opacity: sparkleOpacity }]} />
-          <Animated.View pointerEvents="none" style={[styles.sparkle, styles.sparkleC, { opacity: sparkleOpacity }]} />
-        </>
-      ) : null}
-    </View>
-  );
-
-  const bonus =
-    pack.bonusPercent > 0 ? (
-      <View style={styles.bonusBadge}>
-        <Text style={styles.bonusText}>{t("gemStore.bonus", lang, { percent: pack.bonusPercent })}</Text>
-      </View>
-    ) : null;
-
-  const amount = (
-    <View style={styles.amountRow}>
-      <Text style={styles.amountText} maxFontSizeMultiplier={theme.maxFontScale}>
-        {pack.gems.toLocaleString()}
-      </Text>
-      <Text style={styles.amountLabel} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
-        {t("gemStore.gemsLabel", lang)}
-      </Text>
-    </View>
-  );
-
-  const priceBlock = (
-    <View style={styles.priceBlock}>
-      <View style={[styles.pricePill, { borderColor: tier.buttonBorder }]}>
-        <Text style={[styles.priceText, { color: tier.accent }]} maxFontSizeMultiplier={theme.maxFontScale}>{referencePrice}</Text>
-      </View>
-    </View>
-  );
-
-  // The button itself is the press target — a small, unambiguous tap area that
-  // the surrounding ScrollView won't steal as a scroll gesture. Hovering it
-  // also scales the whole card for the same premium feel.
-  const buyButton = (
-    <SpringPressable
-      accessibilityRole="button"
-      accessibilityLabel={`${t(`gemStore.pack.${pack.id}`, lang)} · ${t("gemStore.purchase", lang)}`}
-      onPress={onBuy}
-      onHoverIn={hoverIn}
-      onHoverOut={hoverOut}
-      style={[styles.buyButton, { backgroundColor: tier.buttonBg, borderColor: tier.buttonBorder }]}
-    >
-      <Text style={[styles.buyText, { color: tier.accent }]} maxFontSizeMultiplier={theme.maxFontScale}>
-        {t("gemStore.purchase", lang)}
-      </Text>
-    </SpringPressable>
-  );
-
-  const shineSweep = (
-    <Animated.View pointerEvents="none" style={[styles.shine, { transform: [{ translateX: shineX }, { rotate: "18deg" }] }]} />
-  );
 
   return (
     <View style={styles.cardOuter}>
-      <Animated.View
+      <View
         style={[
           styles.packCard,
+          tier.featured ? styles.packCardFeatured : null,
           {
             backgroundColor: tier.surface,
             borderColor: tier.border,
-            borderWidth: tier.borderWidth,
-            shadowColor: tier.glow,
-            shadowRadius: tier.glowRadius,
-            transform: [{ scale }]
+            borderWidth: tier.borderWidth
           }
         ]}
       >
-        {bonus}
-        {shineSweep}
-        <View style={styles.cardBody}>
-          {artFrame}
-          <View style={styles.cardInfo}>
-            {amount}
-            <Text style={styles.packName} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
-              {t(`gemStore.pack.${pack.id}`, lang)}
-            </Text>
-            {priceBlock}
+        <View style={styles.badgeRow}>
+          {pack.bonusPercent > 0 ? (
+            <View style={styles.bonusBadge}>
+              <Text style={styles.bonusText}>+{pack.bonusPercent}%</Text>
+            </View>
+          ) : <View />}
+          {tier.featured ? (
+            <View style={styles.bestValueBadge}>
+              <Text style={styles.bestValueText}>{t("gemStore.bestValue", lang)}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={[styles.artFrame, tier.featured ? styles.artFrameFeatured : null]} pointerEvents="none">
+          <View style={[styles.artHalo, tier.featured ? styles.artHaloFeatured : null, { backgroundColor: tier.halo }]} />
+          <View style={[styles.artInner, tier.featured ? styles.artInnerFeatured : null]}>
+            <GemPackArtwork variant={tier.variant} />
           </View>
         </View>
-        {buyButton}
-      </Animated.View>
+
+        <Text
+          style={[styles.amountText, tier.featured ? styles.amountTextFeatured : null]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.76}
+          maxFontSizeMultiplier={theme.maxFontScale}
+        >
+          {pack.gems.toLocaleString("en-US")}
+        </Text>
+        <Text
+          style={styles.packName}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.78}
+          maxFontSizeMultiplier={theme.maxFontScale}
+        >
+          {t(`gemStore.pack.${pack.id}`, lang)}
+        </Text>
+        <Text style={[styles.priceText, { color: tier.accent }]} maxFontSizeMultiplier={theme.maxFontScale}>
+          {referencePrice}
+        </Text>
+
+        <SpringPressable
+          accessibilityRole="button"
+          accessibilityLabel={`${t(`gemStore.pack.${pack.id}`, lang)} · ${t("gemStore.purchase", lang)}`}
+          onPress={onBuy}
+          pressedScale={0.96}
+          style={[styles.buyButton, { backgroundColor: tier.buttonBg, borderColor: tier.buttonBorder }]}
+        >
+          <Text style={[styles.buyText, { color: tier.accent }]} maxFontSizeMultiplier={theme.maxFontScale}>
+            {t("gemStore.purchase", lang)}
+          </Text>
+        </SpringPressable>
+      </View>
     </View>
   );
-}
+});
 
-function UsagePanel({ lang }: { lang: Lang }) {
+const UsagePanel = memo(function UsagePanel({ lang }: { lang: Lang }) {
   const items = [
     t("gemStore.usage.festivalChest", lang),
     t("gemStore.usage.monkeyCollection", lang),
@@ -356,7 +254,7 @@ function UsagePanel({ lang }: { lang: Lang }) {
       </View>
     </View>
   );
-}
+});
 
 /**
  * Rendered as an in-tree overlay (not a nested Modal) so it reliably appears
@@ -474,13 +372,13 @@ const styles = StyleSheet.create({
     gap: 4,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(126, 208, 255, 0.5)",
-    backgroundColor: "rgba(6, 19, 27, 0.92)",
+    borderColor: "rgba(117, 211, 126, 0.56)",
+    backgroundColor: "rgba(14, 43, 24, 0.94)",
     paddingHorizontal: 9,
     paddingVertical: 4
   },
   balanceGem: { width: 16, height: 16 },
-  balanceText: { color: "#c9efff", fontSize: 13, fontFamily: theme.fonts.heavy },
+  balanceText: { color: "#d9f7d5", fontSize: 13, fontFamily: theme.fonts.heavy },
   scroll: { flexGrow: 0 },
   grid: {
     flexDirection: "row",
@@ -493,124 +391,115 @@ const styles = StyleSheet.create({
   packCard: {
     position: "relative",
     width: "100%",
+    minHeight: 226,
+    alignItems: "center",
     borderRadius: 16,
-    paddingTop: 26,
-    paddingBottom: 11,
-    paddingHorizontal: 11,
+    paddingTop: 9,
+    paddingBottom: 10,
+    paddingHorizontal: 10,
     overflow: "hidden",
-    shadowOpacity: 0.5,
+    shadowColor: "#000",
+    shadowOpacity: 0.32,
+    shadowRadius: 7,
     shadowOffset: { width: 0, height: 4 },
+    elevation: 4
+  },
+  packCardFeatured: {
+    shadowColor: "#d5ad4d",
+    shadowOpacity: 0.3,
+    shadowRadius: 9,
     elevation: 6
   },
-  cardBody: {
+  badgeRow: {
+    width: "100%",
+    minHeight: 20,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8
-  },
-  cardInfo: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: "flex-start"
+    justifyContent: "space-between",
+    gap: 4
   },
   bonusBadge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    zIndex: 4,
-    borderRadius: 8,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: "#8ef0a8",
-    backgroundColor: "rgba(37, 92, 46, 0.95)",
-    paddingHorizontal: 7,
-    paddingVertical: 2.5
+    borderColor: "rgba(128, 218, 133, 0.68)",
+    backgroundColor: "rgba(37, 92, 46, 0.86)",
+    paddingHorizontal: 6,
+    paddingVertical: 2
   },
-  bonusText: { color: "#c8ffd4", fontSize: 9, lineHeight: 12, fontFamily: theme.fonts.heavy },
-  shine: {
-    position: "absolute",
-    top: -30,
-    bottom: -30,
-    width: 26,
-    backgroundColor: "rgba(255, 255, 255, 0.16)",
-    zIndex: 3
+  bonusText: { color: "#d3f8d1", fontSize: 9, lineHeight: 11, fontFamily: theme.fonts.heavy },
+  bestValueBadge: {
+    flexShrink: 1,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: "rgba(239, 202, 103, 0.76)",
+    backgroundColor: "rgba(80, 60, 18, 0.92)",
+    paddingHorizontal: 5,
+    paddingVertical: 2
+  },
+  bestValueText: {
+    color: "#f8dd8b",
+    fontSize: 8,
+    lineHeight: 10,
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
   },
   artFrame: {
-    width: 62,
-    height: 62,
+    width: 78,
+    height: 78,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    marginTop: 1
   },
   artInner: {
-    width: 60,
-    height: 60
+    width: 70,
+    height: 70
   },
   artHalo: {
     position: "absolute",
-    width: 58,
-    height: 58,
-    borderRadius: 29
+    width: 70,
+    height: 70,
+    borderRadius: 35
   },
   artFrameFeatured: {
-    width: 70,
-    height: 70
+    width: 78,
+    height: 78
   },
   artInnerFeatured: {
-    width: 70,
-    height: 70
+    width: 76,
+    height: 76
   },
   artHaloFeatured: {
-    width: 66,
-    height: 66,
-    borderRadius: 33
+    width: 78,
+    height: 78,
+    borderRadius: 39
   },
-  artGoldGlow: {
-    position: "absolute",
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: "#ffdf7a"
+  amountText: {
+    width: "100%",
+    color: "#d7f6d5",
+    fontSize: 24,
+    lineHeight: 28,
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center",
+    fontVariant: ["tabular-nums"]
   },
-  sparkle: {
-    position: "absolute",
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "#fff4c8"
-  },
-  sparkleA: { top: 4, right: 8 },
-  sparkleB: { top: 16, left: 2, width: 4, height: 4 },
-  sparkleC: { bottom: 8, right: 4, width: 4, height: 4 },
-  amountRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 4,
-    alignSelf: "stretch"
-  },
-  amountText: { flexShrink: 1, color: "#eafaff", fontSize: 21, lineHeight: 25, fontFamily: theme.fonts.heavy },
-  amountLabel: { flexShrink: 0, color: "#9fd8ef", fontSize: 10, fontFamily: theme.fonts.bold },
+  amountTextFeatured: { color: "#fff0aa" },
   packName: {
-    marginTop: 2,
-    color: "#e7d7b0",
+    width: "100%",
+    minHeight: 16,
+    marginTop: 1,
+    color: "#d8c99f",
     fontSize: 11,
-    fontFamily: theme.fonts.bold
+    lineHeight: 15,
+    fontFamily: theme.fonts.bold,
+    textAlign: "center"
   },
-  priceBlock: {
-    alignItems: "flex-start",
-    marginTop: 7
-  },
-  pricePill: {
-    borderRadius: 9,
-    borderWidth: 1,
-    backgroundColor: "rgba(12, 10, 6, 0.72)",
-    paddingHorizontal: 12,
-    paddingVertical: 3
-  },
-  priceText: { fontSize: 13, fontFamily: theme.fonts.heavy },
+  priceText: { marginTop: 4, fontSize: 13, lineHeight: 17, fontFamily: theme.fonts.heavy },
   buyButton: {
     alignSelf: "stretch",
-    minHeight: 38,
+    minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 9,
+    marginTop: 7,
     borderRadius: 11,
     borderWidth: 1.5
   },
