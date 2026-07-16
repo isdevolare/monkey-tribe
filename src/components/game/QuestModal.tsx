@@ -127,7 +127,7 @@ function QuestRow({
       {claimed ? (
         <View style={styles.doneTag}>
           <Text style={styles.doneText} maxFontSizeMultiplier={theme.maxFontScale}>
-            ✓
+            {t("quests.done", lang)}
           </Text>
         </View>
       ) : (

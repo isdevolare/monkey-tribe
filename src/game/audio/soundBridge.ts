@@ -33,6 +33,15 @@ function completedQuestCount(state: GameState) {
   return QUESTS.filter((quest) => isQuestComplete(state.questProgress, quest)).length;
 }
 
+function workerTaskBecameReady(previous: GameState, current: GameState) {
+  const previousTasks = new Map(
+    previous.workerExpeditions.map((task) => [task.id, task.storedReward])
+  );
+  return current.workerExpeditions.some(
+    (task) => task.storedReward !== undefined && previousTasks.get(task.id) === undefined
+  );
+}
+
 let started = false;
 let lastHitHapticAt = 0;
 
@@ -107,6 +116,13 @@ export function initGameSounds() {
       const unlockedProfileSkin = state.ownedProfileSkins.length > prev.ownedProfileSkins.length;
       if (state.gems < prev.gems && !unlockedProfileMonkey && !unlockedProfileSkin) {
         playSound("coins");
+      }
+
+      // A gathering expedition just became collectible. This is deliberately
+      // separate from achievements and from the later reward-claim sound.
+      if (workerTaskBecameReady(prev, state)) {
+        playSound("workerReady");
+        hapticImpact("light");
       }
     }
 

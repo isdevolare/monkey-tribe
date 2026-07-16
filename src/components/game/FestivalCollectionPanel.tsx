@@ -68,7 +68,7 @@ export function FestivalChestPanel({
         <View style={styles.chestBody}>
           <View style={styles.chestArtFrame}>
             <View style={styles.chestGlow} />
-            <AssetImage assetKey="propCrate" style={styles.chestArt} resizeMode="contain" fallback={<Text style={styles.chestFallback}>🎁</Text>} hideFallbackOnLoad />
+            <AssetImage assetKey="propCrate" style={styles.chestArt} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
           </View>
           <View style={styles.chestCopy}>
             <Text style={styles.chestName}>{t("festival.chest.name", lang)}</Text>
@@ -158,8 +158,8 @@ export function FestivalCollectionPanel({
           return (
             <SpringPressable key={skin.id} onPress={() => onSelectSkin(skin)} style={[styles.skinCard, { borderColor: RARITY_COLORS[skin.rarity] }]}>
               <View style={[styles.skinArtFrame, { borderColor: RARITY_COLORS[skin.rarity] }]}>
-                <AssetImage assetKey={appearance.portraitAsset} style={styles.skinArt} resizeMode="contain" fallback={<Text style={styles.skinFallback}>🐵</Text>} hideFallbackOnLoad />
-                {!isOwned ? <View style={styles.lockShade}><Text style={styles.lockIcon}>🔒</Text></View> : null}
+                <AssetImage assetKey={appearance.portraitAsset} style={styles.skinArt} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
+                {!isOwned ? <View style={styles.lockShade} /> : null}
               </View>
               <Text style={[styles.rarity, { color: RARITY_COLORS[skin.rarity] }]}>{t(`collection.rarity.${skin.rarity}`, lang)}</Text>
               <Text style={styles.skinName} numberOfLines={2}>{t(skin.nameKey, lang)}</Text>

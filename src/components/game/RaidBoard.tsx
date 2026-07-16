@@ -331,7 +331,7 @@ export function RaidBoard({
             ]}
           >
             <View style={[styles.resultEmblem, victory ? styles.resultEmblemWin : styles.resultEmblemLose]}>
-              <AssetImage assetKey={playerIdentityAsset} style={styles.resultIdentity} resizeMode="contain" fallback={<Text style={styles.resultEmblemText}>{victory ? "★" : "!"}</Text>} />
+              <AssetImage assetKey={playerIdentityAsset} style={styles.resultIdentity} resizeMode="contain" fallback={<Text style={styles.resultEmblemText}>{victory ? "V" : "!"}</Text>} />
             </View>
             <Text style={styles.resultTitle}>
               {victory
@@ -343,9 +343,7 @@ export function RaidBoard({
             {victory ? (
               <View style={styles.starRow}>
                 {[1, 2, 3].map((slot) => (
-                  <Text key={slot} style={[styles.star, slot <= stars ? styles.starOn : styles.starOff]}>
-                    ★
-                  </Text>
+                  <View key={slot} style={[styles.star, slot <= stars ? styles.starOn : styles.starOff]} />
                 ))}
               </View>
             ) : null}
@@ -827,17 +825,19 @@ const styles = StyleSheet.create({
     marginTop: 8
   },
   star: {
-    fontSize: 30,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderRadius: 3,
+    transform: [{ rotate: "45deg" }]
   },
   starOn: {
-    color: "#ffd95a",
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
+    borderColor: "#fff0a0",
+    backgroundColor: "#ffd95a"
   },
   starOff: {
-    color: "rgba(255, 255, 255, 0.22)"
+    borderColor: "rgba(255, 255, 255, 0.28)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)"
   },
   resultText: {
     marginTop: 8,

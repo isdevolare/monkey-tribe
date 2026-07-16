@@ -28,6 +28,7 @@ const SOUND_FILES = {
   victory: require("../../../assets/game/audio/victory.m4a"),
   defeat: require("../../../assets/game/audio/defeat.m4a"),
   achievement: require("../../../assets/game/audio/achievement_unlock.mp3"),
+  workerReady: require("../../../assets/game/audio/worker_task_ready.mp3"),
   reward: require("../../../assets/game/audio/reward_claim.mp3"),
   festivalChest: require("../../../assets/game/audio/festival_chest_open.mp3")
 } as const;
@@ -61,6 +62,7 @@ const VOLUMES: Record<SoundName, number> = {
   victory: 0.85,
   defeat: 0.8,
   achievement: 0.85,
+  workerReady: 0.58,
   reward: 0.75,
   festivalChest: 0.85
 };

@@ -43,13 +43,13 @@ Etiket, **yüklenen binary'nin gerçekte yaptığını** yansıtmalı:
 - Destek e-postası veri toplama sayılmaz (kullanıcı kendi mail uygulamasından gönderiyor)
 
 **Reklam SDK'sı eklendiğinde (AdMob varsayımı) etiketi şuna GÜNCELLE:**
-- Identifiers → Device ID → Third-Party Advertising ✓ (tracking ✓ ATT varsa)
-- Usage Data → Advertising Data / Product Interaction ✓
-- Location → Coarse Location (IP'den) → Advertising ✓
+- Identifiers → Device ID → Third-Party Advertising (tracking: yes, ATT varsa)
+- Usage Data → Advertising Data / Product Interaction (yes)
+- Location → Coarse Location (IP'den) → Advertising (yes)
 - Ek zorunlular: Info.plist'e `NSUserTrackingUsageDescription` + SKAdNetwork
   ID listesi, açılışta ATT istemi (`expo-tracking-transparency`)
 
-**IAP eklendiğinde:** Purchases → App Functionality ✓ (Apple işlediği için
+**IAP eklendiğinde:** Purchases → App Functionality (yes; Apple işlediği için
 ödeme verisi bize gelmez; "linked to you" değil)
 
 ## 4. Ekran Görüntüsü Çekim Listesi (6.9" zorunlu, 6.5" önerilir)

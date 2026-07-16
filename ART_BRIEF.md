@@ -35,13 +35,13 @@ Sonra o binanın tarifini ekle (aşağıda).
 
 ## 2) 7 bina — tek tek tarifler
 
-Öncelik sırası ⭐ ile işaretli 3 tanede (şu an eksik olanlar).
+Öncelik sırası P1-P3 olarak işaretli 3 tanede (şu an eksik olanlar).
 
 | # | Bina | Tarif (önsözden sonra ekle) |
 |---|------|------|
-| ⭐1 | **Muz Bahçesi** | "a cultivated banana plantation hut: a small thatched-roof wooden shed with woven baskets overflowing with bananas, banana palms trained in neat rows beside it, a little harvest cart" |
-| ⭐2 | **Oduncu Kampı** | "a lumberjack's camp building: a timber lodge with a slanted log roof, a sawhorse with a two-man saw, stacked cut logs, an axe embedded in a chopping stump" |
-| ⭐3 | **Taş Ocağı** | "a stone quarry structure: a stout stone-and-timber building with a mine entrance, carved rock blocks on wooden sleds, a pickaxe and pulley crane, gravel piles" |
+| P1 | **Muz Bahçesi** | "a cultivated banana plantation hut: a small thatched-roof wooden shed with woven baskets overflowing with bananas, banana palms trained in neat rows beside it, a little harvest cart" |
+| P2 | **Oduncu Kampı** | "a lumberjack's camp building: a timber lodge with a slanted log roof, a sawhorse with a two-man saw, stacked cut logs, an axe embedded in a chopping stump" |
+| P3 | **Taş Ocağı** | "a stone quarry structure: a stout stone-and-timber building with a mine entrance, carved rock blocks on wooden sleds, a pickaxe and pulley crane, gravel piles" |
 | 4 | **Klan Salonu** (Sv1/2/3) | "the grand clan hall: a large ceremonial thatched hut on a raised wooden platform, blue tribal banners, carved monkey totem over the door, torches" — 3 seviye: Sv1 sade, Sv2 daha büyük + ikinci kat, Sv3 gösterişli altın süslemeler |
 | 5 | **İşçi Barınağı** | "a workers' shelter: a cozy round thatched hut with hammocks, a cooking pot, laundry line, small windows glowing warm" |
 | 6 | **Eğitim Yuvası** | "a training nest / barracks: a fenced training ground with wooden dummies, a weapon rack (spears, shields), a banner pole, a covered drill hut" |
@@ -90,7 +90,7 @@ assets/game/generated/camps/
   camp_player_level3.png         ← Klan Salonu Sv3 (mevcut, değiştir)
 ```
 
-⭐ ile işaretli 3 YENİ dosya en önemlisi — onlar gelince köy anında "bina" gibi olur.
+P1-P3 olarak işaretli 3 YENİ dosya en önemlisi — onlar gelince köy anında "bina" gibi olur.
 
 ---
 

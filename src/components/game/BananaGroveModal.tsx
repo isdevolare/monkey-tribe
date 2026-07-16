@@ -93,7 +93,7 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
           <NineSliceFrame preset="card" cornerSize={28} style={StyleSheet.absoluteFill} />
           <View style={styles.header}>
             <View style={styles.groveArtWrap}>
-              <AssetImage assetKey="terrainBananaTree" style={styles.groveArt} fallback={<Text style={styles.fallback}>🍌</Text>} hideFallbackOnLoad />
+              <AssetImage assetKey="terrainBananaTree" style={styles.groveArt} fallback={<View />} hideFallbackOnLoad />
             </View>
             <View style={styles.headerCopy}>
               <Text style={styles.eyebrow}>{t("bananaGrove.eyebrow", lang)}</Text>
@@ -114,7 +114,7 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
             <View style={[styles.storageCard, full && styles.storageFull, ready && !full && styles.storageReady]}>
               <View style={styles.storageHeading}>
                 <View style={styles.storageTitleRow}>
-                  <AssetImage assetKey="resourceBanana" style={styles.bananaIcon} fallback={<Text>🍌</Text>} />
+                  <AssetImage assetKey="resourceBanana" style={styles.bananaIcon} fallback={<View />} />
                   <Text style={styles.storageTitle}>{t("bananaGrove.storage", lang)}</Text>
                 </View>
                 <Text style={styles.storageAmount}>{Math.floor(state.bananaGroveStorage)} / {capacity}</Text>
@@ -143,7 +143,7 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
                   const status = expeditionStatus(worker, now);
                   return (
                     <View key={worker.id} style={[styles.workerRow, worker.storedReward !== undefined && styles.workerReady]}>
-                      <AssetImage assetKey={BANANA_WORKER_ASSETS[worker.workerClass as BananaWorkerClass]} style={styles.workerArt} fallback={<Text>🐵</Text>} hideFallbackOnLoad />
+                      <AssetImage assetKey={BANANA_WORKER_ASSETS[worker.workerClass as BananaWorkerClass]} style={styles.workerArt} fallback={<View />} hideFallbackOnLoad />
                       <View style={styles.workerCopy}>
                         <Text style={styles.workerName}>{t(`worker.${worker.workerClass}.name`, lang)}</Text>
                         <Text style={styles.workerMeta}>
@@ -152,7 +152,7 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
                         <Text style={styles.expected}>{t("workerLodge.expected", lang, { amount: worker.expectedReward })}</Text>
                       </View>
                       {worker.storedReward !== undefined ? (
-                        <Text style={styles.readyMark}>✓</Text>
+                        <View style={styles.readyMark} />
                       ) : (
                         <Text style={styles.timer}>{formatTime(worker.returnsAt - now)}</Text>
                       )}
@@ -206,8 +206,8 @@ function HarvestPopup({ summary, lang, onClose }: { summary: BananaGroveCollecti
   return <View style={styles.popupScrim}>
     <Animated.View style={[styles.popup, { transform: [{ scale }] }]}>
       <NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} />
-      <Text style={styles.popupKicker}>✓ {t("bananaGrove.harvestComplete", lang)}</Text>
-      <AssetImage assetKey={BANANA_WORKER_ASSETS[hero as BananaWorkerClass]} style={styles.popupWorker} fallback={<Text style={styles.fallback}>🐵</Text>} hideFallbackOnLoad />
+      <Text style={styles.popupKicker}>{t("bananaGrove.harvestComplete", lang)}</Text>
+      <AssetImage assetKey={BANANA_WORKER_ASSETS[hero as BananaWorkerClass]} style={styles.popupWorker} fallback={<View />} hideFallbackOnLoad />
       <View style={styles.rewardRow}><AssetImage assetKey="resourceBanana" style={styles.rewardIcon} fallback={<View />} /><Text style={styles.rewardAmount}>+{Math.floor(summary.collected)}</Text></View>
       <Text style={styles.contractText}>{t("bananaGrove.contractEnded", lang)}</Text>
       {summary.remainingStorage > 0 ? <Text style={styles.remainder}>{t("bananaGrove.storageRemainder", lang, { amount: summary.remainingStorage })}</Text> : null}
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   shell: { flex: 1, width: "100%", maxWidth: 430, alignSelf: "center", overflow: "hidden", borderRadius: 24, borderWidth: 2, borderColor: "#d6a74f", backgroundColor: "#142313" },
   header: { minHeight: 92, flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: "rgba(232,194,105,0.28)", backgroundColor: "rgba(31,55,25,0.96)" },
   groveArtWrap: { width: 70, height: 70, borderRadius: 18, overflow: "hidden", borderWidth: 2, borderColor: "#e4bd62", backgroundColor: "#294221" },
-  groveArt: { width: 72, height: 72 }, fallback: { fontSize: 38 }, headerCopy: { flex: 1 },
+  groveArt: { width: 72, height: 72 }, headerCopy: { flex: 1 },
   eyebrow: { color: "#8ed96a", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
   title: { color: "#fff0b6", fontSize: 24, fontWeight: "900", fontFamily: theme.fonts.heavy },
   level: { color: "#d8c88f", fontSize: 12, fontWeight: "800" },
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 8 }, statusDot: { color: "#85d962", fontSize: 11 }, statusText: { color: "#d9cca1", fontSize: 12, fontWeight: "800" },
   collectButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 11, borderRadius: 14, borderWidth: 1, borderColor: "#c8e69a", backgroundColor: "#519a3d" }, collectIcon: { width: 27, height: 27 }, collectText: { color: "white", fontSize: 16, fontWeight: "900", fontFamily: theme.fonts.heavy },
   sectionTitle: { color: "#4b2d13", fontSize: 17, fontWeight: "900", fontFamily: theme.fonts.heavy }, workerPanel: { overflow: "hidden", borderRadius: 16, borderWidth: 1, borderColor: "rgba(105,68,26,0.38)", backgroundColor: "rgba(8,17,8,0.75)" },
-  empty: { padding: 24, color: "#8d9a81", textAlign: "center" }, workerRow: { minHeight: 80, flexDirection: "row", alignItems: "center", gap: 8, padding: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(226,185,99,0.2)" }, workerReady: { backgroundColor: "rgba(65,116,43,0.28)" }, workerArt: { width: 64, height: 64 }, workerCopy: { flex: 1, minWidth: 0 }, workerName: { color: "#fff0bd", fontSize: 13, fontWeight: "900" }, workerMeta: { color: "#9bdc7b", fontSize: 11, fontWeight: "800" }, expected: { color: "#baaE87", fontSize: 10 }, timer: { color: "#9be77b", fontSize: 14, fontWeight: "900", fontVariant: ["tabular-nums"] }, readyMark: { color: "#8fe76c", fontSize: 24, fontWeight: "900", marginRight: 8 },
+  empty: { padding: 24, color: "#8d9a81", textAlign: "center" }, workerRow: { minHeight: 80, flexDirection: "row", alignItems: "center", gap: 8, padding: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(226,185,99,0.2)" }, workerReady: { backgroundColor: "rgba(65,116,43,0.28)" }, workerArt: { width: 64, height: 64 }, workerCopy: { flex: 1, minWidth: 0 }, workerName: { color: "#fff0bd", fontSize: 13, fontWeight: "900" }, workerMeta: { color: "#9bdc7b", fontSize: 11, fontWeight: "800" }, expected: { color: "#baaE87", fontSize: 10 }, timer: { color: "#9be77b", fontSize: 14, fontWeight: "900", fontVariant: ["tabular-nums"] }, readyMark: { width: 12, height: 12, marginRight: 10, borderRadius: 6, borderWidth: 2, borderColor: "#d9f6bd", backgroundColor: "#69b84d" },
   upgradeCard: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: "rgba(231,190,91,0.48)", backgroundColor: "rgba(65,42,16,0.76)" }, upgradeCopy: { flex: 1, minWidth: 0 }, upgradeTitle: { color: "#ffe6a2", fontSize: 14, fontWeight: "900" }, upgradeMeta: { color: "#cdbd91", fontSize: 11 }, costRow: { flexDirection: "row", gap: 8, marginTop: 5 }, costChip: { flexDirection: "row", alignItems: "center", gap: 2 }, costIcon: { width: 17, height: 17 }, costText: { color: "#f4dd9b", fontSize: 11, fontWeight: "900" }, upgradeButton: { minWidth: 98, minHeight: 42, alignItems: "center", justifyContent: "center", paddingHorizontal: 9, borderRadius: 11, backgroundColor: "#b56b25" }, upgradeButtonText: { color: "white", fontSize: 10, textAlign: "center", fontWeight: "900" }, disabled: { opacity: 0.38 },
   popupScrim: { ...StyleSheet.absoluteFillObject, zIndex: 30, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "rgba(2,7,3,0.84)" }, popup: { width: "100%", maxWidth: 340, alignItems: "center", overflow: "hidden", padding: 20, borderRadius: 22, borderWidth: 2, borderColor: "#e0bb5c", backgroundColor: "#20331c" }, popupKicker: { color: "#8fe76c", fontSize: 14, textAlign: "center", fontWeight: "900" }, popupWorker: { width: 145, height: 145 }, rewardRow: { flexDirection: "row", alignItems: "center", gap: 7 }, rewardIcon: { width: 44, height: 44 }, rewardAmount: { color: "#a0ed78", fontSize: 34, fontWeight: "900" }, contractText: { color: "#c9bc91", fontSize: 12, textAlign: "center", marginTop: 5 }, remainder: { color: "#f0c86d", fontSize: 11, textAlign: "center", marginTop: 5 }, popupButton: { minWidth: 170, minHeight: 47, alignItems: "center", justifyContent: "center", marginTop: 14, borderRadius: 14, borderWidth: 1, borderColor: "#b9e18e", backgroundColor: "#579f3e" }, popupButtonText: { color: "white", fontSize: 15, fontWeight: "900" }
 });

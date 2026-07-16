@@ -250,7 +250,7 @@ export function CosmeticChestOpeningModal({ presentation, lang, onClose, onEquip
                 assetKey="propCrate"
                 style={styles.chestArt}
                 resizeMode="contain"
-                fallback={<Text style={styles.chestFallback}>🎁</Text>}
+                fallback={<View />}
                 hideFallbackOnLoad
               />
             </View>
@@ -313,7 +313,7 @@ export function CosmeticChestOpeningModal({ presentation, lang, onClose, onEquip
                 assetKey={presentation.rewardAsset}
                 style={styles.rewardArt}
                 resizeMode="contain"
-                fallback={<Text style={styles.rewardFallback}>🐵</Text>}
+                fallback={<View />}
                 hideFallbackOnLoad
               />
             </View>
@@ -412,7 +412,6 @@ const styles = StyleSheet.create({
   chestFrame: { width: 220, height: 195, alignItems: "center", justifyContent: "center", overflow: "hidden", borderRadius: 30, borderWidth: 3, backgroundColor: "#21150e", shadowOpacity: 0.88, shadowRadius: 26, elevation: 20 },
   lightLeak: { position: "absolute", width: 170, height: 38, top: 64, borderRadius: 24, opacity: 0.55, shadowColor: "#fff", shadowOpacity: 0.9, shadowRadius: 20 },
   chestArt: { width: 188, height: 170 },
-  chestFallback: { fontSize: 100 },
   chestTitle: { marginTop: 12, color: theme.colors.paper, fontSize: 20, fontFamily: theme.fonts.heavy },
   openFlash: { position: "absolute", width: 175, height: 175, borderRadius: 88, zIndex: 6 },
   risingFragment: { position: "absolute", zIndex: 8 },
@@ -422,7 +421,6 @@ const styles = StyleSheet.create({
   rewardArtFrame: { width: 226, height: 220, alignItems: "center", justifyContent: "center", overflow: "hidden", marginTop: 8, borderRadius: 18, borderWidth: 2, backgroundColor: "rgba(5, 10, 7, 0.78)" },
   rewardHalo: { position: "absolute", width: 180, height: 180, borderRadius: 90, opacity: 0.18 },
   rewardArt: { width: "100%", height: "100%" },
-  rewardFallback: { fontSize: 72 },
   rewardName: { maxWidth: "96%", marginTop: 8, color: theme.colors.paper, fontSize: 19, lineHeight: 23, fontFamily: theme.fonts.heavy, textAlign: "center" },
   parentName: { marginTop: 1, color: "#c7b991", fontSize: 9.5, fontFamily: theme.fonts.bold },
   fragmentAmount: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 8, borderRadius: 12, borderWidth: 1, backgroundColor: "rgba(61, 34, 71, 0.72)", paddingHorizontal: 12, paddingVertical: 5 },

@@ -60,7 +60,7 @@ export function VillageShortcutDock({
     <View style={[styles.dock, { bottom: Math.max(bottomInset, 6) + 6 }]}>
       <View style={styles.helper}>
         <View style={styles.helperPortrait}>
-          <AssetImage assetKey={helperAsset} style={styles.helperPortraitArt} resizeMode="contain" fallback={<Text style={styles.helperFallback}>🐵</Text>} hideFallbackOnLoad />
+          <AssetImage assetKey={helperAsset} style={styles.helperPortraitArt} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
         </View>
         <View style={styles.helperCopy}>
           <Text style={styles.helperTitle} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
@@ -150,7 +150,6 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   helperPortraitArt: { position: "absolute", top: -3, width: 47, height: 60 },
-  helperFallback: { fontSize: 25 },
   helperCopy: { flex: 1, minWidth: 0 },
   helperTitle: { color: "#ffe6a2", fontSize: 10.5, lineHeight: 12, fontFamily: theme.fonts.heavy },
   helperText: { marginTop: 2, color: "#bfb596", fontSize: 8, lineHeight: 9.5, fontFamily: theme.fonts.bold },

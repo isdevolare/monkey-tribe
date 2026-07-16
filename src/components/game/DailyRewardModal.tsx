@@ -134,7 +134,7 @@ function DayCell({
       {status === "done" ? (
         <View style={styles.doneOverlay} pointerEvents="none">
           <Text style={styles.doneCheck} maxFontSizeMultiplier={theme.maxFontScale}>
-            ✓
+            {t("daily.done", lang)}
           </Text>
         </View>
       ) : null}
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   },
   doneCheck: {
     color: "#c6ee89",
-    fontSize: 26,
+    fontSize: 10,
     fontFamily: theme.fonts.heavy
   },
   action: {

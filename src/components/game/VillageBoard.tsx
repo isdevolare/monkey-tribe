@@ -455,7 +455,7 @@ const DecorativeWorker = memo(function DecorativeWorker({ route, sceneWidth }: {
       { translateX: travel.interpolate({ inputRange: [0, 1], outputRange: [0, sceneWidth * route.dx / 100] }) },
       { translateY: Animated.add(bob, travel.interpolate({ inputRange: [0, 1], outputRange: [0, sceneWidth * route.dy / 100] })) }
     ] }]}>
-      <AssetImage assetKey={route.asset} style={styles.full} fallback={<Text style={styles.decorativeWorkerFallback}>🐒</Text>} hideFallbackOnLoad />
+      <AssetImage assetKey={route.asset} style={styles.full} fallback={<View />} hideFallbackOnLoad />
       {route.cargo ? <View style={styles.workerCargo}><AssetImage assetKey={route.cargo} style={styles.full} fallback={<View />} /></View> : null}
     </Animated.View>
   );
@@ -1019,7 +1019,6 @@ const styles = StyleSheet.create({
   dustMote: { width: 3, height: 3, borderRadius: 2, backgroundColor: "rgba(233, 204, 139, 0.42)" },
   decorativeWorkers: { ...StyleSheet.absoluteFillObject, zIndex: 190 },
   decorativeWorker: { position: "absolute" },
-  decorativeWorkerFallback: { fontSize: 18 },
   workerCargo: { position: "absolute", right: "-8%", bottom: "4%", width: "34%", height: "34%" },
   firefly: {
     position: "absolute",

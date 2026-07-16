@@ -199,7 +199,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                 assetKey="bananaWorkerYoung"
                 style={styles.headerPortraitArt}
                 resizeMode="contain"
-                fallback={<Text style={styles.workerFallback}>🐵</Text>}
+                fallback={<View />}
                 hideFallbackOnLoad
               />
             </View>
@@ -271,7 +271,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                         assetKey={BANANA_WORKER_ASSETS[workerClass]}
                         style={styles.workerPortrait}
                         resizeMode="contain"
-                        fallback={<Text style={styles.workerFallback}>🐵</Text>}
+                        fallback={<View />}
                         hideFallbackOnLoad
                       />
                       <View
@@ -322,7 +322,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                 return (
                   <View key={workerClass} style={[styles.workerCard, { borderColor: WORKER_ACCENTS[workerClass] }]}>
                     <View style={styles.workerPortraitWrap}>
-                      <AssetImage assetKey={LUMBER_WORKER_ASSETS[workerClass]} style={styles.workerPortrait} resizeMode="contain" fallback={<Text style={styles.workerFallback}>🐵</Text>} hideFallbackOnLoad />
+                      <AssetImage assetKey={LUMBER_WORKER_ASSETS[workerClass]} style={styles.workerPortrait} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
                       <View style={[styles.classBadge, { backgroundColor: WORKER_ACCENTS[workerClass] }]}>
                         <Text style={styles.classBadgeText}>{["I", "II", "III"][index]}</Text>
                       </View>
@@ -352,7 +352,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                 return (
                   <View key={workerClass} style={[styles.workerCard, { borderColor: WORKER_ACCENTS[workerClass] }]}>
                     <View style={styles.workerPortraitWrap}>
-                      <AssetImage assetKey={STONE_WORKER_ASSETS[workerClass]} style={styles.workerPortrait} resizeMode="contain" fallback={<Text style={styles.workerFallback}>🐵</Text>} hideFallbackOnLoad />
+                      <AssetImage assetKey={STONE_WORKER_ASSETS[workerClass]} style={styles.workerPortrait} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
                       <View style={[styles.classBadge, { backgroundColor: WORKER_ACCENTS[workerClass] }]}>
                         <Text style={styles.classBadgeText}>{["I", "II", "III"][index]}</Text>
                       </View>
@@ -414,7 +414,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                             assetKey={WORKER_ASSETS[group.workerClass]}
                             style={styles.smallPortrait}
                             resizeMode="contain"
-                            fallback={<Text>🐵</Text>}
+                            fallback={<View />}
                             hideFallbackOnLoad
                           />
                           <Text style={styles.rowTitle}>
@@ -721,11 +721,13 @@ function WorkerMotion({
         assetKey={WORKER_ASSETS[workerClass]}
         style={styles.motionPortraitArt}
         resizeMode="contain"
-        fallback={<Text>🐵</Text>}
+        fallback={<View />}
         hideFallbackOnLoad
       />
       {status === "returning" || status === "completed" ? (
-        <Text style={styles.backpackBadge}>🎒</Text>
+        <View pointerEvents="none" style={styles.backpackBadge}>
+          <AssetImage assetKey="propBananaBasket" style={styles.basketArt} fallback={<View />} hideFallbackOnLoad />
+        </View>
       ) : null}
     </Animated.View>
   );
@@ -752,16 +754,18 @@ function CollectionPopup({
     <View style={styles.resultScrim}>
       <Animated.View style={[styles.resultCard, { opacity, transform: [{ scale }] }]}>
         <NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} />
-        <Text style={styles.resultKicker}>✓ {t("workerLodge.complete", lang)}</Text>
+        <Text style={styles.resultKicker}>{t("workerLodge.complete", lang)}</Text>
         <View style={styles.resultWorker}>
           <AssetImage
             assetKey={WORKER_ASSETS[summary.workerClass]}
             style={styles.resultWorkerArt}
             resizeMode="contain"
-            fallback={<Text style={styles.workerFallback}>🐵</Text>}
+            fallback={<View />}
             hideFallbackOnLoad
           />
-          <Text style={styles.resultBackpack}>🎒</Text>
+          <View pointerEvents="none" style={styles.resultBackpack}>
+            <AssetImage assetKey="propBananaBasket" style={styles.basketArt} fallback={<View />} hideFallbackOnLoad />
+          </View>
         </View>
         <Text style={styles.resultTitle}>
           {t("workerLodge.returned", lang, { name: workerName(summary.workerClass, lang) })}
@@ -893,7 +897,6 @@ const styles = StyleSheet.create({
   },
   workerPortraitWrap: { width: 68, height: 64, alignItems: "center", justifyContent: "center" },
   workerPortrait: { width: 67, height: 67 },
-  workerFallback: { fontSize: 36 },
   classBadge: {
     position: "absolute",
     right: 0,
@@ -954,7 +957,8 @@ const styles = StyleSheet.create({
   },
   motionPortrait: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
   motionPortraitArt: { width: 49, height: 49 },
-  backpackBadge: { position: "absolute", right: -3, bottom: -2, fontSize: 15 },
+  backpackBadge: { position: "absolute", right: -4, bottom: -3, width: 24, height: 24 },
+  basketArt: { width: "100%", height: "100%" },
   flexCopy: { flex: 1, minWidth: 0 },
   rowTitle: { color: "#fff0bd", fontSize: 13, fontWeight: "900", fontFamily: theme.fonts.heavy },
   rowMeta: { color: "#b4bea0", fontSize: 10.5, fontFamily: theme.fonts.bold },
@@ -1065,7 +1069,7 @@ const styles = StyleSheet.create({
   resultKicker: { color: "#8fe76c", fontSize: 13, fontWeight: "900", letterSpacing: 0.6 },
   resultWorker: { width: 120, height: 112, alignItems: "center", justifyContent: "center" },
   resultWorkerArt: { width: 122, height: 122 },
-  resultBackpack: { position: "absolute", right: 3, bottom: 4, fontSize: 31 },
+  resultBackpack: { position: "absolute", right: 3, bottom: 4, width: 52, height: 52 },
   resultTitle: { color: "#fff0bd", fontSize: 19, textAlign: "center", fontWeight: "900", fontFamily: theme.fonts.heavy },
   outcomeText: { color: "#c9bc91", fontSize: 12, textAlign: "center", marginTop: 3 },
   resultReward: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12 },

@@ -9,6 +9,10 @@ All sound effects are CC0 (public domain) from [Kenney](https://kenney.nl), conv
 
 License: Creative Commons Zero (CC0). No attribution required; credited with thanks.
 
+Original Monkey Tribe sound design:
+
+- `worker_task_ready.mp3` — synthesized wooden tap, cloth movement, bamboo click, and light sparkle
+
 Village ambience:
 
 - `ambient_forest_cc0.mp3` — “Forest Ambience” by TinyWorlds, OpenGameArt.org

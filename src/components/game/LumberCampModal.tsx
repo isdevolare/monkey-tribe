@@ -35,7 +35,6 @@ const WORKPLACE = {
     resultPrefix: "lumberResult",
     art: "buildingLumberCampReference" as const,
     resourceAsset: "resourceWood" as const,
-    fallback: "🪵",
     capacity: lumberCampCapacity,
     isWorker: isLumberWorkerClass
   },
@@ -47,7 +46,6 @@ const WORKPLACE = {
     resultPrefix: "stoneResult",
     art: "resourceStonePile" as const,
     resourceAsset: "resourceStone" as const,
-    fallback: "🪨",
     capacity: stoneQuarryCapacity,
     isWorker: isStoneWorkerClass
   }
@@ -114,7 +112,7 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
         <View style={[styles.shell, { marginTop: Math.max(insets.top, 10), marginBottom: Math.max(insets.bottom, 10) }]}>
           <NineSliceFrame preset="card" cornerSize={28} style={StyleSheet.absoluteFill} />
           <View style={styles.header}>
-            <View style={styles.campArt}><AssetImage assetKey={config.art} style={styles.full} fallback={<Text style={styles.fallback}>{config.fallback}</Text>} /></View>
+            <View style={styles.campArt}><AssetImage assetKey={config.art} style={styles.full} fallback={<View />} /></View>
             <View style={styles.headerCopy}>
               <Text style={styles.eyebrow}>{t(`${config.prefix}.eyebrow`, lang)}</Text>
               <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>{buildingName(config.building, lang)}</Text>
@@ -125,7 +123,7 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
 
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} bounces={false}>
             <View style={[styles.storageCard, full && styles.storageFull, (completed || storage > 0) && !full && styles.storageReady]}>
-              <View style={styles.rowBetween}><View style={styles.row}><AssetImage assetKey={config.resourceAsset} style={styles.resourceIcon} fallback={<Text>{config.fallback}</Text>} /><Text style={styles.storageTitle}>{t(`${config.prefix}.storage`, lang)}</Text></View><Text style={styles.storageAmount}>{Math.floor(storage)} / {capacity}</Text></View>
+              <View style={styles.rowBetween}><View style={styles.row}><AssetImage assetKey={config.resourceAsset} style={styles.resourceIcon} fallback={<View />} /><Text style={styles.storageTitle}>{t(`${config.prefix}.storage`, lang)}</Text></View><Text style={styles.storageAmount}>{Math.floor(storage)} / {capacity}</Text></View>
               <View style={styles.track}><View style={[styles.fill, { width: `${Math.min(100, storage / capacity * 100)}%` }]} /></View>
               <Text style={styles.bonus}>{t(`${config.prefix}.levelBonus`, lang, { amount: level * 3 })}</Text>
               {(completed || (!mission && storage > 0)) ? <SpringPressable accessibilityRole="button" onPress={collect} style={styles.collectButton}><AssetImage assetKey={config.resourceAsset} style={styles.buttonIcon} fallback={<View />} /><Text style={styles.buttonText}>{t("workerLodge.collect", lang)}</Text></SpringPressable> : null}
@@ -135,13 +133,13 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
               <View style={styles.panel}>
                 <Text style={styles.sectionTitle}>{completed ? t(`${config.prefix}.ready`, lang) : t(`${config.prefix}.activeMission`, lang)}</Text>
                 <View style={styles.workerRow}>
-                  <AssetImage assetKey={WORKER_ASSETS[mission.workerClass]} style={styles.workerArt} fallback={<Text>🐵</Text>} hideFallbackOnLoad />
+                  <AssetImage assetKey={WORKER_ASSETS[mission.workerClass]} style={styles.workerArt} fallback={<View />} hideFallbackOnLoad />
                   <View style={styles.flex}>
                     <Text style={styles.workerName}>{t(`worker.${mission.workerClass}.name`, lang)}</Text>
                     <Text style={styles.missionName}>{t(`${config.missionPrefix}.${mission.missionTier ?? "safe"}.name`, lang)} · {mission.missionMultiplier ?? 2}x</Text>
                     <Text style={styles.meta}>{t(`worker.status.${expeditionStatus(mission, now)}`, lang)}</Text>
                   </View>
-                  <Text style={styles.timer}>{completed ? "✓" : clock(mission.returnsAt - now)}</Text>
+                  <Text style={styles.timer}>{completed ? t(`${config.prefix}.ready`, lang) : clock(mission.returnsAt - now)}</Text>
                 </View>
                 <View style={styles.detailGrid}>
                   <Detail label={t(`${config.prefix}.potential`, lang)} value={`${mission.expectedReward} ${t(`res.${config.resource}`, lang)}`} />
@@ -156,7 +154,7 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
                 ) : (
                   <>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.workerPicker}>
-                      {readyWorkers.map((worker) => <SpringPressable key={worker.id} onPress={() => setWorkerId(worker.id)} style={[styles.workerChip, selectedWorker?.id === worker.id && styles.selected]}><AssetImage assetKey={WORKER_ASSETS[worker.workerClass]} style={styles.chipArt} fallback={<Text>🐵</Text>} /><Text style={styles.chipText} numberOfLines={2}>{t(`worker.${worker.workerClass}.name`, lang)}</Text></SpringPressable>)}
+                      {readyWorkers.map((worker) => <SpringPressable key={worker.id} onPress={() => setWorkerId(worker.id)} style={[styles.workerChip, selectedWorker?.id === worker.id && styles.selected]}><AssetImage assetKey={WORKER_ASSETS[worker.workerClass]} style={styles.chipArt} fallback={<View />} /><Text style={styles.chipText} numberOfLines={2}>{t(`worker.${worker.workerClass}.name`, lang)}</Text></SpringPressable>)}
                     </ScrollView>
                     <Text style={styles.sectionTitle}>{t(`${config.prefix}.chooseMission`, lang)}</Text>
                     <View style={styles.missionCards}>{LUMBER_MISSION_ORDER.map((tier) => { const option = LUMBER_MISSIONS[tier]; return <SpringPressable key={tier} onPress={() => setMissionTier(tier)} style={[styles.missionCard, missionTier === tier && styles.selected]}><Text style={styles.multiplier}>{option.multiplier}x</Text><Text style={styles.cardTitle} numberOfLines={1} adjustsFontSizeToFit>{t(`${config.missionPrefix}.${tier}.name`, lang)}</Text><Text style={styles.cardMeta}>{clock(option.durationMs)}</Text><Text style={styles.risk}>{t(`${config.missionPrefix}.${tier}.risk`, lang)}</Text></SpringPressable>; })}</View>
@@ -191,12 +189,12 @@ function ResultPopup({ summary, lang, onClose, kind }: { summary: LumberCampColl
   useEffect(() => { Animated.spring(scale, { toValue: 1, friction: 7, tension: 90, useNativeDriver: true }).start(); }, [scale]);
   const outcome = summary.outcome;
   const title = outcome === "success" ? t(`${config.resultPrefix}.success`, lang) : outcome === "half" ? t(`${config.resultPrefix}.partial`, lang) : outcome === "empty" ? t(`${config.resultPrefix}.failed`, lang) : t(`${config.resultPrefix}.storage`, lang);
-  return <View style={styles.popupScrim}><Animated.View style={[styles.popup, { transform: [{ scale }] }]}><NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} /><Text style={styles.popupTitle}>{title}</Text>{summary.workerClass ? <AssetImage assetKey={WORKER_ASSETS[summary.workerClass as WorkerClass]} style={styles.popupWorker} fallback={<Text>🐵</Text>} hideFallbackOnLoad /> : null}<Text style={styles.outcomeText}>{outcome ? t(`${config.resultPrefix}.${outcome}.body`, lang) : t(`${config.resultPrefix}.storage.body`, lang)}</Text><View style={styles.rewardRow}><AssetImage assetKey={config.resourceAsset} style={styles.rewardIcon} fallback={<Text>{config.fallback}</Text>} /><Text style={styles.rewardAmount}>+{Math.floor(summary.collected)}</Text></View>{summary.reward > summary.storedReward ? <Text style={styles.clamped}>{t(`${config.resultPrefix}.clamped`, lang, { amount: summary.storedReward })}</Text> : null}{summary.remainingStorage > 0 ? <Text style={styles.clamped}>{t(`${config.prefix}.storageRemainder`, lang, { amount: summary.remainingStorage })}</Text> : null}<SpringPressable accessibilityRole="button" onPress={onClose} style={styles.collectButton}><Text style={styles.buttonText}>{outcome === "empty" ? t("settings.close", lang) : t("workerLodge.continue", lang)}</Text></SpringPressable></Animated.View></View>;
+  return <View style={styles.popupScrim}><Animated.View style={[styles.popup, { transform: [{ scale }] }]}><NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} /><Text style={styles.popupTitle}>{title}</Text>{summary.workerClass ? <AssetImage assetKey={WORKER_ASSETS[summary.workerClass as WorkerClass]} style={styles.popupWorker} fallback={<View />} hideFallbackOnLoad /> : null}<Text style={styles.outcomeText}>{outcome ? t(`${config.resultPrefix}.${outcome}.body`, lang) : t(`${config.resultPrefix}.storage.body`, lang)}</Text><View style={styles.rewardRow}><AssetImage assetKey={config.resourceAsset} style={styles.rewardIcon} fallback={<View />} /><Text style={styles.rewardAmount}>+{Math.floor(summary.collected)}</Text></View>{summary.reward > summary.storedReward ? <Text style={styles.clamped}>{t(`${config.resultPrefix}.clamped`, lang, { amount: summary.storedReward })}</Text> : null}{summary.remainingStorage > 0 ? <Text style={styles.clamped}>{t(`${config.prefix}.storageRemainder`, lang, { amount: summary.remainingStorage })}</Text> : null}<SpringPressable accessibilityRole="button" onPress={onClose} style={styles.collectButton}><Text style={styles.buttonText}>{outcome === "empty" ? t("settings.close", lang) : t("workerLodge.continue", lang)}</Text></SpringPressable></Animated.View></View>;
 }
 
 const styles = StyleSheet.create({
   scrim: { flex: 1, justifyContent: "center", paddingHorizontal: 10, backgroundColor: "rgba(3,8,5,0.84)" }, shell: { flex: 1, width: "100%", maxWidth: 430, alignSelf: "center", overflow: "hidden", borderRadius: 24, borderWidth: 2, borderColor: "#d6a74f", backgroundColor: "#172217" }, full: { width: "100%", height: "100%" },
-  header: { minHeight: 92, flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: "rgba(232,194,105,0.28)", backgroundColor: "rgba(48,42,24,0.96)" }, campArt: { width: 70, height: 70, borderRadius: 18, overflow: "hidden", borderWidth: 2, borderColor: "#d5a85e", backgroundColor: "#392c1d" }, fallback: { fontSize: 36 }, headerCopy: { flex: 1, minWidth: 0 }, eyebrow: { color: "#d6a85a", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 }, title: { color: "#fff0bd", fontSize: 24, fontWeight: "900", fontFamily: theme.fonts.heavy }, level: { color: "#d8c88f", fontSize: 12, fontWeight: "800" }, close: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,12,5,0.6)" }, closeText: { color: "#fff2bd", fontSize: 29, lineHeight: 31, fontWeight: "800" },
+  header: { minHeight: 92, flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: "rgba(232,194,105,0.28)", backgroundColor: "rgba(48,42,24,0.96)" }, campArt: { width: 70, height: 70, borderRadius: 18, overflow: "hidden", borderWidth: 2, borderColor: "#d5a85e", backgroundColor: "#392c1d" }, headerCopy: { flex: 1, minWidth: 0 }, eyebrow: { color: "#d6a85a", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 }, title: { color: "#fff0bd", fontSize: 24, fontWeight: "900", fontFamily: theme.fonts.heavy }, level: { color: "#d8c88f", fontSize: 12, fontWeight: "800" }, close: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,12,5,0.6)" }, closeText: { color: "#fff2bd", fontSize: 29, lineHeight: 31, fontWeight: "800" },
   content: { padding: 13, paddingBottom: 26, gap: 12 }, storageCard: { padding: 14, borderRadius: 18, borderWidth: 1.5, borderColor: "rgba(223,184,91,0.45)", backgroundColor: "rgba(25,20,11,0.92)" }, storageReady: { borderColor: "#85cb58" }, storageFull: { borderColor: "#f1c34e", backgroundColor: "rgba(72,52,12,0.65)" }, rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, row: { flexDirection: "row", alignItems: "center", gap: 7 }, resourceIcon: { width: 31, height: 31 }, storageTitle: { color: "#fff0bd", fontSize: 17, fontWeight: "900" }, storageAmount: { color: "#efc466", fontSize: 20, fontWeight: "900", fontVariant: ["tabular-nums"] }, track: { height: 12, overflow: "hidden", marginTop: 10, borderRadius: 6, backgroundColor: "#292318" }, fill: { height: "100%", borderRadius: 6, backgroundColor: "#b87532" }, bonus: { color: "#d6c594", fontSize: 11, fontWeight: "800", marginTop: 8 },
   panel: { padding: 13, gap: 10, borderRadius: 17, borderWidth: 1, borderColor: "rgba(211,167,83,0.4)", backgroundColor: "rgba(10,19,10,0.84)" }, sectionTitle: { color: "#ffeab0", fontSize: 16, fontWeight: "900", fontFamily: theme.fonts.heavy }, workerRow: { minHeight: 90, flexDirection: "row", alignItems: "center", gap: 8 }, workerArt: { width: 86, height: 86 }, flex: { flex: 1, minWidth: 0 }, workerName: { color: "#fff0bd", fontSize: 15, fontWeight: "900" }, missionName: { color: "#d5a85a", fontSize: 12, fontWeight: "900" }, meta: { color: "#91ce72", fontSize: 11 }, timer: { color: "#9fe779", fontSize: 17, fontWeight: "900", fontVariant: ["tabular-nums"] }, detailGrid: { flexDirection: "row", gap: 8 }, detail: { flex: 1, padding: 9, borderRadius: 11, backgroundColor: "rgba(71,52,25,0.55)" }, detailLabel: { color: "#b9ad88", fontSize: 9 }, detailValue: { color: "#ffe3a0", fontSize: 12, fontWeight: "900" },
   emptyWrap: { alignItems: "center", gap: 10, padding: 10 }, empty: { color: "#aab49a", textAlign: "center" }, workerPicker: { gap: 8 }, workerChip: { width: 104, minHeight: 116, alignItems: "center", padding: 7, borderRadius: 14, borderWidth: 1.5, borderColor: "rgba(215,171,89,0.35)", backgroundColor: "#172a16" }, selected: { borderColor: "#e6b85d", backgroundColor: "#3d3420" }, chipArt: { width: 78, height: 78 }, chipText: { color: "#fff0bd", fontSize: 10, textAlign: "center", fontWeight: "900" }, missionCards: { flexDirection: "row", gap: 7 }, missionCard: { flex: 1, minWidth: 0, alignItems: "center", padding: 8, borderRadius: 13, borderWidth: 1.5, borderColor: "rgba(215,171,89,0.35)", backgroundColor: "#172a16" }, multiplier: { color: "#f0bf60", fontSize: 22, fontWeight: "900" }, cardTitle: { color: "#fff0bd", fontSize: 11, fontWeight: "900" }, cardMeta: { color: "#b9ad88", fontSize: 10 }, risk: { color: "#d29f69", fontSize: 9, textAlign: "center" }, potential: { color: "#f4d98e", textAlign: "center", fontSize: 13, fontWeight: "900" },

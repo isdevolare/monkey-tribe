@@ -77,7 +77,7 @@ export function ShopHubModal({
             label={t("festival.chest.name", lang)}
             description={t("shopHub.festivalDesc", lang)}
             accent="#ff9ade"
-            icon={<AssetImage assetKey="propCrate" style={styles.entryArt} resizeMode="contain" fallback={<Text style={styles.entryGlyph}>🎁</Text>} hideFallbackOnLoad />}
+            icon={<AssetImage assetKey="propCrate" style={styles.entryArt} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />}
             onPress={onOpenFestivalChest}
           />
           <HubEntry
@@ -284,7 +284,6 @@ const styles = StyleSheet.create({
     opacity: 0.18
   },
   entryArt: { width: 32, height: 32 },
-  entryGlyph: { fontSize: 24, lineHeight: 30 },
   monkeyDuo: {
     width: 46,
     height: 46
