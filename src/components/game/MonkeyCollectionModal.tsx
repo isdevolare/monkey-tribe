@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -30,7 +30,7 @@ import { festivalFragmentRequirement } from "../../game/config/festivalCollectio
 import { useGameStore } from "../../game/state/gameStore";
 import type { Lang } from "../../game/types/game";
 import { theme } from "../../theme/theme";
-import { AssetImage } from "./AssetImage";
+import { AssetImage, preloadGameAssets } from "./AssetImage";
 import {
   CosmeticDetailModal,
   CosmeticUnlockFeedback,
@@ -94,11 +94,11 @@ export const RARITY_THEME: Record<
 };
 
 const RARITY_ICONS: Record<CosmeticRarity, string> = {
-  common: "◆",
-  rare: "✦",
-  epic: "✧",
-  legendary: "★",
-  mythic: "✺"
+  common: "C",
+  rare: "R",
+  epic: "E",
+  legendary: "L",
+  mythic: "M"
 };
 
 const GOLD_PARTICLES = [
@@ -111,6 +111,10 @@ const GOLD_PARTICLES = [
   { x: 48, y: -14 },
   { x: 0, y: -52 }
 ] as const;
+
+const PROFILE_MONKEY_ART = Array.from(new Set(
+  PROFILE_MONKEYS.flatMap((monkey) => [monkey.portraitAsset, monkey.villageAsset])
+));
 
 export function MonkeyCollectionModal({
   visible,
@@ -151,6 +155,10 @@ export function MonkeyCollectionModal({
   const completion = Math.round((festivalOwnedSkinCount / FESTIVAL_PROFILE_SKINS.length) * 100);
 
   useEffect(() => {
+    if (visible) preloadGameAssets(PROFILE_MONKEY_ART);
+  }, [visible]);
+
+  useEffect(() => {
     if (!celebratingId) {
       return;
     }
@@ -169,11 +177,11 @@ export function MonkeyCollectionModal({
     onClose();
   }
 
-  function selectMonkey(monkey: ProfileMonkey) {
+  const selectMonkey = useCallback((monkey: ProfileMonkey) => {
     const wasNew = newMonkeys.includes(monkey.id);
     setDetailSelection({ kind: "monkey", item: monkey, wasNew });
     if (wasNew) markMonkeySeen(monkey.id);
-  }
+  }, [markMonkeySeen, newMonkeys]);
 
   function confirmUnlock() {
     if (!pending) {
@@ -190,18 +198,18 @@ export function MonkeyCollectionModal({
     }
   }
 
-  function selectSkin(skin: ProfileSkin) {
+  const selectSkin = useCallback((skin: ProfileSkin) => {
     const wasNew = newSkins.includes(skin.id);
     setDetailSelection({ kind: "skin", item: skin, wasNew });
     if (wasNew) markSkinSeen(skin.id);
-  }
+  }, [markSkinSeen, newSkins]);
 
-  const filteredMonkeys = PROFILE_MONKEYS.filter((item) =>
+  const filteredMonkeys = useMemo(() => PROFILE_MONKEYS.filter((item) =>
     matchesCosmeticFilter(unlocked.includes(item.id), item.rarity, ownershipFilter, rarityFilter)
-  );
-  const selectedMonkeySkins = skinsForMonkey(selectedSkinMonkey).filter((item) =>
+  ), [ownershipFilter, rarityFilter, unlocked]);
+  const selectedMonkeySkins = useMemo(() => skinsForMonkey(selectedSkinMonkey).filter((item) =>
     matchesCosmeticFilter(ownedSkins.includes(item.id), item.rarity, ownershipFilter, rarityFilter)
-  );
+  ), [ownedSkins, ownershipFilter, rarityFilter, selectedSkinMonkey]);
 
   const detailOwned = detailSelection?.kind === "monkey"
     ? unlocked.includes(detailSelection.item.id)
@@ -214,16 +222,20 @@ export function MonkeyCollectionModal({
       ? equippedSkin === detailSelection.item.id
       : false;
 
-  function requestDetailUnlock() {
+  const requestDetailUnlock = useCallback(() => {
     if (!detailSelection) return;
     if (detailSelection.kind === "monkey") setPending(detailSelection.item);
-  }
+  }, [detailSelection]);
 
-  function equipDetail() {
+  const equipDetail = useCallback(() => {
     if (!detailSelection) return;
     if (detailSelection.kind === "monkey") equip(detailSelection.item.id);
     else equipSkin(detailSelection.item.id);
-  }
+  }, [detailSelection, equip, equipSkin]);
+
+  const closeDetail = useCallback(() => setDetailSelection(null), []);
+  const dismissUnlockFeedback = useCallback(() => setUnlockFeedback(null), []);
+  const selectSkinMonkey = useCallback((id: ProfileMonkey["id"]) => setSelectedSkinMonkey(id), []);
 
   function equipUnlockedNow() {
     if (!unlockFeedback) return;
@@ -258,7 +270,7 @@ export function MonkeyCollectionModal({
             <View style={styles.header}>
               <View style={styles.headerTopRow}>
                 <Text style={styles.title} maxFontSizeMultiplier={theme.maxFontScale}>
-                  {shopMode ? `🐵 ${t("collection.tab.monkeys", lang)}` : t("collection.title", lang)}
+                  {shopMode ? t("collection.tab.monkeys", lang) : t("collection.title", lang)}
                 </Text>
                 <SpringPressable
                   accessibilityRole="button"
@@ -353,7 +365,7 @@ export function MonkeyCollectionModal({
                       isNew={newMonkeys.includes(monkey.id)}
                       unlockCelebrating={celebratingId === monkey.id}
                       showPrice={shopMode}
-                      onPress={() => selectMonkey(monkey)}
+                      onSelect={selectMonkey}
                     />
                   )) : null}
                 {activeTab === "monkeys" && filteredMonkeys.length === 0 ? <Text style={styles.emptyText}>{t("collection.filter.empty", lang)}</Text> : null}
@@ -362,19 +374,18 @@ export function MonkeyCollectionModal({
                     <Text style={styles.sectionTitle}>{t("collection.skinsTitle", lang)}</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.monkeyPicker}>
                       {PROFILE_MONKEYS.map((monkey) => (
-                        <SpringPressable
+                        <MonkeyPickerItem
                           key={monkey.id}
-                          onPress={() => setSelectedSkinMonkey(monkey.id)}
-                          style={[styles.monkeyPickerItem, selectedSkinMonkey === monkey.id ? styles.monkeyPickerItemActive : null]}
-                        >
-                          <AssetImage assetKey={monkey.portraitAsset} style={styles.monkeyPickerArt} fallback={<Text>🐵</Text>} hideFallbackOnLoad />
-                          <Text numberOfLines={1} style={styles.monkeyPickerText}>{t(monkey.nameKey, lang)}</Text>
-                        </SpringPressable>
+                          monkey={monkey}
+                          lang={lang}
+                          selected={selectedSkinMonkey === monkey.id}
+                          onSelect={selectSkinMonkey}
+                        />
                       ))}
                     </ScrollView>
                     <View style={styles.skinGrid}>
                       {selectedMonkeySkins.slice(0, visibleSkinCount).map((skin) => (
-                        <SkinCard key={skin.id} skin={skin} lang={lang} compact={compact} owned={ownedSkins.includes(skin.id)} equipped={equippedSkin === skin.id} monkeyOwned={unlocked.includes(skin.monkeyId)} fragmentCount={festivalFragments[skin.id] ?? 0} isNew={newSkins.includes(skin.id)} celebrating={celebratingId === skin.id} onPress={() => selectSkin(skin)} />
+                        <SkinCard key={skin.id} skin={skin} lang={lang} compact={compact} owned={ownedSkins.includes(skin.id)} equipped={equippedSkin === skin.id} monkeyOwned={unlocked.includes(skin.monkeyId)} fragmentCount={festivalFragments[skin.id] ?? 0} isNew={newSkins.includes(skin.id)} celebrating={celebratingId === skin.id} onSelect={selectSkin} />
                       ))}
                     </View>
                     {selectedMonkeySkins.length === 0 ? <Text style={styles.emptyText}>{t("collection.filter.empty", lang)}</Text> : null}
@@ -399,7 +410,7 @@ export function MonkeyCollectionModal({
             unlockedMonkeyIds={unlocked}
             festivalFragments={festivalFragments}
             purchaseEnabled={shopMode}
-            onClose={() => setDetailSelection(null)}
+            onClose={closeDetail}
             onUnlock={requestDetailUnlock}
             onEquip={equipDetail}
             onOpenSkin={selectSkin}
@@ -407,110 +418,98 @@ export function MonkeyCollectionModal({
           <CosmeticUnlockFeedback
             selection={unlockFeedback}
             lang={lang}
-            onDismiss={() => setUnlockFeedback(null)}
+            onDismiss={dismissUnlockFeedback}
             onEquipNow={equipUnlockedNow}
           />
-        </View>
-      </Modal>
-
-      <Modal
-        visible={pending != null}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setPending(null)}
-      >
-        <View style={styles.dialogScrim}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setPending(null)} />
-          <View style={styles.dialog}>
-            <Text style={styles.dialogIcon}>🐵</Text>
-            <Text style={styles.dialogTitle} maxFontSizeMultiplier={theme.maxFontScale}>
-              {pending ? t(pending.nameKey, lang) : ""}
-            </Text>
-            <Text style={styles.dialogMessage} maxFontSizeMultiplier={theme.maxFontScale}>
-              {t("collection.unlockPrompt", lang, { price: pending?.price ?? 0 })}
-            </Text>
-            <View style={styles.confirmPrice}>
-              <AssetImage assetKey="resourceJungleGem" style={styles.confirmGem} fallback={<View />} hideFallbackOnLoad />
-              <Text style={styles.confirmPriceText}>{pending?.price ?? 0} Gem</Text>
-            </View>
-            <View style={styles.dialogActions}>
-              <SpringPressable
-                accessibilityRole="button"
-                onPress={() => setPending(null)}
-                style={[styles.dialogButton, styles.cancelButton]}
-              >
-                <Text style={styles.cancelText} maxFontSizeMultiplier={theme.maxFontScale}>
-                  {t("collection.cancel", lang)}
+          {pending ? (
+            <View style={styles.dialogScrim}>
+              <Pressable style={StyleSheet.absoluteFill} onPress={() => setPending(null)} />
+              <View style={styles.dialog}>
+                <AssetImage
+                  assetKey={pending.portraitAsset}
+                  style={styles.dialogIcon}
+                  resizeMode="contain"
+                  fallback={<View />}
+                  hideFallbackOnLoad
+                />
+                <Text style={styles.dialogTitle} maxFontSizeMultiplier={theme.maxFontScale}>
+                  {t(pending.nameKey, lang)}
                 </Text>
-              </SpringPressable>
-              <SpringPressable
-                accessibilityRole="button"
-                onPress={confirmUnlock}
-                style={[styles.dialogButton, styles.unlockButton]}
-              >
-                <Text style={styles.unlockText} maxFontSizeMultiplier={theme.maxFontScale}>
-                  {t("collection.unlock", lang)}
+                <Text style={styles.dialogMessage} maxFontSizeMultiplier={theme.maxFontScale}>
+                  {t("collection.unlockPrompt", lang, { price: pending.price })}
                 </Text>
-              </SpringPressable>
+                <View style={styles.confirmPrice}>
+                  <AssetImage assetKey="resourceJungleGem" style={styles.confirmGem} fallback={<View />} hideFallbackOnLoad />
+                  <Text style={styles.confirmPriceText}>{pending.price} Gem</Text>
+                </View>
+                <View style={styles.dialogActions}>
+                  <SpringPressable accessibilityRole="button" onPress={() => setPending(null)} style={[styles.dialogButton, styles.cancelButton]}>
+                    <Text style={styles.cancelText} maxFontSizeMultiplier={theme.maxFontScale}>{t("collection.cancel", lang)}</Text>
+                  </SpringPressable>
+                  <SpringPressable accessibilityRole="button" onPress={confirmUnlock} style={[styles.dialogButton, styles.unlockButton]}>
+                    <Text style={styles.unlockText} maxFontSizeMultiplier={theme.maxFontScale}>{t("collection.unlock", lang)}</Text>
+                  </SpringPressable>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showInsufficient}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setShowInsufficient(false)}
-      >
-        <View style={styles.dialogScrim}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowInsufficient(false)} />
-          <View style={styles.notice}>
-            <AssetImage
-              assetKey="resourceJungleGem"
-              style={styles.noticeGem}
-              fallback={<View style={styles.gemFallback} />}
-              hideFallbackOnLoad
-            />
-            <Text style={styles.dialogMessage} maxFontSizeMultiplier={theme.maxFontScale}>
-              {t("collection.notEnoughGems", lang)}
-            </Text>
-            <View style={styles.noticeActions}>
-              <SpringPressable
-                accessibilityRole="button"
-                onPress={() => setShowInsufficient(false)}
-                style={[styles.dialogButton, styles.cancelButton]}
-              >
-                <Text style={styles.cancelText} maxFontSizeMultiplier={theme.maxFontScale}>
-                  {t("collection.ok", lang)}
-                </Text>
-              </SpringPressable>
-              {onOpenGemStore ? (
-                <SpringPressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t("gemStore.open", lang)}
-                  onPress={() => {
-                    setShowInsufficient(false);
-                    onOpenGemStore();
-                  }}
-                  style={[styles.dialogButton, styles.unlockButton]}
-                >
-                  <Text style={styles.unlockText} maxFontSizeMultiplier={theme.maxFontScale}>
-                    {t("gemStore.open", lang)}
-                  </Text>
-                </SpringPressable>
-              ) : null}
+          ) : null}
+          {showInsufficient ? (
+            <View style={styles.dialogScrim}>
+              <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowInsufficient(false)} />
+              <View style={styles.notice}>
+                <AssetImage assetKey="resourceJungleGem" style={styles.noticeGem} fallback={<View style={styles.gemFallback} />} hideFallbackOnLoad />
+                <Text style={styles.dialogMessage} maxFontSizeMultiplier={theme.maxFontScale}>{t("collection.notEnoughGems", lang)}</Text>
+                <View style={styles.noticeActions}>
+                  <SpringPressable accessibilityRole="button" onPress={() => setShowInsufficient(false)} style={[styles.dialogButton, styles.cancelButton]}>
+                    <Text style={styles.cancelText} maxFontSizeMultiplier={theme.maxFontScale}>{t("collection.ok", lang)}</Text>
+                  </SpringPressable>
+                  {onOpenGemStore ? (
+                    <SpringPressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t("gemStore.open", lang)}
+                      onPress={() => {
+                        setShowInsufficient(false);
+                        onOpenGemStore();
+                      }}
+                      style={[styles.dialogButton, styles.unlockButton]}
+                    >
+                      <Text style={styles.unlockText} maxFontSizeMultiplier={theme.maxFontScale}>{t("gemStore.open", lang)}</Text>
+                    </SpringPressable>
+                  ) : null}
+                </View>
+              </View>
             </View>
-          </View>
+          ) : null}
         </View>
       </Modal>
     </>
   );
 }
 
-function CollectionCard({
+const MonkeyPickerItem = memo(function MonkeyPickerItem({
+  monkey,
+  lang,
+  selected,
+  onSelect
+}: {
+  monkey: ProfileMonkey;
+  lang: Lang;
+  selected: boolean;
+  onSelect: (id: ProfileMonkey["id"]) => void;
+}) {
+  const handlePress = useCallback(() => onSelect(monkey.id), [monkey.id, onSelect]);
+  return (
+    <SpringPressable
+      onPress={handlePress}
+      style={[styles.monkeyPickerItem, selected ? styles.monkeyPickerItemActive : null]}
+    >
+      <AssetImage assetKey={monkey.portraitAsset} style={styles.monkeyPickerArt} fallback={<View />} hideFallbackOnLoad />
+      <Text numberOfLines={1} style={styles.monkeyPickerText}>{t(monkey.nameKey, lang)}</Text>
+    </SpringPressable>
+  );
+});
+
+const CollectionCard = memo(function CollectionCard({
   monkey,
   lang,
   compact,
@@ -519,7 +518,7 @@ function CollectionCard({
   isNew,
   unlockCelebrating,
   showPrice,
-  onPress
+  onSelect
 }: {
   monkey: ProfileMonkey;
   lang: Lang;
@@ -530,7 +529,7 @@ function CollectionCard({
   unlockCelebrating: boolean;
   /** Shop mode shows Gem prices; Profile mode points at the Shop instead. */
   showPrice: boolean;
-  onPress: () => void;
+  onSelect: (monkey: ProfileMonkey) => void;
 }) {
   const rarity = RARITY_THEME[monkey.rarity];
   const unlockAnim = useRef(new Animated.Value(1)).current;
@@ -591,13 +590,14 @@ function CollectionCard({
     inputRange: [0, 0.5, 1],
     outputRange: ["0deg", "88deg", "0deg"]
   });
+  const handlePress = useCallback(() => onSelect(monkey), [monkey, onSelect]);
 
   return (
     <SpringPressable
       accessibilityRole="button"
       accessibilityLabel={`${t(monkey.nameKey, lang)}. ${status}`}
       accessibilityState={{ selected: equipped }}
-      onPress={onPress}
+      onPress={handlePress}
       pressedScale={0.975}
       style={[
         styles.monkeyCard,
@@ -625,7 +625,7 @@ function CollectionCard({
           assetKey={monkey.portraitAsset}
           style={[styles.monkeyArt, compact ? styles.monkeyArtCompact : null]}
           resizeMode="contain"
-          fallback={<Text style={styles.artFallback}>🐵</Text>}
+          fallback={<View />}
           hideFallbackOnLoad
         />
         {!owned ? <View style={styles.lockShade} pointerEvents="none" /> : null}
@@ -703,7 +703,7 @@ function CollectionCard({
       ) : (
         <View style={[styles.equipButton, styles.equippedButton]}>
           <Text style={styles.equipText} maxFontSizeMultiplier={theme.maxFontScale}>
-            ✓
+            {t("collection.equipped", lang)}
           </Text>
         </View>
       )}
@@ -713,7 +713,7 @@ function CollectionCard({
       ) : null}
     </SpringPressable>
   );
-}
+});
 
 function UnlockCelebration({ progress, lang }: { progress: Animated.Value; lang: Lang }) {
   const particleOpacity = progress.interpolate({
@@ -738,36 +738,6 @@ function UnlockCelebration({ progress, lang }: { progress: Animated.Value; lang:
           }
         ]}
       />
-      <Animated.Text
-        style={[
-          styles.breakingLock,
-          {
-            opacity: progress.interpolate({
-              inputRange: [0, 0.3, 0.58],
-              outputRange: [1, 1, 0],
-              extrapolate: "clamp"
-            }),
-            transform: [
-              {
-                scale: progress.interpolate({
-                  inputRange: [0, 0.42, 0.7],
-                  outputRange: [0.8, 1.3, 0.6],
-                  extrapolate: "clamp"
-                })
-              },
-              {
-                rotate: progress.interpolate({
-                  inputRange: [0, 0.58],
-                  outputRange: ["0deg", "-12deg"],
-                  extrapolate: "clamp"
-                })
-              }
-            ]
-          }
-        ]}
-      >
-        🔓
-      </Animated.Text>
       {GOLD_PARTICLES.map((particle, index) => (
         <Animated.View
           key={`${particle.x}-${particle.y}`}
@@ -907,7 +877,7 @@ function AnimatedRarityFx({
   );
 }
 
-function SkinCard({
+const SkinCard = memo(function SkinCard({
   skin,
   lang,
   compact,
@@ -917,7 +887,7 @@ function SkinCard({
   fragmentCount,
   isNew,
   celebrating,
-  onPress
+  onSelect
 }: {
   skin: ProfileSkin;
   lang: Lang;
@@ -928,7 +898,7 @@ function SkinCard({
   fragmentCount: number;
   isNew: boolean;
   celebrating: boolean;
-  onPress: () => void;
+  onSelect: (skin: ProfileSkin) => void;
 }) {
   const rarity = RARITY_THEME[skin.rarity];
   const presentationGlow = skin.presentationGlow ?? rarity.glow;
@@ -948,11 +918,12 @@ function SkinCard({
     return () => animation.stop();
   }, [celebrating, unlockAnim]);
   const cardFlip = unlockAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: ["0deg", "88deg", "0deg"] });
+  const handlePress = useCallback(() => onSelect(skin), [onSelect, skin]);
   return (
     <SpringPressable
       accessibilityRole="button"
       accessibilityState={{ selected: equipped, disabled: !monkeyOwned }}
-      onPress={onPress}
+      onPress={handlePress}
       pressedScale={0.975}
       style={[styles.skinCard, compact ? styles.skinCardCompact : null, { borderColor: rarity.border, backgroundColor: rarity.surface, shadowColor: presentationGlow }, equipped ? styles.monkeyCardEquipped : null]}
     >
@@ -961,7 +932,7 @@ function SkinCard({
       <AnimatedRarityFx rarity={skin.rarity} color={presentationGlow} />
       <Animated.View style={[styles.skinArtFrame, { borderColor: rarity.border, transform: [{ rotateY: cardFlip }] }]}>
         <View style={[styles.artHalo, { backgroundColor: presentationGlow }]} />
-        <AssetImage assetKey={appearance.portraitAsset} style={styles.skinArt} resizeMode="contain" fallback={<Text style={styles.artFallback}>🐵</Text>} hideFallbackOnLoad />
+        <AssetImage assetKey={appearance.portraitAsset} style={styles.skinArt} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
         {!owned ? <View style={styles.lockShade} pointerEvents="none" /> : null}
       </Animated.View>
       <View style={[styles.rarityBadge, { backgroundColor: rarity.badge }]}>
@@ -985,12 +956,12 @@ function SkinCard({
       ) : !equipped ? (
         <View style={styles.equipButton}><Text style={styles.equipText}>{t("collection.equip", lang)}</Text></View>
       ) : (
-        <View style={[styles.equipButton, styles.equippedButton]}><Text style={styles.equipText}>✓</Text></View>
+        <View style={[styles.equipButton, styles.equippedButton]}><Text style={styles.equipText}>{t("collection.equipped", lang)}</Text></View>
       )}
       {celebrating ? <UnlockCelebration progress={unlockAnim} lang={lang} /> : null}
     </SpringPressable>
   );
-}
+});
 
 function FilterControls({
   lang,
@@ -1552,9 +1523,6 @@ const styles = StyleSheet.create({
   monkeyArtCompact: {
     height: 160
   },
-  artFallback: {
-    fontSize: 56
-  },
   lockShade: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(5, 9, 6, 0.42)"
@@ -1693,15 +1661,6 @@ const styles = StyleSheet.create({
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 }
   },
-  breakingLock: {
-    position: "absolute",
-    top: 118,
-    left: "50%",
-    width: 72,
-    marginLeft: -36,
-    fontSize: 44,
-    textAlign: "center"
-  },
   goldParticle: {
     position: "absolute",
     top: 151,
@@ -1742,7 +1701,9 @@ const styles = StyleSheet.create({
     textTransform: "uppercase"
   },
   dialogScrim: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 200,
+    elevation: 200,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(3, 8, 5, 0.82)",
@@ -1779,7 +1740,8 @@ const styles = StyleSheet.create({
     elevation: 18
   },
   dialogIcon: {
-    fontSize: 42
+    width: 74,
+    height: 74
   },
   noticeGem: {
     width: 54,

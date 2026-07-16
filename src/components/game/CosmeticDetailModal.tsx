@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import {
   Animated,
   Easing,
@@ -61,14 +61,14 @@ const RARITY: Record<CosmeticRarity, { border: string; glow: string; badge: stri
 };
 
 const RARITY_ICON: Record<CosmeticRarity, string> = {
-  common: "◆",
-  rare: "✦",
-  epic: "✧",
-  legendary: "★",
-  mythic: "✺"
+  common: "C",
+  rare: "R",
+  epic: "E",
+  legendary: "L",
+  mythic: "M"
 };
 
-export function CosmeticDetailModal({
+export const CosmeticDetailModal = memo(function CosmeticDetailModal({
   selection,
   lang,
   gems,
@@ -133,7 +133,7 @@ export function CosmeticDetailModal({
 
             <View style={[styles.heroFrame, { borderColor: colors.border, shadowColor: presentationGlow }]}>
               <View style={[styles.heroHalo, { backgroundColor: presentationGlow }]} />
-              <AssetImage assetKey={appearance.portraitAsset} resizeMode="contain" style={styles.heroArt} fallback={<Text style={styles.heroFallback}>🐵</Text>} hideFallbackOnLoad />
+              <AssetImage assetKey={appearance.portraitAsset} resizeMode="contain" style={styles.heroArt} fallback={<View />} hideFallbackOnLoad />
             </View>
 
             <Text style={styles.title} maxFontSizeMultiplier={theme.maxFontScale}>{title}</Text>
@@ -186,11 +186,11 @@ export function CosmeticDetailModal({
                 const entryOwned = ownedSkinIds.includes(entry.id);
                 return (
                   <SpringPressable key={entry.id} onPress={() => onOpenSkin(entry)} style={[styles.skinThumb, skin?.id === entry.id ? styles.skinThumbSelected : null]}>
-                    <AssetImage assetKey={entryAppearance.portraitAsset} style={styles.skinThumbArt} resizeMode="contain" fallback={<Text>🐵</Text>} hideFallbackOnLoad />
+                    <AssetImage assetKey={entryAppearance.portraitAsset} style={styles.skinThumbArt} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
                     <Text style={styles.skinThumbName} numberOfLines={1}>{t(entry.nameKey, lang)}</Text>
                     <Text style={[styles.skinThumbState, entryOwned ? styles.skinThumbOwned : null]}>
                       {entryOwned
-                        ? "✓"
+                        ? t("collection.owned", lang)
                         : entry.catalogStatus === "festival"
                           ? t("festival.progress", lang, { current: festivalFragments[entry.id] ?? 0, required: festivalFragmentRequirement(entry.id) })
                           : t("collection.locked", lang)}
@@ -226,7 +226,7 @@ export function CosmeticDetailModal({
         </View>
       </View>
   );
-}
+});
 
 const PREVIEW_PARTICLES = [
   { left: "28%", top: 34 },
@@ -271,7 +271,7 @@ function PremiumPreviewArt({ asset, floating, particleColor }: {
         />
       )) : null}
       <Animated.View style={[styles.previewMonkeyWrap, floating ? { transform: [{ translateY: drift.interpolate({ inputRange: [0, 1], outputRange: [3, -4] }) }] } : null]}>
-        <AssetImage assetKey={asset} resizeMode="contain" style={styles.previewMonkey} fallback={<Text style={styles.previewEmoji}>🐵</Text>} hideFallbackOnLoad />
+        <AssetImage assetKey={asset} resizeMode="contain" style={styles.previewMonkey} fallback={<View />} hideFallbackOnLoad />
       </Animated.View>
     </>
   );
@@ -312,8 +312,7 @@ export function CosmeticUnlockFeedback({ selection, lang, onDismiss, onEquipNow 
         <Animated.View style={[styles.unlockCard, { opacity: progress.interpolate({ inputRange: [0, 0.12, 1], outputRange: [0, 1, 1] }), transform: [{ scale: progress.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0.76, 1.06, 1] }) }] }]}>
           <Animated.View style={[styles.unlockGlow, { opacity: progress.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0, 0.85, 0.28] }), transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1.38] }) }] }]} />
           {PARTICLES.map(([x, y], index) => <Animated.View key={`${x}-${y}`} style={[styles.particle, { opacity: progress.interpolate({ inputRange: [0, 0.16, 0.76, 1], outputRange: [0, 1, 0.8, 0] }), transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, x] }) }, { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, y] }) }, { scale: index % 2 ? 0.75 : 1 }] }]} />)}
-          <Animated.Text style={[styles.breakLock, { opacity: progress.interpolate({ inputRange: [0, 0.38, 0.58], outputRange: [1, 1, 0] }), transform: [{ rotate: progress.interpolate({ inputRange: [0, 0.55], outputRange: ["0deg", "-18deg"] }) }] }]}>🔓</Animated.Text>
-          <AssetImage assetKey={appearance.portraitAsset} style={styles.unlockArt} resizeMode="contain" fallback={<Text style={styles.heroFallback}>🐵</Text>} hideFallbackOnLoad />
+          <AssetImage assetKey={appearance.portraitAsset} style={styles.unlockArt} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
           <Text style={styles.unlockedText}>{t("collection.unlocked", lang)}</Text>
           <Text style={styles.unlockName}>{title}</Text>
           <SpringPressable onPress={onEquipNow} style={styles.equipNowButton}><Text style={styles.actionText}>{t("collection.detail.equipNow", lang)}</Text></SpringPressable>
@@ -340,7 +339,6 @@ const styles = StyleSheet.create({
   heroFrame: { width: "100%", height: 235, marginTop: 7, alignItems: "center", justifyContent: "center", overflow: "hidden", borderRadius: 17, borderWidth: 2, backgroundColor: "rgba(7,12,7,0.82)", shadowOpacity: 0.36, shadowRadius: 14 },
   heroHalo: { position: "absolute", width: 190, height: 190, borderRadius: 95, opacity: 0.18 },
   heroArt: { width: "94%", height: 224 },
-  heroFallback: { fontSize: 68 },
   title: { marginTop: 12, color: theme.colors.paper, fontSize: 23, lineHeight: 28, fontFamily: theme.fonts.heavy, textAlign: "center" },
   parentName: { marginTop: 2, color: "#c1b28b", fontSize: 10, fontFamily: theme.fonts.bold },
   description: { maxWidth: 330, marginTop: 7, color: "#ddd1b5", fontSize: 12, lineHeight: 17, fontFamily: theme.fonts.bold, textAlign: "center" },
@@ -360,7 +358,6 @@ const styles = StyleSheet.create({
   previewMonkeyWrap: { position: "absolute", width: 128, height: 112, bottom: 1, alignSelf: "center", left: "50%", marginLeft: -64 },
   previewMonkey: { width: "100%", height: "100%" },
   previewParticle: { position: "absolute", width: 5, height: 5, borderRadius: 3, shadowOpacity: 0.8, shadowRadius: 5 },
-  previewEmoji: { fontSize: 50 },
   sectionHeadingRow: { width: "100%", flexDirection: "row", alignItems: "center" }, skinCount: { marginLeft: "auto", marginTop: 13, color: "#aebc92", fontSize: 10, fontFamily: theme.fonts.heavy },
   skinStrip: { gap: 8, paddingTop: 7, paddingBottom: 3 },
   skinThumb: { width: 86, minHeight: 103, alignItems: "center", borderRadius: 11, borderWidth: 1, borderColor: "rgba(229,190,101,0.28)", backgroundColor: "rgba(37,31,20,0.9)", padding: 5 },
@@ -377,7 +374,7 @@ const styles = StyleSheet.create({
   unlockCard: { width: 275, minHeight: 355, alignItems: "center", justifyContent: "center", overflow: "visible", borderRadius: 24, borderWidth: 2, borderColor: "#f2c95c", backgroundColor: "#192114", padding: 18, shadowColor: "#ffd66c", shadowOpacity: 0.65, shadowRadius: 25, elevation: 20 },
   unlockGlow: { position: "absolute", width: 230, height: 230, borderRadius: 115, backgroundColor: "#ffd76a" },
   particle: { position: "absolute", top: 150, width: 8, height: 8, borderRadius: 4, backgroundColor: "#ffd966" },
-  breakLock: { position: "absolute", top: 18, right: 28, fontSize: 34 }, unlockArt: { width: 210, height: 205 },
+  unlockArt: { width: 210, height: 205 },
   unlockedText: { color: "#ffe27a", fontSize: 24, lineHeight: 29, fontFamily: theme.fonts.heavy, textTransform: "uppercase" },
   unlockName: { marginTop: 3, color: theme.colors.paper, fontSize: 14, fontFamily: theme.fonts.heavy, textAlign: "center" },
   equipNowButton: { width: "100%", minHeight: 42, alignItems: "center", justifyContent: "center", marginTop: 14, borderRadius: 12, borderWidth: 1.5, borderColor: "#8ed264", backgroundColor: "#2f6e22" },

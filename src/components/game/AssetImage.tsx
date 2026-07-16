@@ -2,6 +2,20 @@ import { type ReactNode, useState } from "react";
 import { Image, StyleSheet, View, type ImageStyle, type StyleProp, type ViewStyle } from "react-native";
 import { getGameAsset, type GameAssetKey, VISUAL_MODE } from "../../game/assets/gameAssets";
 
+const preloadedAssetUris = new Set<string>();
+
+/** Warm React Native's image cache for bundled artwork before a modal needs it. */
+export function preloadGameAssets(assetKeys: readonly GameAssetKey[]) {
+  for (const assetKey of assetKeys) {
+    const source = getGameAsset(assetKey).source;
+    if (!source) continue;
+    const uri = Image.resolveAssetSource(source)?.uri;
+    if (!uri || preloadedAssetUris.has(uri)) continue;
+    preloadedAssetUris.add(uri);
+    void Image.prefetch(uri).catch(() => preloadedAssetUris.delete(uri));
+  }
+}
+
 type AssetImageProps = {
   assetKey: GameAssetKey;
   style?: StyleProp<ViewStyle>;

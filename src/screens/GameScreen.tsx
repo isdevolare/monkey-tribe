@@ -454,15 +454,15 @@ export function GameScreen() {
             </Pressable>
             <TopIcon
               label={t("shopHub.title", lang)}
-              glyph="🛖"
+              assetKey="propCrate"
               onPress={() => {
                 playSound("open");
                 setShopScreen("hub");
               }}
             />
             <TopIcon
-              label="Ayarlar"
-              glyph="⚙"
+              label={t("settings.title", lang)}
+              icon={<SettingsGearIcon />}
               onPress={() => {
                 playSound("open");
                 setShowSettings(true);
@@ -532,8 +532,8 @@ export function GameScreen() {
               <View style={styles.boardShellInner}>
                 <View style={styles.boardFloaters}>
                   <TopIcon
-                    label="Günlük Ödül"
-                    glyph="🎁"
+                    label={t("daily.title", lang)}
+                    assetKey="resourceJungleGem"
                     badge={dailyAvailable ? 1 : 0}
                     onPress={() => {
                       playSound("open");
@@ -541,8 +541,8 @@ export function GameScreen() {
                     }}
                   />
                   <TopIcon
-                    label="Görevler"
-                    glyph="🎯"
+                    label={t("quests.title", lang)}
+                    assetKey="propTrainingDummy"
                     badge={claimableQuests}
                     onPress={() => {
                       playSound("open");
@@ -1025,7 +1025,7 @@ function WatchTowerControls({ level, lang }: { level: number; lang: Lang }) {
     {unlocks.map((unlock) => {
       const unlocked = level >= unlock.level;
       return <View key={unlock.key} style={styles.unlockRow}>
-        <Text style={[styles.unlockMark, !unlocked && styles.lockedText]}>{unlocked ? "✓" : "🔒"}</Text>
+        <View style={[styles.unlockMark, unlocked ? styles.unlockMarkActive : styles.unlockMarkLocked]} />
         <Text style={[styles.unlockText, !unlocked && styles.lockedText]}>{t(unlock.key, lang)}</Text>
         <Text style={[styles.unlockLevel, !unlocked && styles.lockedText]}>{t("common.levelShort", lang)} {unlock.level}</Text>
       </View>;
@@ -1216,14 +1216,30 @@ function IconFrame() {
   );
 }
 
+function SettingsGearIcon() {
+  return (
+    <Svg width={26} height={26} viewBox="0 0 24 24" pointerEvents="none">
+      <Path
+        d="M19.43 12.98c.04-.32.07-.65.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.37-.31-.6-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.5.42l-.38 2.65c-.61.25-1.17.58-1.69.98l-2.49-1a.5.5 0 0 0-.6.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.12.22.37.31.6.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.38-2.65c.61-.25 1.17-.58 1.69-.98l2.49 1c.23.09.48 0 .6-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.65Z"
+        fill="#e7b94f"
+        stroke="#6b431e"
+        strokeWidth={0.8}
+      />
+      <Circle cx={12} cy={12} r={3.35} fill="#1a2416" stroke="#fff0b3" strokeWidth={1.15} />
+    </Svg>
+  );
+}
+
 function TopIcon({
   label,
-  glyph,
+  icon,
+  assetKey,
   badge,
   onPress
 }: {
   label: string;
-  glyph: string;
+  icon?: ReactNode;
+  assetKey?: GameAssetKey;
   badge?: number;
   onPress?: () => void;
 }) {
@@ -1232,7 +1248,11 @@ function TopIcon({
       <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.topIcon}>
         <PanelTexture dark />
         <IconFrame />
-        <Text style={styles.topIconText}>{glyph}</Text>
+        {assetKey ? (
+          <AssetImage assetKey={assetKey} style={styles.topIconArt} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
+        ) : (
+          icon
+        )}
       </Pressable>
       {badge && badge > 0 ? (
         <View style={styles.topIconBadge} pointerEvents="none">
@@ -1631,10 +1651,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 4
   },
-  topIconText: {
-    color: theme.colors.paper,
-    fontSize: 17,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+  topIconArt: {
+    width: 27,
+    height: 27
   },
   topIconWrap: {
     position: "relative"
@@ -1940,7 +1959,9 @@ const styles = StyleSheet.create({
   troopUpgradeButton: { width: 70, minHeight: 34, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: "#d69227" },
   troopUpgradeButtonText: { color: "#2d2515", fontSize: 9.5, textAlign: "center", fontFamily: theme.fonts.heavy },
   unlockRow: { minHeight: 28, flexDirection: "row", alignItems: "center", gap: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(255,255,255,0.08)" },
-  unlockMark: { width: 20, color: "#91df70", fontSize: 13, fontWeight: "900" },
+  unlockMark: { width: 12, height: 12, marginHorizontal: 4, borderRadius: 6, borderWidth: 2 },
+  unlockMarkActive: { borderColor: "#c9f79b", backgroundColor: "#5fa844" },
+  unlockMarkLocked: { borderColor: "#827d70", backgroundColor: "#393833" },
   unlockText: { flex: 1, color: "#eee2c1", fontSize: 11.5, fontWeight: "800", fontFamily: theme.fonts.bold },
   unlockLevel: { color: "#e2b15a", fontSize: 10.5, fontWeight: "900", fontFamily: theme.fonts.heavy },
   lockedText: { color: "#827d70" },
