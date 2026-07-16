@@ -20,6 +20,7 @@ import {
 } from "../../game/assets/workerAssets";
 import { buildingName } from "../../game/config/buildings";
 import { t } from "../../game/i18n";
+import { useAppSettingsStore } from "../../game/settings/appSettings";
 import {
   createBuildingHitTargets,
   selectBuildingAtPoint
@@ -113,6 +114,8 @@ export function VillageBoard({
   onCollectStone
 }: VillageBoardProps) {
   const { width } = useWindowDimensions();
+  const performanceMode = useAppSettingsStore((state) => state.performanceMode);
+  const reduceAmbientEffects = performanceMode === "highPerformance";
   const sceneWidth = Math.min(width - theme.spacing.sm * 2, maxSize);
   const sceneHeight = sceneWidth * (1450 / 941);
   const prevLevelsRef = useRef<Record<string, number>>({});
@@ -171,7 +174,7 @@ export function VillageBoard({
     <View style={[styles.scene, { width: sceneWidth, height: sceneHeight }]}>
       <SceneBackground />
       <VillageGround />
-      <CampfireGlow />
+      {reduceAmbientEffects ? null : <CampfireGlow />}
 
       <View style={styles.decorLayer} pointerEvents="none">
         {decorativeItems.map((item) => (
@@ -179,7 +182,7 @@ export function VillageBoard({
         ))}
       </View>
 
-      <DecorativeWorkers sceneWidth={sceneWidth} />
+      {reduceAmbientEffects ? null : <DecorativeWorkers sceneWidth={sceneWidth} />}
 
       <View style={styles.buildingLayer} pointerEvents="none">
         {buildingSprites.map(({ building, layout }) => (
@@ -197,7 +200,7 @@ export function VillageBoard({
         ))}
       </View>
 
-      <CampfireLife />
+      {reduceAmbientEffects ? null : <CampfireLife />}
 
       <Pressable
         accessible={false}
@@ -262,8 +265,8 @@ export function VillageBoard({
         </View>
       ) : null}
 
-      <Fireflies />
-      <AmbientLife sceneWidth={sceneWidth} />
+      {reduceAmbientEffects ? null : <Fireflies />}
+      {reduceAmbientEffects ? null : <AmbientLife sceneWidth={sceneWidth} />}
 
       {feedbackText ? (
         <Animated.View style={[styles.feedbackBanner, feedbackOpacity ? { opacity: feedbackOpacity } : null]} pointerEvents="none">

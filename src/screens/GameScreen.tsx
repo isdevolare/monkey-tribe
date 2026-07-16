@@ -36,6 +36,7 @@ import { WorkerLodgeModal } from "../components/game/WorkerLodgeModal";
 import { BananaGroveModal } from "../components/game/BananaGroveModal";
 import { LumberCampModal, StoneQuarryModal } from "../components/game/LumberCampModal";
 import { playSound } from "../game/audio/soundManager";
+import { markTutorialForReplay, TUTORIAL_SEEN_KEY } from "../game/settings/tutorial";
 import type { GameAssetKey } from "../game/assets/gameAssets";
 import { RUSH_GEM_COST } from "../game/config/constants";
 import {
@@ -80,7 +81,6 @@ import type {
 } from "../game/types/game";
 import { theme } from "../theme/theme";
 
-const TUTORIAL_KEY = "monkey-tribe:tutorial-seen:v2";
 const PHONE_FRAME_WIDTH = 430;
 const tutorialKeys = ["tut.0", "tut.1", "tut.2", "tut.3"];
 
@@ -299,7 +299,7 @@ export function GameScreen() {
   useEffect(() => {
     let mounted = true;
 
-    AsyncStorage.getItem(TUTORIAL_KEY)
+    AsyncStorage.getItem(TUTORIAL_SEEN_KEY)
       .then((seen) => {
         if (mounted && !seen) {
           setShowTutorial(true);
@@ -318,7 +318,7 @@ export function GameScreen() {
 
   function closeTutorial() {
     setShowTutorial(false);
-    void AsyncStorage.setItem(TUTORIAL_KEY, "true");
+    void AsyncStorage.setItem(TUTORIAL_SEEN_KEY, "true");
   }
 
   function nextTutorialStep() {
@@ -667,6 +667,12 @@ export function GameScreen() {
         visible={showSettings}
         lang={lang}
         onPickLanguage={state.setLanguage}
+        onReplayTutorial={() => {
+          void markTutorialForReplay();
+          setShowSettings(false);
+          setTutorialStep(0);
+          setShowTutorial(true);
+        }}
         onReset={() => {
           setShowSettings(false);
           state.resetGame();

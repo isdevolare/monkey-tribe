@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { playSound } from "../../game/audio/soundManager";
 import { t } from "../../game/i18n";
 import { SUPPORT_ISSUES, submitSupportReport, type SupportIssueId } from "../../game/support";
@@ -18,6 +18,10 @@ export function SupportModal({ visible, lang, onClose }: SupportModalProps) {
   const [note, setNote] = useState("");
   const [status, setStatus] = useState<"idle" | "sent" | "failed">("idle");
 
+  if (!visible) {
+    return null;
+  }
+
   async function handleSend() {
     if (!issue) {
       return;
@@ -31,241 +35,166 @@ export function SupportModal({ visible, lang, onClose }: SupportModalProps) {
     }
   }
 
-  function handleClose() {
-    playSound("close");
-    setStatus("idle");
-    onClose();
-  }
-
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <Pressable style={styles.scrim} onPress={handleClose}>
-        <Pressable style={styles.card} onPress={() => undefined}>
-          <Text style={styles.title} maxFontSizeMultiplier={theme.maxFontScale}>
-            {t("support.title", lang)}
-          </Text>
-
-          <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-            <Text style={styles.header} maxFontSizeMultiplier={theme.maxFontScale}>
-              {t("support.helpHeader", lang)}
-            </Text>
-            {["support.help1", "support.help2", "support.help3"].map((key) => (
-              <View key={key} style={styles.helpRow}>
-                <Text style={styles.helpBullet}>🍌</Text>
-                <Text style={styles.helpText} maxFontSizeMultiplier={theme.maxFontScale}>
-                  {t(key, lang)}
-                </Text>
-              </View>
-            ))}
-
-            <Text style={[styles.header, styles.reportHeader]} maxFontSizeMultiplier={theme.maxFontScale}>
-              {t("support.reportHeader", lang)}
-            </Text>
-            <View style={styles.issueWrap}>
-              {SUPPORT_ISSUES.map((id) => (
-                <Pressable
-                  key={id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: issue === id }}
-                  onPress={() => {
-                    playSound("tap");
-                    setIssue(id);
-                    setStatus("idle");
-                  }}
-                  style={[styles.issueChip, issue === id ? styles.issueChipActive : null]}
-                >
-                  <Text
-                    style={[styles.issueText, issue === id ? styles.issueTextActive : null]}
-                    maxFontSizeMultiplier={theme.maxFontScale}
-                  >
-                    {t(`issue.${id}`, lang)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              placeholder={t("support.notePlaceholder", lang)}
-              placeholderTextColor="#8d8264"
-              multiline
-              maxLength={280}
-              style={styles.noteInput}
-            />
-
-            {status === "sent" ? (
-              <Text style={styles.sentText} maxFontSizeMultiplier={theme.maxFontScale}>
-                {t("support.sent", lang)}
-              </Text>
-            ) : null}
-            {status === "failed" ? (
-              <Text style={styles.failText} maxFontSizeMultiplier={theme.maxFontScale}>
-                {t("support.mailFail", lang)}
-              </Text>
-            ) : null}
-
-            <SpringPressable
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !issue }}
-              disabled={!issue}
-              onPress={handleSend}
-              style={[styles.sendButton, !issue ? styles.sendButtonDisabled : null]}
-            >
-              <Text style={styles.sendText} maxFontSizeMultiplier={theme.maxFontScale}>
-                {t("support.send", lang)}
-              </Text>
-            </SpringPressable>
-          </ScrollView>
-
-          <Pressable accessibilityRole="button" onPress={handleClose} style={styles.close}>
-            <Text style={styles.closeText} maxFontSizeMultiplier={theme.maxFontScale}>
-              {t("settings.close", lang)}
-            </Text>
-          </Pressable>
+    <View style={styles.page}>
+      <View style={styles.pageHeader}>
+        <Pressable accessibilityRole="button" onPress={onClose} style={styles.backButton}>
+          <Text style={styles.backText}>{t("support.back", lang)}</Text>
         </Pressable>
-      </Pressable>
-    </Modal>
+        <Text style={styles.title} maxFontSizeMultiplier={theme.maxFontScale}>
+          {t("support.title", lang)}
+        </Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.intro} maxFontSizeMultiplier={theme.maxFontScale}>
+          {t("support.intro", lang)}
+        </Text>
+
+        <View style={styles.issueCard}>
+          {SUPPORT_ISSUES.map((id) => (
+            <Pressable
+              key={id}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: issue === id }}
+              onPress={() => {
+                playSound("tap");
+                setIssue(id);
+                setStatus("idle");
+              }}
+              style={[styles.issueRow, issue === id ? styles.issueRowActive : null]}
+            >
+              <View style={[styles.radio, issue === id ? styles.radioActive : null]}>
+                {issue === id ? <View style={styles.radioDot} /> : null}
+              </View>
+              <Text style={[styles.issueText, issue === id ? styles.issueTextActive : null]}>
+                {t(`issue.${id}`, lang)}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <TextInput
+          value={note}
+          onChangeText={setNote}
+          placeholder={t("support.notePlaceholder", lang)}
+          placeholderTextColor="#81765f"
+          multiline
+          maxLength={280}
+          style={styles.noteInput}
+        />
+
+        {status !== "idle" ? (
+          <Text style={status === "sent" ? styles.sentText : styles.failText}>
+            {t(status === "sent" ? "support.sent" : "support.mailFail", lang)}
+          </Text>
+        ) : null}
+
+        <SpringPressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !issue }}
+          disabled={!issue}
+          onPress={handleSend}
+          style={[styles.sendButton, !issue ? styles.sendButtonDisabled : null]}
+        >
+          <Text style={styles.sendText}>{t("support.send", lang)}</Text>
+        </SpringPressable>
+
+        <Text style={styles.diagnosticsNote}>{t("support.diagnosticsNote", lang)}</Text>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrim: {
-    flex: 1,
+  page: { flex: 1, minHeight: 0 },
+  pageHeader: {
+    minHeight: 48,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(10, 23, 15, 0.68)",
-    padding: theme.spacing.xl
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(226, 177, 90, 0.2)"
   },
-  card: {
-    width: "100%",
-    maxWidth: 340,
-    maxHeight: "82%",
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "rgba(226, 177, 90, 0.5)",
-    backgroundColor: "rgba(17, 20, 14, 0.97)",
-    padding: theme.spacing.lg,
-    shadowColor: "#000",
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 12
-  },
+  backButton: { minWidth: 72, minHeight: 44, justifyContent: "center" },
+  backText: { color: "#e2b15a", fontSize: 14, fontFamily: theme.fonts.heavy },
   title: {
+    flex: 1,
     color: theme.colors.paper,
-    fontSize: theme.type.h1,
+    fontSize: 19,
     fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
-  scroll: {
-    flexGrow: 0,
-    marginTop: theme.spacing.sm
+  headerSpacer: { width: 72 },
+  scrollContent: { paddingTop: theme.spacing.md, paddingBottom: theme.spacing.sm },
+  intro: { color: "#bdb094", fontSize: 13, fontFamily: theme.fonts.bold, marginBottom: 10 },
+  issueCard: {
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "rgba(226, 177, 90, 0.24)",
+    backgroundColor: "rgba(42, 48, 31, 0.76)",
+    overflow: "hidden"
   },
-  header: {
-    color: "#e2b15a",
-    fontSize: theme.type.label,
-    fontFamily: theme.fonts.heavy,
-    textTransform: "uppercase",
-    marginBottom: 6
-  },
-  reportHeader: {
-    marginTop: theme.spacing.md
-  },
-  helpRow: {
+  issueRow: {
+    minHeight: 46,
     flexDirection: "row",
-    gap: 7,
-    marginBottom: 5
+    alignItems: "center",
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255, 238, 188, 0.12)"
   },
-  helpBullet: {
-    fontSize: theme.type.label
-  },
-  helpText: {
-    flex: 1,
-    color: "#d8ccb0",
-    fontSize: theme.type.label,
-    fontFamily: theme.fonts.bold
-  },
-  issueWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 7
-  },
-  issueChip: {
-    minHeight: 40,
+  issueRowActive: { backgroundColor: "rgba(100, 125, 59, 0.42)" },
+  radio: {
+    width: 20,
+    height: 20,
+    alignItems: "center",
     justifyContent: "center",
+    marginRight: 10,
     borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 224, 151, 0.18)",
-    backgroundColor: "rgba(54, 43, 27, 0.6)",
-    paddingHorizontal: 11
+    borderWidth: 2,
+    borderColor: "#7f745d"
   },
-  issueChipActive: {
-    borderColor: "rgba(198, 238, 137, 0.7)",
-    backgroundColor: "rgba(68, 101, 45, 0.92)"
-  },
-  issueText: {
-    color: "#d8ccb0",
-    fontSize: theme.type.label,
-    fontFamily: theme.fonts.heavy
-  },
-  issueTextActive: {
-    color: theme.colors.paper
-  },
+  radioActive: { borderColor: "#d8b35f" },
+  radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#e2b15a" },
+  issueText: { flex: 1, color: "#d8ccb0", fontSize: 14, fontFamily: theme.fonts.bold },
+  issueTextActive: { color: theme.colors.paper },
   noteInput: {
-    minHeight: 66,
-    marginTop: theme.spacing.sm,
-    borderRadius: 10,
-    borderWidth: 1.5,
+    minHeight: 86,
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: "rgba(226, 177, 90, 0.28)",
-    backgroundColor: "rgba(14, 12, 7, 0.75)",
+    backgroundColor: "rgba(10, 14, 9, 0.72)",
     color: theme.colors.paper,
-    fontSize: theme.type.body,
+    fontSize: 14,
     fontFamily: theme.fonts.regular,
-    padding: 10,
+    padding: 12,
     textAlignVertical: "top"
   },
-  sentText: {
-    marginTop: theme.spacing.sm,
-    color: "#c6ee89",
-    fontSize: theme.type.label,
-    fontFamily: theme.fonts.heavy,
-    textAlign: "center"
-  },
-  failText: {
-    marginTop: theme.spacing.sm,
-    color: "#f0b9a4",
-    fontSize: theme.type.label,
-    fontFamily: theme.fonts.heavy,
-    textAlign: "center"
-  },
+  sentText: { marginTop: 10, color: "#c6ee89", textAlign: "center", fontFamily: theme.fonts.heavy },
+  failText: { marginTop: 10, color: "#f0b9a4", textAlign: "center", fontFamily: theme.fonts.heavy },
   sendButton: {
-    minHeight: 46,
+    minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: theme.spacing.sm,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "rgba(198, 238, 137, 0.5)",
-    backgroundColor: "rgba(68, 101, 45, 0.92)"
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(218, 185, 102, 0.7)",
+    backgroundColor: "#46652f"
   },
-  sendButtonDisabled: {
-    opacity: 0.5
-  },
-  sendText: {
-    color: theme.colors.paper,
-    fontSize: theme.type.body,
-    fontFamily: theme.fonts.heavy
-  },
-  close: {
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: theme.spacing.xs
-  },
-  closeText: {
-    color: "#d8ccb0",
-    fontSize: theme.type.body,
-    fontFamily: theme.fonts.heavy
+  sendButtonDisabled: { opacity: 0.42 },
+  sendText: { color: theme.colors.paper, fontSize: 15, fontFamily: theme.fonts.heavy },
+  diagnosticsNote: {
+    marginTop: 10,
+    color: "#8f856d",
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: theme.fonts.bold,
+    textAlign: "center"
   }
 });

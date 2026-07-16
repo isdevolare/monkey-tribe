@@ -304,6 +304,7 @@ function createFreshState(now: number) {
     resources: { ...STARTING_RESOURCES },
     buildings: cloneBuildings(DEFAULT_BUILDINGS),
     gems: 0,
+    redeemedQaCodes: [] as string[],
     unlockedProfileMonkeys: [DEFAULT_PROFILE_MONKEY_ID] as ProfileMonkeyId[],
     equippedProfileMonkey: DEFAULT_PROFILE_MONKEY_ID,
     ownedProfileSkins: [DEFAULT_PROFILE_SKIN_ID] as ProfileSkinId[],
@@ -1239,6 +1240,9 @@ export const useGameStore = create<GameState>((set) => ({
         resources,
         offlineReport,
         gems: save.gems ?? state.gems,
+        redeemedQaCodes: Array.isArray(save.redeemedQaCodes)
+          ? save.redeemedQaCodes.filter((value): value is string => typeof value === "string")
+          : [],
         unlockedProfileMonkeys,
         equippedProfileMonkey,
         ownedProfileSkins,
@@ -2455,6 +2459,7 @@ function persistVillage(state: GameState) {
     resources: state.resources,
     unitRoster,
     gems: state.gems,
+    redeemedQaCodes: state.redeemedQaCodes,
     unlockedProfileMonkeys: state.unlockedProfileMonkeys,
     equippedProfileMonkey: state.equippedProfileMonkey,
     ownedProfileSkins: state.ownedProfileSkins,
@@ -2494,6 +2499,11 @@ export function flushVillageSave() {
     return Promise.resolve();
   }
   return persistVillage(state);
+}
+
+/** Persists the current village even while Settings is open from the main menu. */
+export function persistVillageNow() {
+  return persistVillage(useGameStore.getState());
 }
 
 // Save as the village changes, throttled.

@@ -1,10 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Linking, Platform } from "react-native";
-import { useGameStore } from "./state/gameStore";
+import { Linking } from "react-native";
+import {
+  SUPPORT_EMAIL,
+  appBuildNumber,
+  appVersion,
+  safeDeviceModel,
+  safePlatformLabel
+} from "./appInfo";
 
 // Where player reports land. Swap `deliverReport` for an HTTP endpoint
 // once a backend exists — everything else stays the same.
-const SUPPORT_EMAIL = "quickmoodigital@gmail.com";
 const REPORT_LOG_KEY = "monkey-tribe:support-reports";
 
 export type SupportIssueId =
@@ -12,6 +17,7 @@ export type SupportIssueId =
   | "noSound"
   | "freeze"
   | "lostProgress"
+  | "purchase"
   | "other";
 
 export const SUPPORT_ISSUES: SupportIssueId[] = [
@@ -19,25 +25,18 @@ export const SUPPORT_ISSUES: SupportIssueId[] = [
   "noSound",
   "freeze",
   "lostProgress",
+  "purchase",
   "other"
 ];
 
-// Snapshot enough game state to debug a report without asking questions.
-function buildDiagnostics() {
-  const state = useGameStore.getState();
+// Intentionally excludes player state, balances, purchases, and identifiers.
+function buildDiagnostics(issueCategory: string) {
   return {
-    platform: `${Platform.OS} ${Platform.Version ?? ""}`.trim(),
-    screen: state.currentScreen,
-    mode: state.gameMode,
-    raidStatus: state.raidStatus,
-    raidLevel: state.raidLevel,
-    buildings: state.buildings.map((b) => `${b.type}:${b.level}`).join(", "),
-    resources: `${Math.floor(state.resources.bananas)}B/${Math.floor(state.resources.stones)}S/${Math.floor(state.resources.wood)}W`,
-    gems: state.gems,
-    units: state.units.filter((u) => u.owner === "player" && u.hp > 0).length,
-    queue: state.productionQueue.length,
-    lang: state.language,
-    time: new Date().toISOString()
+    appVersion: appVersion(),
+    buildNumber: appBuildNumber(),
+    platform: safePlatformLabel(),
+    deviceModel: safeDeviceModel(),
+    issueCategory
   };
 }
 
@@ -64,7 +63,7 @@ async function deliverReport(subject: string, body: string) {
  * client could be opened (caller shows a fallback message).
  */
 export async function submitSupportReport(issueLabel: string, note: string) {
-  const diagnostics = buildDiagnostics();
+  const diagnostics = buildDiagnostics(issueLabel);
   await appendLocalLog({ issueLabel, note, ...diagnostics });
 
   const subject = `Monkey Tribe destek: ${issueLabel}`;

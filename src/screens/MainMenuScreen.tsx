@@ -7,6 +7,7 @@ import { SettingsModal } from "../components/game/SettingsModal";
 import { WoodButton } from "../components/game/WoodButton";
 import { playSound } from "../game/audio/soundManager";
 import { t } from "../game/i18n";
+import { markTutorialForReplay } from "../game/settings/tutorial";
 import { getCosmeticAppearance } from "../game/config/profileMonkeys";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
@@ -77,6 +78,10 @@ export function MainMenuScreen() {
         visible={showSettings}
         lang={lang}
         onPickLanguage={setLanguage}
+        onReplayTutorial={() => {
+          void markTutorialForReplay();
+          setShowSettings(false);
+        }}
         onClose={() => setShowSettings(false)}
       />
     </View>

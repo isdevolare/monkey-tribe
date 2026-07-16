@@ -1,13 +1,13 @@
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
-import { useSoundStore } from "./soundManager";
+import { useAppSettingsStore } from "../settings/appSettings";
 
-// Haptics ride the SFX mute switch: muting the game feel mutes the
-// buzzing too. All calls are fire-and-forget and no-op on web.
+// Haptics have their own persisted setting. Calls remain fire-and-forget
+// and no-op on web.
 const supported = Platform.OS === "ios" || Platform.OS === "android";
 
 function enabled() {
-  return supported && !useSoundStore.getState().sfxMuted;
+  return supported && useAppSettingsStore.getState().hapticsEnabled;
 }
 
 /** Light tick for selections and ordinary taps. */

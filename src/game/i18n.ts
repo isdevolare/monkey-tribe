@@ -59,14 +59,40 @@ const dict: Record<string, Entry> = {
 
   // Settings
   "settings.title": { tr: "Ayarlar", en: "Settings" },
+  "settings.sectionGame": { tr: "Oyun", en: "Game" },
+  "settings.sectionAudio": { tr: "Ses", en: "Audio" },
+  "settings.sectionSupport": { tr: "Destek", en: "Support" },
+  "settings.sectionAbout": { tr: "Hakkında", en: "About" },
+  "settings.sectionDeveloper": { tr: "Geliştirici Araçları", en: "Developer Tools" },
   "settings.language": { tr: "Dil", en: "Language" },
+  "settings.notifications": { tr: "Bildirimler", en: "Notifications" },
+  "settings.haptics": { tr: "Titreşim", en: "Haptics" },
+  "settings.performance": { tr: "Performans Modu", en: "Performance Mode" },
+  "settings.balanced": { tr: "Dengeli", en: "Balanced" },
+  "settings.highPerformance": { tr: "Yüksek Performans", en: "High Performance" },
+  "settings.replayTutorial": { tr: "Öğreticiyi Tekrar Göster", en: "Replay Tutorial" },
   "settings.sound": { tr: "Ses Efektleri", en: "Sound Effects" },
   "settings.music": { tr: "Müzik", en: "Music" },
   "settings.mute": { tr: "Sesi kapat", en: "Mute" },
   "settings.unmute": { tr: "Sesi aç", en: "Unmute" },
   "settings.support": { tr: "Yardım & Destek", en: "Help & Support" },
+  "settings.supportDetail": { tr: "Sorun bildir veya yardım al", en: "Report a problem or get help" },
   "settings.reset": { tr: "Köyü Sıfırla", en: "Reset Village" },
+  "settings.version": { tr: "Sürüm", en: "Version" },
+  "settings.privacy": { tr: "Gizlilik Politikası", en: "Privacy Policy" },
+  "settings.terms": { tr: "Kullanım Şartları", en: "Terms" },
+  "settings.supportShort": { tr: "Destek", en: "Support" },
+  "settings.credits": { tr: "Krediler", en: "Credits" },
+  "settings.creditsBody": {
+    tr: "Monkey Tribe — Quickmoo Digital. Ses efektleri: Kenney (CC0).",
+    en: "Monkey Tribe — Quickmoo Digital. Sound effects: Kenney (CC0)."
+  },
   "support.title": { tr: "Yardım & Destek", en: "Help & Support" },
+  "support.back": { tr: "Geri", en: "Back" },
+  "support.intro": {
+    tr: "Sorununu seç ve istersen kısa bir açıklama ekle.",
+    en: "Choose the issue and optionally add a short description."
+  },
   "support.helpHeader": { tr: "Hızlı Yardım", en: "Quick Help" },
   "support.help1": {
     tr: "Asker eğitmek için alttaki kartlara dokun; Eğitim Yuvası savaşçıları açar.",
@@ -88,11 +114,23 @@ const dict: Record<string, Entry> = {
     tr: "Posta uygulaması açılamadı — kaydı aldık, tekrar dener misin?",
     en: "Couldn't open a mail app — we logged it, please try again."
   },
+  "support.diagnosticsNote": {
+    tr: "Rapora yalnızca sürüm, yapı, platform, cihaz modeli ve seçilen kategori eklenir.",
+    en: "Only app version, build, platform, device model, and the selected category are attached."
+  },
   "issue.broken": { tr: "Bir özellik çalışmıyor", en: "A feature isn't working" },
   "issue.noSound": { tr: "Ses gelmiyor", en: "No sound" },
   "issue.freeze": { tr: "Oyun takılıyor / donuyor", en: "Game stutters / freezes" },
   "issue.lostProgress": { tr: "İlerlemem kayboldu", en: "My progress is gone" },
+  "issue.purchase": { tr: "Satın alma sorunu", en: "Purchase issue" },
   "issue.other": { tr: "Başka bir sorun", en: "Something else" },
+  "qa.title": { tr: "Test Kodu", en: "Test Code" },
+  "qa.help": { tr: "Yalnızca dahili test bakiyesi için.", en: "For internal test balance only." },
+  "qa.placeholder": { tr: "Kodu gir", en: "Enter code" },
+  "qa.use": { tr: "Kullan", en: "Redeem" },
+  "qa.success": { tr: "5.000 Gem test bakiyesi eklendi.", en: "5,000 test Gems added." },
+  "qa.invalid": { tr: "Geçersiz kod.", en: "Invalid code." },
+  "qa.used": { tr: "Bu kod daha önce kullanıldı.", en: "This code has already been used." },
   "settings.close": { tr: "Kapat", en: "Close" },
 
   // Building names
