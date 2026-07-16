@@ -11,7 +11,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { buildingName, storageCap, storageCanHoldCost, workerLodgeUpgrade } from "../../game/config/buildings";
-import type { GameAssetKey } from "../../game/assets/gameAssets";
+import {
+  BANANA_WORKER_ASSETS,
+  LUMBER_WORKER_ASSETS,
+  STONE_WORKER_ASSETS,
+  WORKER_ASSETS
+} from "../../game/assets/workerAssets";
 import { t, type Lang } from "../../game/i18n";
 import { playSound } from "../../game/audio/soundManager";
 import {
@@ -26,6 +31,8 @@ import {
   managedWorkerCount,
   isLumberWorkerClass,
   isStoneWorkerClass,
+  lumberCampCapacity,
+  stoneQuarryCapacity,
   workerCapacity
 } from "../../game/state/workerExpeditions";
 import { useGameStore } from "../../game/state/gameStore";
@@ -33,9 +40,6 @@ import type {
   ResourceKind,
   Resources,
   WorkerClass,
-  BananaWorkerClass,
-  LumberWorkerClass,
-  StoneWorkerClass,
   WorkerCollectionSummary,
   WorkerExpeditionStatus
 } from "../../game/types/game";
@@ -113,30 +117,6 @@ function workerName(workerClass: WorkerClass, lang: Lang) {
   return t(`worker.${workerClass}.name`, lang);
 }
 
-export const BANANA_WORKER_ASSETS: Record<BananaWorkerClass, GameAssetKey> = {
-  gatherer: "bananaWorkerYoung",
-  skilled: "bananaWorkerExperienced",
-  master: "bananaWorkerMaster"
-};
-
-export const LUMBER_WORKER_ASSETS: Record<LumberWorkerClass, GameAssetKey> = {
-  worker_lumber_apprentice: "lumberWorkerApprentice",
-  worker_lumber_skilled: "lumberWorkerSkilled",
-  worker_lumber_master: "lumberWorkerMaster"
-};
-
-export const STONE_WORKER_ASSETS: Record<StoneWorkerClass, GameAssetKey> = {
-  worker_stone_apprentice: "stoneWorkerApprentice",
-  worker_stone_experienced: "stoneWorkerExperienced",
-  worker_stone_master: "stoneWorkerMaster"
-};
-
-export const WORKER_ASSETS: Record<WorkerClass, GameAssetKey> = {
-  ...BANANA_WORKER_ASSETS,
-  ...LUMBER_WORKER_ASSETS,
-  ...STONE_WORKER_ASSETS
-};
-
 function resourceName(resource: ResourceKind, lang: Lang) {
   return t(`res.${resource}`, lang);
 }
@@ -187,6 +167,12 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
   ).length;
   const groveLevel = state.buildings.find((building) => building.type === "bananaGrove")?.level ?? 1;
   const groveFull = state.bananaGroveStorage >= bananaGroveCapacity(groveLevel);
+  const lumberLevel = state.buildings.find((building) => building.type === "lumberCamp")?.level ?? 1;
+  const lumberFull = state.lumberCampStorage >= lumberCampCapacity(lumberLevel);
+  const lumberBusy = state.workerExpeditions.some((expedition) => expedition.resource === "wood");
+  const stoneLevel = state.buildings.find((building) => building.type === "stoneQuarry")?.level ?? 1;
+  const stoneFull = state.stoneQuarryStorage >= stoneQuarryCapacity(stoneLevel);
+  const stoneBusy = state.workerExpeditions.some((expedition) => expedition.resource === "stones");
 
   function collect(expeditionId: string) {
     const result = state.collectWorkerExpedition(expeditionId);
@@ -436,17 +422,34 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                           </Text>
                         </View>
                         <View style={styles.destinationRow}>
-                          {isLumberWorkerClass(group.workerClass) || isStoneWorkerClass(group.workerClass) ? (
-                            <View style={styles.destinationButton}>
-                              <AssetImage assetKey={isStoneWorkerClass(group.workerClass) ? "resourceStone" : "resourceWood"} style={styles.destinationIcon} fallback={<View />} />
-                              <Text style={styles.destinationText} numberOfLines={2}>{t(isStoneWorkerClass(group.workerClass) ? "stoneQuarry.assignThere" : "lumberCamp.assignThere", lang)}</Text>
-                            </View>
-                          ) : <SpringPressable
+                          {isLumberWorkerClass(group.workerClass) || isStoneWorkerClass(group.workerClass) ? (() => {
+                            const stoneWorker = isStoneWorkerClass(group.workerClass);
+                            const blocked = stoneWorker ? stoneBusy || stoneFull : lumberBusy || lumberFull;
+                            return (
+                              <SpringPressable
+                                accessibilityRole="button"
+                                accessibilityState={{ disabled: blocked }}
+                                disabled={blocked}
+                                onPress={() => state.sendWorkerExpedition(
+                                  firstWorker.id,
+                                  stoneWorker ? "stones" : "wood",
+                                  "safe"
+                                )}
+                                style={[styles.destinationButton, blocked ? styles.disabledButton : null]}
+                              >
+                                <AssetImage assetKey={stoneWorker ? "resourceStone" : "resourceWood"} style={styles.destinationIcon} fallback={<View />} />
+                                <Text style={styles.destinationText} numberOfLines={2}>
+                                  {t(stoneWorker ? "stoneQuarry.assignThere" : "lumberCamp.assignThere", lang)}
+                                </Text>
+                              </SpringPressable>
+                            );
+                          })() : <SpringPressable
                             accessibilityRole="button"
                             accessibilityState={{
                               disabled:
                                 bananaAssignments >= BANANA_GROVE_MAX_WORKERS || groveFull
                             }}
+                            disabled={bananaAssignments >= BANANA_GROVE_MAX_WORKERS || groveFull}
                             onPress={() => state.sendWorkerExpedition(firstWorker.id, "bananas")}
                             style={[
                               styles.destinationButton,

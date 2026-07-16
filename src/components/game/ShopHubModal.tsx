@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { playSound } from "../../game/audio/soundManager";
 import { t } from "../../game/i18n";
 import { useGameStore } from "../../game/state/gameStore";
@@ -33,10 +34,11 @@ export function ShopHubModal({
   onOpenResourceShop
 }: ShopHubModalProps) {
   const gems = useGameStore((state) => state.gems);
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <View style={styles.scrim}>
+      <View style={[styles.scrim, { paddingTop: Math.max(insets.top, 14), paddingBottom: Math.max(insets.bottom, 14) }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.card}>
           <View style={styles.headerTop}>

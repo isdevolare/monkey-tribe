@@ -13,6 +13,11 @@ import Svg, { Ellipse, Line, Path } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
 import { PopIn, PulseRing } from "./Vfx";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
+import {
+  BANANA_WORKER_ASSETS,
+  LUMBER_WORKER_ASSETS,
+  STONE_WORKER_ASSETS
+} from "../../game/assets/workerAssets";
 import { buildingName } from "../../game/config/buildings";
 import { t } from "../../game/i18n";
 import {
@@ -728,12 +733,6 @@ function BuildingSprite({
   );
 }
 
-const BANANA_WORKER_ASSET: Record<BananaWorkerClass, GameAssetKey> = {
-  gatherer: "bananaWorkerYoung",
-  skilled: "bananaWorkerExperienced",
-  master: "bananaWorkerMaster"
-};
-
 function BananaGroveActivity({ workers, storage, capacity }: { workers: WorkerExpedition[]; storage: number; capacity: number }) {
   const spots = [
     { left: -5, top: 54 },
@@ -747,30 +746,20 @@ function BananaGroveActivity({ workers, storage, capacity }: { workers: WorkerEx
           key={worker.id}
           style={[styles.groveWorker, { left: `${spots[index]?.left ?? 0}%`, top: `${spots[index]?.top ?? 55}%` }]}
         >
-          <AssetImage assetKey={BANANA_WORKER_ASSET[worker.workerClass as BananaWorkerClass]} style={styles.full} fallback={<Text>🐵</Text>} hideFallbackOnLoad />
+          <AssetImage assetKey={BANANA_WORKER_ASSETS[worker.workerClass as BananaWorkerClass]} style={styles.full} fallback={<View />} hideFallbackOnLoad />
         </View>
       ))}
       {storage > 0 ? (
         <View style={[styles.harvestBadge, storage >= capacity && styles.harvestBadgeFull]}>
-          <AssetImage assetKey="resourceBanana" style={styles.harvestIcon} fallback={<Text>🍌</Text>} />
+          <View style={styles.harvestIconWell}>
+            <AssetImage assetKey="resourceBanana" style={styles.harvestIcon} fallback={<View />} hideFallbackOnLoad />
+          </View>
           <Text style={styles.harvestAmount}>{Math.floor(storage)}</Text>
         </View>
       ) : null}
     </View>
   );
 }
-
-const LUMBER_WORKER_ASSET: Record<LumberWorkerClass, GameAssetKey> = {
-  worker_lumber_apprentice: "lumberWorkerApprentice",
-  worker_lumber_skilled: "lumberWorkerSkilled",
-  worker_lumber_master: "lumberWorkerMaster"
-};
-
-const STONE_WORKER_ASSET: Record<StoneWorkerClass, GameAssetKey> = {
-  worker_stone_apprentice: "stoneWorkerApprentice",
-  worker_stone_experienced: "stoneWorkerExperienced",
-  worker_stone_master: "stoneWorkerMaster"
-};
 
 function ResourceWorkplaceActivity({ kind, workers, storage, capacity }: { kind: "lumber" | "stone"; workers: WorkerExpedition[]; storage: number; capacity: number }) {
   const pulse = useRef(new Animated.Value(0)).current;
@@ -787,8 +776,8 @@ function ResourceWorkplaceActivity({ kind, workers, storage, capacity }: { kind:
   }, [pulse, ready, storage]);
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
   return <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-    {worker ? <View style={styles.lumberWorker}><AssetImage assetKey={kind === "lumber" ? LUMBER_WORKER_ASSET[worker.workerClass as LumberWorkerClass] : STONE_WORKER_ASSET[worker.workerClass as StoneWorkerClass]} style={styles.full} fallback={<Text>🐵</Text>} hideFallbackOnLoad /></View> : null}
-    {ready || storage > 0 ? <Animated.View style={[styles.harvestBadge, styles.woodBadge, storage >= capacity && styles.harvestBadgeFull, { transform: [{ scale }] }]}><AssetImage assetKey={kind === "lumber" ? "resourceWood" : "resourceStone"} style={styles.harvestIcon} fallback={<Text>{kind === "lumber" ? "🪵" : "🪨"}</Text>} />{storage > 0 ? <Text style={styles.harvestAmount}>{Math.floor(storage)}</Text> : null}</Animated.View> : null}
+    {worker ? <View style={styles.lumberWorker}><AssetImage assetKey={kind === "lumber" ? LUMBER_WORKER_ASSETS[worker.workerClass as LumberWorkerClass] : STONE_WORKER_ASSETS[worker.workerClass as StoneWorkerClass]} style={styles.full} fallback={<View />} hideFallbackOnLoad /></View> : null}
+    {ready || storage > 0 ? <Animated.View style={[styles.harvestBadge, storage >= capacity && styles.harvestBadgeFull, { transform: [{ scale }] }]}><View style={styles.harvestIconWell}><AssetImage assetKey={kind === "lumber" ? "resourceWood" : "resourceStone"} style={styles.harvestIcon} fallback={<View />} hideFallbackOnLoad /></View><Text style={styles.harvestAmount}>{Math.floor(storage)}</Text></Animated.View> : null}
   </View>;
 }
 
@@ -1034,26 +1023,45 @@ const styles = StyleSheet.create({
     top: "-28%",
     left: "18%",
     minWidth: "64%",
-    height: "36%",
+    height: "38%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 2,
-    paddingHorizontal: 3,
+    gap: 3,
+    paddingHorizontal: 4,
     borderRadius: 999,
-    borderWidth: 2,
-    borderColor: "#fff0a4",
-    backgroundColor: "#4f9d3b",
-    shadowColor: "#b9ff68",
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
+    borderWidth: 1.5,
+    borderColor: "#e7bf64",
+    backgroundColor: "rgba(24, 20, 11, 0.96)",
+    shadowColor: "#f6cc68",
+    shadowOpacity: 0.52,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 6,
     zIndex: 9
   },
-  harvestBadgeFull: { backgroundColor: "#b4781f", borderColor: "#ffe27a" },
-  woodBadge: { backgroundColor: "#9a5d2b", borderColor: "#ffe0a0" },
-  harvestIcon: { width: "44%", height: "80%" },
-  harvestAmount: { color: "white", fontSize: 8, fontWeight: "900" },
+  harvestBadgeFull: { backgroundColor: "rgba(91, 55, 16, 0.98)", borderColor: "#ffe18a" },
+  harvestIconWell: {
+    width: "42%",
+    height: "84%",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255, 225, 138, 0.48)",
+    backgroundColor: "rgba(73, 55, 25, 0.92)"
+  },
+  harvestIcon: { width: "88%", height: "88%" },
+  harvestAmount: {
+    minWidth: "34%",
+    color: "#fff1bd",
+    fontSize: 8.5,
+    lineHeight: 11,
+    textAlign: "center",
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
+  },
   // Soft contact shadow so buildings sit in the ground instead of floating.
   // The building's foot lands ~68% down its container (see top offset), so
   // the shadow straddles that line, not the container bottom.

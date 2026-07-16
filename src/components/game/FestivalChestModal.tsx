@@ -1,4 +1,5 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { t } from "../../game/i18n";
 import { useGameStore } from "../../game/state/gameStore";
 import type { Lang } from "../../game/types/game";
@@ -23,6 +24,7 @@ type FestivalChestModalProps = {
  */
 export function FestivalChestModal({ visible, lang, onClose, onOpenGemStore }: FestivalChestModalProps) {
   const gems = useGameStore((state) => state.gems);
+  const insets = useSafeAreaInsets();
   const pending = useGameStore((state) => state.pendingFestivalChest);
 
   return (
@@ -33,7 +35,7 @@ export function FestivalChestModal({ visible, lang, onClose, onOpenGemStore }: F
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={styles.scrim}>
+      <View style={[styles.scrim, { paddingTop: Math.max(insets.top, 14), paddingBottom: Math.max(insets.bottom, 14) }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.card}>
           <View style={styles.headerTop}>

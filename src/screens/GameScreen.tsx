@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Easing,
@@ -165,6 +165,7 @@ export function GameScreen() {
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
   const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const villageScrollRef = useRef<ScrollView>(null);
+  const trainingScrollPending = useRef(false);
   const lang = state.language;
   const queuedTroopTypes = state.productionQueue
     .map((item) => item.type)
@@ -199,7 +200,9 @@ export function GameScreen() {
     setShowLumberCamp(type === "lumberCamp");
     setShowStoneQuarry(type === "stoneQuarry");
 
-    if (type !== "workerShelter" && type !== "bananaGrove" && type !== "lumberCamp" && type !== "stoneQuarry") {
+    if (type === "trainingNest") {
+      trainingScrollPending.current = true;
+    } else if (type !== "workerShelter" && type !== "bananaGrove" && type !== "lumberCamp" && type !== "stoneQuarry") {
       requestAnimationFrame(() => villageScrollRef.current?.scrollToEnd({ animated: true }));
     }
   }, []);
@@ -366,10 +369,11 @@ export function GameScreen() {
       <ScrollView
         ref={villageScrollRef}
         style={styles.screen}
+        contentInsetAdjustmentBehavior="never"
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: theme.spacing.sm + insets.top,
+            paddingTop: insets.top + theme.spacing.md,
             paddingBottom:
               theme.spacing.md + insets.bottom +
               (state.gameMode === "village" ? VILLAGE_SHORTCUT_DOCK_HEIGHT + 12 : 0)
@@ -549,17 +553,15 @@ export function GameScreen() {
               </View>
             </View>
 
-            {inlineSelectedBuilding ? (
-              <>
-                <UpgradePanel
-                  buildings={state.buildings}
-                  resources={state.resources}
-                  type={inlineSelectedBuilding}
-                  lang={lang}
-                  onUpgrade={() => state.upgradeBuilding(inlineSelectedBuilding)}
-                  onClose={clearBuildingSelection}
-                />
-                {inlineSelectedBuilding === "trainingNest" ? (
+            {inlineSelectedBuilding === "trainingNest" ? (
+              <View
+                onLayout={(event) => {
+                  if (!trainingScrollPending.current) return;
+                  trainingScrollPending.current = false;
+                  const y = Math.max(0, event.nativeEvent.layout.y - theme.spacing.sm);
+                  requestAnimationFrame(() => villageScrollRef.current?.scrollTo({ y, animated: true }));
+                }}
+              >
                   <TrainingNestControls
                     lang={lang}
                     level={nestLevel}
@@ -574,8 +576,31 @@ export function GameScreen() {
                     onTrain={state.trainTroop}
                     onUpgradeTroop={state.upgradeTroopStat}
                     onRush={state.rushProduction}
+                    onClose={clearBuildingSelection}
+                    buildingUpgrade={
+                      <UpgradePanel
+                        buildings={state.buildings}
+                        resources={state.resources}
+                        type="trainingNest"
+                        lang={lang}
+                        onUpgrade={() => state.upgradeBuilding("trainingNest")}
+                        onClose={clearBuildingSelection}
+                        showClose={false}
+                      />
+                    }
                   />
-                ) : inlineSelectedBuilding === "watchTower" ? (
+              </View>
+            ) : inlineSelectedBuilding ? (
+              <>
+                <UpgradePanel
+                  buildings={state.buildings}
+                  resources={state.resources}
+                  type={inlineSelectedBuilding}
+                  lang={lang}
+                  onUpgrade={() => state.upgradeBuilding(inlineSelectedBuilding)}
+                  onClose={clearBuildingSelection}
+                />
+                {inlineSelectedBuilding === "watchTower" ? (
                   <WatchTowerControls level={levelOf(state.buildings, "watchTower")} lang={lang} />
                 ) : inlineSelectedBuilding === "clanHall" ? (
                   <ClanHallControls
@@ -715,7 +740,8 @@ function UpgradePanel({
   type,
   lang,
   onUpgrade,
-  onClose
+  onClose,
+  showClose = true
 }: {
   buildings: VillageBuilding[];
   resources: Resources;
@@ -723,6 +749,7 @@ function UpgradePanel({
   lang: Lang;
   onUpgrade: () => void;
   onClose: () => void;
+  showClose?: boolean;
 }) {
   const level = levelOf(buildings, type);
   const clanLevel = levelOf(buildings, "clanHall");
@@ -775,7 +802,7 @@ function UpgradePanel({
           <CostChips cost={cost} light />
         )}
       </SpringPressable>
-      <Pressable
+      {showClose ? <Pressable
         accessibilityRole="button"
         onPress={() => {
           playSound("close");
@@ -784,7 +811,7 @@ function UpgradePanel({
         style={styles.upgradeClose}
       >
         <Text style={styles.upgradeCloseText}>×</Text>
-      </Pressable>
+      </Pressable> : null}
       </View>
 
     </View>
@@ -816,7 +843,9 @@ function TrainingNestControls({
   queuedTypes,
   onTrain,
   onUpgradeTroop,
-  onRush
+  onRush,
+  onClose,
+  buildingUpgrade
 }: {
   lang: Lang;
   level: number;
@@ -831,11 +860,14 @@ function TrainingNestControls({
   onTrain: (type: TroopType) => void;
   onUpgradeTroop: (type: TroopType, stat: TroopUpgradeStat) => void;
   onRush: () => void;
+  onClose: () => void;
+  buildingUpgrade: ReactNode;
 }) {
-  return <>
-    <View style={styles.buildingOwnedPanel}>
+  const [section, setSection] = useState<"train" | "queue" | "upgrades">("train");
+
+  return <View style={styles.trainingNestPanel}>
       <View style={styles.ownershipHeader}>
-        <View>
+        <View style={styles.trainingTitleCopy}>
           <Text style={styles.ownershipTitle}>{t("trainingNest.title", lang)}</Text>
           <Text style={styles.ownershipMeta}>{t("common.levelBadge", lang, { n: level })} · {t("trainingNest.nextCapacity", lang, { n: armyCapacity(Math.min(10, level + 1)) })}</Text>
         </View>
@@ -843,9 +875,38 @@ function TrainingNestControls({
           <Text style={styles.capacityBadge}>{t("trainingNest.armyCapacity", lang, { used: housingUsed, max: maxPopulation })}</Text>
           <Text style={styles.powerBadge}>{t("trainingNest.armyPower", lang, { n: armyPowerValue })}</Text>
         </View>
+        <Pressable accessibilityRole="button" onPress={onClose} style={styles.upgradeClose}>
+          <Text style={styles.upgradeCloseText}>×</Text>
+        </Pressable>
       </View>
-      <Text style={styles.trainingSectionTitle}>{t("trainingNest.units", lang)}</Text>
-      <View style={styles.troopCardGrid}>
+
+      <View accessibilityRole="tablist" style={styles.trainingTabs}>
+        {(["train", "queue", "upgrades"] as const).map((tab) => {
+          const selected = section === tab;
+          const label = tab === "train"
+            ? t("trainingNest.units", lang)
+            : tab === "queue"
+              ? t("production.title", lang)
+              : t("trainingNest.upgrades", lang);
+          return (
+            <SpringPressable
+              key={tab}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              onPress={() => setSection(tab)}
+              style={[styles.trainingTab, selected ? styles.trainingTabActive : null]}
+            >
+              <Text style={[styles.trainingTabText, selected ? styles.trainingTabTextActive : null]} numberOfLines={1} adjustsFontSizeToFit>
+                {label}{tab === "queue" && queue.length > 0 ? ` (${queue.length})` : ""}
+              </Text>
+            </SpringPressable>
+          );
+        })}
+      </View>
+
+      {section === "train" ? <View style={styles.trainingTabBody}>
+        <Text style={styles.trainingSectionTitle}>{t("trainingNest.units", lang)}</Text>
+        <View style={styles.troopCardGrid}>
         {TROOP_TYPES.map((type) => {
           const troop = TROOPS[type];
           const stats = troopCombatStats(type, troopUpgrades);
@@ -867,21 +928,27 @@ function TrainingNestControls({
             </SpringPressable>
           </View>;
         })}
-      </View>
-    </View>
-    <ProductionQueue queue={queue} lang={lang} onRush={onRush} />
-    <View style={styles.queuePanel}>
-      <Text style={styles.queueTitle}>{t("trainingNest.currentArmy", lang)}</Text>
-      <View style={styles.currentArmyRow}>
-        {TROOP_TYPES.map((type) => <View key={type} style={styles.currentArmyChip}>
-          <AssetImage assetKey={TROOPS[type].artwork} style={styles.currentArmyIcon} fallback={<View />} />
-          <Text style={styles.currentArmyCount}>{troopCounts[type]}×</Text>
-          <Text style={styles.currentArmyName} numberOfLines={1}>{t(`unit.${type}`, lang)}</Text>
-        </View>)}
-      </View>
-    </View>
-    <View style={styles.queuePanel}>
-      <Text style={styles.queueTitle}>{t("trainingNest.upgrades", lang)}</Text>
+        </View>
+      </View> : null}
+
+      {section === "queue" ? <View style={styles.trainingTabBody}>
+        <ProductionQueue queue={queue} lang={lang} onRush={onRush} />
+        <View style={styles.queuePanel}>
+          <Text style={styles.queueTitle}>{t("trainingNest.currentArmy", lang)}</Text>
+          <View style={styles.currentArmyRow}>
+            {TROOP_TYPES.map((type) => <View key={type} style={styles.currentArmyChip}>
+              <AssetImage assetKey={TROOPS[type].artwork} style={styles.currentArmyIcon} fallback={<View />} />
+              <Text style={styles.currentArmyCount}>{troopCounts[type]}×</Text>
+              <Text style={styles.currentArmyName} numberOfLines={1}>{t(`unit.${type}`, lang)}</Text>
+            </View>)}
+          </View>
+        </View>
+      </View> : null}
+
+      {section === "upgrades" ? <View style={styles.trainingTabBody}>
+        {buildingUpgrade}
+        <View style={styles.queuePanel}>
+          <Text style={styles.queueTitle}>{t("trainingNest.upgrades", lang)}</Text>
       {TROOP_TYPES.map((type) => <View key={type} style={styles.troopUpgradeGroup}>
         <Text style={styles.troopUpgradeName}>{t(`unit.${type}`, lang)}</Text>
         {TROOPS[type].upgradeStats.map((stat) => {
@@ -906,8 +973,9 @@ function TrainingNestControls({
           </View>;
         })}
       </View>)}
-    </View>
-  </>;
+        </View>
+      </View> : null}
+  </View>;
 }
 
 function formatTroopStat(stat: TroopUpgradeStat, stats: ReturnType<typeof troopCombatStats>) {
@@ -1767,6 +1835,47 @@ const styles = StyleSheet.create({
     padding: theme.spacing.sm,
     overflow: "hidden"
   },
+  trainingNestPanel: {
+    gap: 8,
+    marginTop: theme.spacing.xs,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.42)",
+    backgroundColor: "rgba(16, 21, 14, 0.94)",
+    padding: theme.spacing.sm,
+    overflow: "hidden"
+  },
+  trainingTitleCopy: { flex: 1, minWidth: 0 },
+  trainingTabs: {
+    flexDirection: "row",
+    gap: 5,
+    padding: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(226, 177, 90, 0.25)",
+    backgroundColor: "rgba(7, 12, 7, 0.78)"
+  },
+  trainingTab: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+    borderRadius: 9
+  },
+  trainingTabActive: {
+    borderWidth: 1,
+    borderColor: "rgba(255, 225, 139, 0.68)",
+    backgroundColor: "rgba(111, 78, 29, 0.92)"
+  },
+  trainingTabText: {
+    color: "#b9ae90",
+    fontSize: 11,
+    fontFamily: theme.fonts.heavy
+  },
+  trainingTabTextActive: { color: "#fff0bd" },
+  trainingTabBody: { gap: 6 },
   ownershipHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   ownershipTitle: { color: theme.colors.paper, fontSize: 14, fontWeight: "900", fontFamily: theme.fonts.heavy, textTransform: "uppercase" },
   ownershipMeta: { color: "#d8ccb0", fontSize: 11, fontWeight: "800", fontFamily: theme.fonts.bold },

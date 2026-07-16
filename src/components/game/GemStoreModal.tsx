@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { playSound } from "../../game/audio/soundManager";
 import { GEM_PACKS, type GemPack } from "../../game/config/gemPacks";
 import { t } from "../../game/i18n";
@@ -135,11 +136,12 @@ const TIERS: Record<string, Tier> = {
  */
 export function GemStoreModal({ visible, lang, onClose }: GemStoreModalProps) {
   const gems = useGameStore((state) => state.gems);
+  const insets = useSafeAreaInsets();
   const [comingSoon, setComingSoon] = useState(false);
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <View style={styles.scrim}>
+      <View style={[styles.scrim, { paddingTop: Math.max(insets.top, 14), paddingBottom: Math.max(insets.bottom, 14) }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.card}>
           <View style={styles.headerTop}>

@@ -10,6 +10,7 @@ import {
   View,
   useWindowDimensions
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   FESTIVAL_PROFILE_SKINS,
   PROFILE_MONKEYS,
@@ -119,6 +120,7 @@ export function MonkeyCollectionModal({
   onOpenGemStore
 }: MonkeyCollectionModalProps) {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const gems = useGameStore((state) => state.gems);
   const unlocked = useGameStore((state) => state.unlockedProfileMonkeys);
   const equipped = useGameStore((state) => state.equippedProfileMonkey);
@@ -239,12 +241,15 @@ export function MonkeyCollectionModal({
         statusBarTranslucent
         onRequestClose={closeCollection}
       >
-        <View style={styles.scrim}>
+        <View style={[styles.scrim, { paddingTop: Math.max(insets.top, 12), paddingBottom: Math.max(insets.bottom, 12) }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={closeCollection} />
           <View
             style={[
               styles.album,
-              { width: Math.min(width - 24, 410), height: Math.min(height - 32, 740) }
+              {
+                width: Math.min(width - 24, 410),
+                height: Math.min(height - Math.max(32, insets.top + insets.bottom + 16), 740)
+              }
             ]}
           >
             <View style={styles.albumEdge} pointerEvents="none" />

@@ -19,7 +19,7 @@ import { useGameStore } from "../../game/state/gameStore";
 import type { LumberCampCollectionSummary, LumberMissionTier, Resources, StoneQuarryCollectionSummary, WorkerClass } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 import { AssetImage } from "./AssetImage";
-import { WORKER_ASSETS } from "./WorkerLodgeModal";
+import { WORKER_ASSETS } from "../../game/assets/workerAssets";
 import { NineSliceFrame } from "./NineSliceFrame";
 import { SpringPressable } from "./SpringPressable";
 

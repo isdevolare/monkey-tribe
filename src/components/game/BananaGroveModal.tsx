@@ -25,7 +25,7 @@ import type {
 } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 import { AssetImage } from "./AssetImage";
-import { BANANA_WORKER_ASSETS } from "./WorkerLodgeModal";
+import { BANANA_WORKER_ASSETS } from "../../game/assets/workerAssets";
 import { NineSliceFrame } from "./NineSliceFrame";
 import { SpringPressable } from "./SpringPressable";
 
