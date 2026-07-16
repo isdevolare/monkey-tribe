@@ -1,10 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  Baloo2_500Medium,
-  Baloo2_700Bold,
-  Baloo2_800ExtraBold,
-  useFonts
-} from "@expo-google-fonts/baloo-2";
+import { Baloo2_500Medium } from "@expo-google-fonts/baloo-2/500Medium";
+import { Baloo2_700Bold } from "@expo-google-fonts/baloo-2/700Bold";
+import { Baloo2_800ExtraBold } from "@expo-google-fonts/baloo-2/800ExtraBold";
+import { useFonts } from "@expo-google-fonts/baloo-2/useFonts";
 import * as SplashScreen from "expo-splash-screen";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, StatusBar, StyleSheet, View } from "react-native";

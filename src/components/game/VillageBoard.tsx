@@ -77,9 +77,9 @@ const BUILDING_LAYOUT: Record<
   bananaGrove: { point: VISUAL_BUILDING_POINTS.bananaGrove, size: 18, asset: "terrainBananaTree" },
   lumberCamp: { point: VISUAL_BUILDING_POINTS.lumberCamp, size: 23, asset: "buildingLumberCampReference" },
   stoneQuarry: { point: VISUAL_BUILDING_POINTS.stoneQuarry, size: 18, asset: "terrainRock" },
-  watchTower: { point: VISUAL_BUILDING_POINTS.watchTower, size: 19, asset: "buildingWatchPost" },
+  watchTower: { point: VISUAL_BUILDING_POINTS.watchTower, size: 19, asset: "buildingArcherTower" },
   workerShelter: { point: VISUAL_BUILDING_POINTS.workerShelter, size: 22, asset: "buildingHut" },
-  trainingNest: { point: VISUAL_BUILDING_POINTS.trainingNest, size: 23, asset: "buildingTrainingNest" }
+  trainingNest: { point: VISUAL_BUILDING_POINTS.trainingNest, size: 23, asset: "buildingWarriorBarracks" }
 };
 
 export function VillageBoard({
@@ -380,9 +380,9 @@ function BirdSilhouette() {
 
 type WorkerRoute = { asset: GameAssetKey; cargo?: GameAssetKey; left: number; top: number; dx: number; dy: number; duration: number; delay: number };
 const DECORATIVE_WORKER_ROUTES: WorkerRoute[] = [
-  { asset: "workerBananaDelivery", cargo: "resourceBanana", left: 30, top: 35, dx: 10, dy: 7, duration: 7900, delay: 300 },
+  { asset: "bananaWorkerYoung", cargo: "resourceBanana", left: 30, top: 35, dx: 10, dy: 7, duration: 7900, delay: 300 },
   { asset: "lumberWorkerApprentice", cargo: "resourceWood", left: 23, top: 52, dx: 13, dy: -4, duration: 9200, delay: 1900 },
-  { asset: "workerMasterBuilder", cargo: "resourceStone", left: 68, top: 52, dx: -11, dy: -5, duration: 8700, delay: 3700 },
+  { asset: "stoneWorkerApprentice", cargo: "resourceStone", left: 68, top: 52, dx: -11, dy: -5, duration: 8700, delay: 3700 },
   { asset: "unitWorker", left: 32, top: 69, dx: 4, dy: -1, duration: 10800, delay: 6000 }
 ];
 
@@ -866,12 +866,6 @@ function assetForBuilding(building: VillageBuilding, fallback: GameAssetKey): Ga
       return "buildingPlayerCampL2";
     }
     return "buildingPlayerCamp";
-  }
-  if (building.type === "watchTower") {
-    return "buildingArcherTower";
-  }
-  if (building.type === "trainingNest") {
-    return "buildingWarriorBarracks";
   }
   return fallback;
 }

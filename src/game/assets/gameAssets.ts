@@ -155,30 +155,12 @@ export const gameAssets = {
     ...asset("terrainBananaTree", "terrain", "terrain_banana_tree.png", "512x512 transparent prop"),
     source: require("../../../assets/game/terrain/terrain_banana_tree.png") as ImageSourcePropType
   },
-  terrainWoodTree: {
-    ...asset("terrainWoodTree", "terrain", "terrain_wood_tree.png", "512x512 transparent prop"),
-    source: require("../../../assets/game/terrain/terrain_wood_tree.png") as ImageSourcePropType
-  },
-  terrainBush: {
-    ...asset("terrainBush", "terrain", "terrain_bush.png", "1024x1024 transparent prop"),
-    source: require("../../../assets/game/terrain/terrain_bush.png") as ImageSourcePropType
-  },
-  terrainGrassTile: {
-    ...asset("terrainGrassTile", "terrain", "terrain_grass_tile.png", "1024x1024 seamless tile"),
-    source: require("../../../assets/game/terrain/terrain_grass_tile.png") as ImageSourcePropType
-  },
-  terrainJungleTile: {
-    ...asset("terrainJungleTile", "terrain", "terrain_jungle_tile.png", "1024x1024 seamless tile"),
-    source: require("../../../assets/game/terrain/terrain_jungle_tile.png") as ImageSourcePropType
-  },
-  terrainMudPathTile: {
-    ...asset("terrainMudPathTile", "terrain", "terrain_mud_path_tile.png", "1024x1024 seamless tile"),
-    source: require("../../../assets/game/terrain/terrain_mud_path_tile.png") as ImageSourcePropType
-  },
-  terrainWaterTile: {
-    ...asset("terrainWaterTile", "terrain", "terrain_water_tile.png", "1024x1024 seamless tile"),
-    source: require("../../../assets/game/terrain/terrain_water_tile.png") as ImageSourcePropType
-  },
+  terrainWoodTree: asset("terrainWoodTree", "terrain", "terrain_wood_tree.png", "512x512 reference prop"),
+  terrainBush: asset("terrainBush", "terrain", "terrain_bush.png", "1024x1024 reference prop"),
+  terrainGrassTile: asset("terrainGrassTile", "terrain", "terrain_grass_tile.png", "1024x1024 reference tile"),
+  terrainJungleTile: asset("terrainJungleTile", "terrain", "terrain_jungle_tile.png", "1024x1024 reference tile"),
+  terrainMudPathTile: asset("terrainMudPathTile", "terrain", "terrain_mud_path_tile.png", "1024x1024 reference tile"),
+  terrainWaterTile: asset("terrainWaterTile", "terrain", "terrain_water_tile.png", "1024x1024 reference tile"),
   unitWorker: {
     ...asset("unitWorker", "units", "unit_worker.png", "512x512 transparent unit"),
     source: require("../../../assets/game/units/unit_worker.png") as ImageSourcePropType
@@ -219,14 +201,8 @@ export const gameAssets = {
     ...asset("stoneWorkerMaster", "units", "generated/worker_stone_master.png", "1024x1536 transparent quarry worker"),
     source: require("../../../assets/game/units/generated/worker_stone_master.png") as ImageSourcePropType
   },
-  workerBananaDelivery: {
-    ...asset("workerBananaDelivery", "units", "worker_banana_delivery.png", "1024x1024 transparent cosmetic unit"),
-    source: require("../../../assets/game/units/worker_banana_delivery.png") as ImageSourcePropType
-  },
-  workerMasterBuilder: {
-    ...asset("workerMasterBuilder", "units", "worker_master_builder.png", "1024x1024 transparent cosmetic unit"),
-    source: require("../../../assets/game/units/worker_master_builder.png") as ImageSourcePropType
-  },
+  workerBananaDelivery: asset("workerBananaDelivery", "units", "worker_banana_delivery.png", "archived cosmetic unit"),
+  workerMasterBuilder: asset("workerMasterBuilder", "units", "worker_master_builder.png", "archived cosmetic unit"),
   festivalWorker: {
     ...asset("festivalWorker", "units", "festival_worker.png", "1024x1024 transparent Epic cosmetic unit"),
     source: require("../../../assets/game/units/festival_worker.png") as ImageSourcePropType
@@ -267,38 +243,20 @@ export const gameAssets = {
     ...asset("festivalGoldenKing", "units", "festival_golden_festival_king.png", "1254x1254 transparent Mythic Festival cosmetic"),
     source: require("../../../assets/game/units/festival_golden_festival_king.png") as ImageSourcePropType
   },
-  goldenEmperor: {
-    ...asset("goldenEmperor", "units", "golden_emperor.png", "1024x1365 transparent Mythic cosmetic unit"),
-    source: require("../../../assets/game/units/golden_emperor.png") as ImageSourcePropType
-  },
-  celestialMonkeyKing: {
-    ...asset("celestialMonkeyKing", "units", "celestial_monkey_king.png", "1024x1024 transparent Legendary cosmetic unit"),
-    source: require("../../../assets/game/units/celestial_monkey_king.png") as ImageSourcePropType
-  },
-  unitFighter: {
-    ...asset("unitFighter", "units", "unit_fighter.png", "512x512 transparent unit"),
-    source: require("../../../assets/game/units/unit_fighter.png") as ImageSourcePropType
-  },
+  goldenEmperor: asset("goldenEmperor", "units", "golden_emperor.png", "archived cosmetic unit"),
+  celestialMonkeyKing: asset("celestialMonkeyKing", "units", "celestial_monkey_king.png", "archived cosmetic unit"),
+  unitFighter: asset("unitFighter", "units", "unit_fighter.png", "legacy archived-skin reference"),
   unitScout: {
     ...asset("unitScout", "units", "unit_scout.png", "512x512 transparent unit"),
     source: require("../../../assets/game/units/unit_scout.png") as ImageSourcePropType
   },
-  scoutJunglePathfinder: {
-    ...asset("scoutJunglePathfinder", "units", "scout_jungle_pathfinder.png", "1024x1024 transparent cosmetic unit"),
-    source: require("../../../assets/game/units/scout_jungle_pathfinder.png") as ImageSourcePropType
-  },
-  scoutMoonlightTracker: {
-    ...asset("scoutMoonlightTracker", "units", "scout_moonlight_tracker.png", "1024x1024 transparent cosmetic unit"),
-    source: require("../../../assets/game/units/scout_moonlight_tracker.png") as ImageSourcePropType
-  },
+  scoutJunglePathfinder: asset("scoutJunglePathfinder", "units", "scout_jungle_pathfinder.png", "archived cosmetic unit"),
+  scoutMoonlightTracker: asset("scoutMoonlightTracker", "units", "scout_moonlight_tracker.png", "archived cosmetic unit"),
   unitChief: {
     ...asset("unitChief", "units", "unit_chief.png", "512x512 transparent unit"),
     source: require("../../../assets/game/units/unit_chief.png") as ImageSourcePropType
   },
-  unitEnemyFighter: {
-    ...asset("unitEnemyFighter", "units", "unit_enemy_fighter.png", "512x512 transparent unit"),
-    source: require("../../../assets/game/units/unit_enemy_fighter.png") as ImageSourcePropType
-  },
+  unitEnemyFighter: asset("unitEnemyFighter", "units", "unit_enemy_fighter.png", "legacy archived-skin reference"),
   buildingPlayerCamp: {
     ...asset("buildingPlayerCamp", "buildings", "building_player_camp.png", "768x768 transparent building"),
     source: require("../../../assets/game/buildings/building_player_camp.png") as ImageSourcePropType
@@ -311,14 +269,8 @@ export const gameAssets = {
     ...asset("buildingHut", "buildings", "building_hut.png", "512x512 transparent building"),
     source: require("../../../assets/game/buildings/building_hut.png") as ImageSourcePropType
   },
-  buildingTrainingNest: {
-    ...asset("buildingTrainingNest", "buildings", "building_training_nest.png", "512x512 transparent building"),
-    source: require("../../../assets/game/buildings/building_training_nest.png") as ImageSourcePropType
-  },
-  buildingWatchPost: {
-    ...asset("buildingWatchPost", "buildings", "building_watch_post.png", "512x512 transparent building"),
-    source: require("../../../assets/game/buildings/building_watch_post.png") as ImageSourcePropType
-  },
+  buildingTrainingNest: asset("buildingTrainingNest", "buildings", "building_training_nest.png", "obsolete building reference"),
+  buildingWatchPost: asset("buildingWatchPost", "buildings", "building_watch_post.png", "obsolete building reference"),
   buildingLumberCampReference: {
     ...asset("buildingLumberCampReference", "buildings", "building_lumber_camp_reference.png", "generated reference-matched transparent lumber camp"),
     source: require("../../../assets/game/buildings/building_lumber_camp_reference.png") as ImageSourcePropType
@@ -343,10 +295,7 @@ export const gameAssets = {
     ...asset("uiLogo", "ui", "logo.png", "1024x1024 transparent or square logo"),
     source: require("../../../assets/game/ui/logo.png") as ImageSourcePropType
   },
-  unitMonkeySheet: {
-    ...asset("unitMonkeySheet", "units", "monkey_units_sheet.png", "1341x1173 sprite sheet"),
-    source: require("../../../assets/game/units/monkey_units_sheet.png") as ImageSourcePropType
-  },
+  unitMonkeySheet: asset("unitMonkeySheet", "units", "monkey_units_sheet.png", "development sprite sheet"),
   uiButtonWoodLarge: {
     ...asset("uiButtonWoodLarge", "ui", "ui_button_wood_large.png", "large wooden button"),
     source: require("../../../assets/game/ui/ui_button_wood_large.png") as ImageSourcePropType
@@ -372,10 +321,7 @@ export const gameAssets = {
     source: require("../../../assets/game/ui/ui_icon_frame.png") as ImageSourcePropType
   },
   uiSpriteSheet: asset("uiSpriteSheet", "ui", "ui_sprite_sheet.png", "UI sprite sheet"),
-  uiGameSheet: {
-    ...asset("uiGameSheet", "ui", "ui_game_sheet.png", "available UI sprite sheet"),
-    source: require("../../../assets/game/ui/ui_game_sheet.png") as ImageSourcePropType
-  },
+  uiGameSheet: asset("uiGameSheet", "ui", "ui_game_sheet.png", "development UI sprite sheet"),
   uiPanelDark: {
     ...asset("uiPanelDark", "ui", "ui_panel_dark.png", "512x256 nine-slice style panel"),
     source: require("../../../assets/game/ui/ui_panel_dark.png") as ImageSourcePropType
@@ -392,18 +338,12 @@ export const gameAssets = {
     ...asset("bgJungleGame", "backgrounds", "bg_jungle_game.png", "1440x2560 portrait"),
     source: require("../../../assets/game/backgrounds/bg_jungle_game.png") as ImageSourcePropType
   },
-  bgJungleWorldDense: {
-    ...asset("bgJungleWorldDense", "backgrounds", "bg_jungle_world_dense.png", "941x1672 generated dense portrait jungle world"),
-    source: require("../../../assets/game/backgrounds/bg_jungle_world_dense.png") as ImageSourcePropType
-  },
+  bgJungleWorldDense: asset("bgJungleWorldDense", "backgrounds", "bg_jungle_world_dense.png", "unused generated background reference"),
   bgJungleWorldCompact: {
     ...asset("bgJungleWorldCompact", "backgrounds", "bg_jungle_world_compact.png", "941x1672 generated compact portrait jungle frame"),
     source: require("../../../assets/game/backgrounds/bg_jungle_world_compact.png") as ImageSourcePropType
   },
-  bgVillageBoardDense: {
-    ...asset("bgVillageBoardDense", "backgrounds", "bg_village_board_dense.png", "1254x1254 generated dense square village clearing"),
-    source: require("../../../assets/game/backgrounds/bg_village_board_dense.png") as ImageSourcePropType
-  },
+  bgVillageBoardDense: asset("bgVillageBoardDense", "backgrounds", "bg_village_board_dense.png", "unused generated background reference"),
   bgVillageReferenceLayout: {
     ...asset("bgVillageReferenceLayout", "backgrounds", "bg_village_reference_layout.png", "941x1450 reference-matched portrait village clearing"),
     source: require("../../../assets/game/backgrounds/bg_village_reference_layout.png") as ImageSourcePropType
@@ -432,14 +372,8 @@ export const gameAssets = {
     ...asset("unitShieldGuardian", "units", "unit_shield_guardian_monkey.png", "1536x1536 transparent heavy tank unit"),
     source: require("../../../assets/game/generated/units/unit_shield_guardian_monkey.png") as ImageSourcePropType
   },
-  warriorSavageRaider: {
-    ...asset("warriorSavageRaider", "units", "warrior_savage_raider.png", "1024x1024 transparent cosmetic unit"),
-    source: require("../../../assets/game/units/warrior_savage_raider.png") as ImageSourcePropType
-  },
-  warriorAncientWarChief: {
-    ...asset("warriorAncientWarChief", "units", "warrior_ancient_warchief.png", "1024x1024 transparent cosmetic unit"),
-    source: require("../../../assets/game/units/warrior_ancient_warchief.png") as ImageSourcePropType
-  },
+  warriorSavageRaider: asset("warriorSavageRaider", "units", "warrior_savage_raider.png", "archived cosmetic unit"),
+  warriorAncientWarChief: asset("warriorAncientWarChief", "units", "warrior_ancient_warchief.png", "archived cosmetic unit"),
   unitArcher: {
     ...asset("unitArcher", "units", "unit_archer_monkey.png", "generated archer unit"),
     source: require("../../../assets/game/generated/units/unit_archer_monkey.png") as ImageSourcePropType
@@ -448,14 +382,8 @@ export const gameAssets = {
     ...asset("unitCrossbowman", "units", "unit_crossbowman_monkey.png", "1536x1536 transparent heavy ranged unit"),
     source: require("../../../assets/game/generated/units/unit_crossbowman_monkey.png") as ImageSourcePropType
   },
-  hunterEmeraldRanger: {
-    ...asset("hunterEmeraldRanger", "units", "hunter_emerald_ranger.png", "1024x1024 transparent cosmetic unit"),
-    source: require("../../../assets/game/units/hunter_emerald_ranger.png") as ImageSourcePropType
-  },
-  hunterRoyalEagleArcher: {
-    ...asset("hunterRoyalEagleArcher", "units", "hunter_royal_eagle_archer.png", "1024x1024 transparent cosmetic unit"),
-    source: require("../../../assets/game/units/hunter_royal_eagle_archer.png") as ImageSourcePropType
-  },
+  hunterEmeraldRanger: asset("hunterEmeraldRanger", "units", "hunter_emerald_ranger.png", "archived cosmetic unit"),
+  hunterRoyalEagleArcher: asset("hunterRoyalEagleArcher", "units", "hunter_royal_eagle_archer.png", "archived cosmetic unit"),
   unitEnemyWarrior: {
     ...asset("unitEnemyWarrior", "units", "unit_enemy_warrior_monkey.png", "generated enemy warrior"),
     source: require("../../../assets/game/generated/units/unit_enemy_warrior_monkey.png") as ImageSourcePropType
@@ -484,10 +412,7 @@ export const gameAssets = {
     ...asset("menuChiefMascot", "ui", "menu_monkey_chief_mascot.png", "generated menu mascot"),
     source: require("../../../assets/game/generated/menu/menu_monkey_chief_mascot.png") as ImageSourcePropType
   },
-  menuTitlePlaque: {
-    ...asset("menuTitlePlaque", "ui", "menu_title_plaque.png", "generated title plaque"),
-    source: require("../../../assets/game/generated/menu/menu_title_plaque.png") as ImageSourcePropType
-  },
+  menuTitlePlaque: asset("menuTitlePlaque", "ui", "menu_title_plaque.png", "unused generated menu reference"),
   menuTotem: {
     ...asset("menuTotem", "ui", "menu_jungle_totem.png", "generated jungle totem"),
     source: require("../../../assets/game/generated/menu/menu_jungle_totem.png") as ImageSourcePropType
@@ -520,10 +445,7 @@ export const gameAssets = {
     ...asset("propRopeCoil", "fx", "prop_rope_coil.png", "village prop"),
     source: require("../../../assets/game/props/prop_rope_coil.png") as ImageSourcePropType
   },
-  propFenceSegment: {
-    ...asset("propFenceSegment", "fx", "prop_fence_segment.png", "village prop"),
-    source: require("../../../assets/game/props/prop_fence_segment.png") as ImageSourcePropType
-  },
+  propFenceSegment: asset("propFenceSegment", "fx", "prop_fence_segment.png", "unused village prop reference"),
   propTrainingDummy: {
     ...asset("propTrainingDummy", "fx", "prop_training_dummy.png", "village prop"),
     source: require("../../../assets/game/props/prop_training_dummy.png") as ImageSourcePropType
