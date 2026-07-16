@@ -1,6 +1,10 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    { "source": "/privacy-policy", "destination": "/privacy" },
+    { "source": "/terms-of-use", "destination": "/terms" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",

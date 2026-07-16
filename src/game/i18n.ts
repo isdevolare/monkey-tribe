@@ -85,8 +85,8 @@ const dict: Record<string, Entry> = {
   "settings.supportShort": { tr: "Destek", en: "Support" },
   "settings.credits": { tr: "Krediler", en: "Credits" },
   "settings.creditsBody": {
-    tr: "Monkey Tribe — Quickmoo Digital. Ses efektleri: Kenney (CC0).",
-    en: "Monkey Tribe — Quickmoo Digital. Sound effects: Kenney (CC0)."
+    tr: "Monkey Tribe — Quick Moo Digital. Ses efektleri: Kenney (CC0).",
+    en: "Monkey Tribe — Quick Moo Digital. Sound effects: Kenney (CC0)."
   },
   "support.title": { tr: "Yardım & Destek", en: "Help & Support" },
   "support.back": { tr: "Geri", en: "Back" },
