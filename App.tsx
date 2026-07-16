@@ -9,6 +9,7 @@ import { AppState, StatusBar, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { FadeIn } from "./src/components/game/FadeIn";
 import { initGameSounds } from "./src/game/audio/soundBridge";
+import { StoreKitProvider } from "./src/game/iap/StoreKitProvider";
 import {
   flushVillageSave,
   SAVE_KEY,
@@ -121,19 +122,21 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <View style={styles.appShell} onLayout={onLayoutRootView}>
-        {/* Full-bleed frame: the background fills edge to edge (including behind
-            the status bar); each screen insets its own content via safe-area
-            padding. No solid strip at the top. */}
-        <View style={styles.phoneFrame}>
-          <StatusBar barStyle="light-content" />
-          <FadeIn key={screen} rise={0} style={styles.screenFill}>
-            {screen === "menu" ? <MainMenuScreen /> : null}
-            {screen === "game" ? <GameScreen /> : null}
-            {screen === "result" ? <ResultScreen /> : null}
-          </FadeIn>
+      <StoreKitProvider>
+        <View style={styles.appShell} onLayout={onLayoutRootView}>
+          {/* Full-bleed frame: the background fills edge to edge (including behind
+              the status bar); each screen insets its own content via safe-area
+              padding. No solid strip at the top. */}
+          <View style={styles.phoneFrame}>
+            <StatusBar barStyle="light-content" />
+            <FadeIn key={screen} rise={0} style={styles.screenFill}>
+              {screen === "menu" ? <MainMenuScreen /> : null}
+              {screen === "game" ? <GameScreen /> : null}
+              {screen === "result" ? <ResultScreen /> : null}
+            </FadeIn>
+          </View>
         </View>
-      </View>
+      </StoreKitProvider>
     </SafeAreaProvider>
   );
 }

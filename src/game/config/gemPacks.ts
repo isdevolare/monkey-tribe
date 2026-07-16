@@ -13,12 +13,10 @@ export type GemPack = {
 };
 
 /**
- * Billing-ready product metadata. No platform purchase API is connected yet,
- * and no consumable is granted locally. Product IDs are frozen so a future IAP
- * integration can map them directly to StoreKit / Google Play products.
- *
- * The $0.99 pack anchors at two launch Festival Chests; larger packs gain
- * steadily increasing value without granting gameplay-exclusive benefits.
+ * Stable Gem fulfillment metadata. StoreKit owns customer-facing price and
+ * availability; this table owns only the product-to-Gem mapping and artwork
+ * tier metadata. Product IDs and Gem values must stay in sync with App Store
+ * Connect.
  */
 export const GEM_PACKS: readonly GemPack[] = [
   { id: "gem_pouch", referenceUsdPrice: 0.99, gems: 100, bonusPercent: 0, platformProductId: "monkeytribe_gems_100" },
@@ -28,3 +26,9 @@ export const GEM_PACKS: readonly GemPack[] = [
   { id: "gem_treasury", referenceUsdPrice: 19.99, gems: 2_800, bonusPercent: 40, platformProductId: "monkeytribe_gems_2800" },
   { id: "gem_hoard", referenceUsdPrice: 39.99, gems: 6_000, bonusPercent: 50, platformProductId: "monkeytribe_gems_6000" }
 ];
+
+export const GEM_PRODUCT_IDS = GEM_PACKS.map((pack) => pack.platformProductId);
+
+export function getGemPackByProductId(productId: string) {
+  return GEM_PACKS.find((pack) => pack.platformProductId === productId);
+}

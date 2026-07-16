@@ -24,7 +24,8 @@
     "plugins": [
       "expo-font",
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      "expo-iap"
     ],
     "icon": "./assets/icon.png",
     "splash": {

@@ -378,6 +378,29 @@ const dict: Record<string, Entry> = {
   "gemStore.gemsLabel": { tr: "Gem", en: "Gems" },
   "gemStore.comingSoon": { tr: "Yakında", en: "Coming Soon" },
   "gemStore.unavailableNote": { tr: "Satın alma sistemi hazırlanıyor", en: "Purchases coming soon" },
+  "gemStore.loadingPrice": { tr: "Fiyat yükleniyor", en: "Loading price" },
+  "gemStore.unavailable": { tr: "Kullanılamıyor", en: "Unavailable" },
+  "gemStore.processing": { tr: "İşleniyor", en: "Processing" },
+  "gemStore.purchaseSuccess": {
+    tr: "Satın alma tamamlandı. {amount} Gem eklendi.",
+    en: "Purchase complete. {amount} Gems added."
+  },
+  "gemStore.purchaseCancelled": {
+    tr: "Satın alma iptal edildi. Gem eklenmedi.",
+    en: "Purchase cancelled. No Gems were added."
+  },
+  "gemStore.purchasePending": {
+    tr: "Satın alma beklemede. Apple işlemi tamamlayana kadar Gem eklenmeyecek.",
+    en: "Purchase pending. Gems will not be added until Apple completes it."
+  },
+  "gemStore.purchaseError": {
+    tr: "App Store'a ulaşılamadı veya ürün kullanılamıyor. Lütfen daha sonra tekrar dene.",
+    en: "The App Store could not be reached or this product is unavailable. Please try again later."
+  },
+  "gemStore.deliveryPending": {
+    tr: "Satın alma durumu kontrol ediliyor. Ödeme tamamlandıysa Gemler uygulama yeniden açıldığında güvenle teslim edilecek.",
+    en: "Purchase delivery is being checked. If payment completed, Gems will be delivered safely when the app reopens."
+  },
   "gemStore.priceNote": {
     tr: "Fiyatlar mağaza tarafından yerelleştirilir; ödeme ekranında gösterilir.",
     en: "Prices are localized by the store and shown at checkout."

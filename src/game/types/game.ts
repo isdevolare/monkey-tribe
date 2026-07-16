@@ -295,6 +295,8 @@ export type VillageSave = {
   /** Legacy cache; army capacity is always derived from Training Nest level. */
   maxPopulation?: number;
   gems?: number;
+  /** StoreKit transaction ids already delivered into this save. */
+  processedIapTransactionIds?: string[];
   /** Internal QA reward ids already redeemed in this save. */
   redeemedQaCodes?: string[];
   unlockedProfileMonkeys?: ProfileMonkeyId[];
@@ -354,6 +356,7 @@ export type GameState = {
   resources: Resources;
   buildings: VillageBuilding[];
   gems: number;
+  processedIapTransactionIds: string[];
   redeemedQaCodes: string[];
   unlockedProfileMonkeys: ProfileMonkeyId[];
   equippedProfileMonkey: ProfileMonkeyId;

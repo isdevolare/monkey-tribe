@@ -69,6 +69,7 @@ import {
   sanitizeUnlockedProfileMonkeys
 } from "../config/profileMonkeys";
 import { getResourceShopItem, resourceShopCapacityIssues } from "../config/shop";
+import { getGemPackByProductId } from "../config/gemPacks";
 import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import { applyRaidPenalty } from "./raidPenalty";
@@ -304,6 +305,7 @@ function createFreshState(now: number) {
     resources: { ...STARTING_RESOURCES },
     buildings: cloneBuildings(DEFAULT_BUILDINGS),
     gems: 0,
+    processedIapTransactionIds: [] as string[],
     redeemedQaCodes: [] as string[],
     unlockedProfileMonkeys: [DEFAULT_PROFILE_MONKEY_ID] as ProfileMonkeyId[],
     equippedProfileMonkey: DEFAULT_PROFILE_MONKEY_ID,
@@ -1240,6 +1242,15 @@ export const useGameStore = create<GameState>((set) => ({
         resources,
         offlineReport,
         gems: save.gems ?? state.gems,
+        processedIapTransactionIds: Array.isArray(save.processedIapTransactionIds)
+          ? Array.from(
+              new Set(
+                save.processedIapTransactionIds.filter(
+                  (value): value is string => typeof value === "string" && value.length > 0
+                )
+              )
+            )
+          : [],
         redeemedQaCodes: Array.isArray(save.redeemedQaCodes)
           ? save.redeemedQaCodes.filter((value): value is string => typeof value === "string")
           : [],
@@ -2428,7 +2439,7 @@ export const useGameStore = create<GameState>((set) => ({
 }));
 
 // Persist the village (buildings/resources/population/language).
-function persistVillage(state: GameState) {
+function villageSavePayload(state: GameState): VillageSave {
   // Persist exact living-unit stats and wounds so Nest upgrades and reloads
   // cannot retroactively alter already-trained troops.
   const unitRoster: PersistedUnit[] = [];
@@ -2459,6 +2470,7 @@ function persistVillage(state: GameState) {
     resources: state.resources,
     unitRoster,
     gems: state.gems,
+    processedIapTransactionIds: state.processedIapTransactionIds,
     redeemedQaCodes: state.redeemedQaCodes,
     unlockedProfileMonkeys: state.unlockedProfileMonkeys,
     equippedProfileMonkey: state.equippedProfileMonkey,
@@ -2489,7 +2501,69 @@ function persistVillage(state: GameState) {
     dailyLastClaim: state.dailyLastClaim,
     lastSeenAt: Date.now()
   };
-  return AsyncStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+  return payload;
+}
+
+let persistenceQueue: Promise<void> = Promise.resolve();
+
+function enqueuePersistence<T>(operation: () => Promise<T>) {
+  const result = persistenceQueue.then(operation);
+  persistenceQueue = result.then(
+    () => undefined,
+    () => undefined
+  );
+  return result;
+}
+
+function writeVillageSnapshot(state: GameState) {
+  return AsyncStorage.setItem(SAVE_KEY, JSON.stringify(villageSavePayload(state)));
+}
+
+function persistVillage(_requestedState?: GameState) {
+  // Resolve the latest store state only when this queued write executes. This
+  // prevents an older throttled snapshot from overwriting a completed IAP
+  // delivery that was persisted ahead of it.
+  return enqueuePersistence(() => writeVillageSnapshot(useGameStore.getState()));
+}
+
+export type IapGemDeliveryResult =
+  | { status: "delivered"; gems: number }
+  | { status: "already-delivered"; gems: number }
+  | { status: "unknown-product"; gems: 0 };
+
+/**
+ * Atomically persists the Gem grant and idempotency marker in the one village
+ * save record. StoreKit must only finish the transaction after this resolves.
+ */
+export function deliverStoreKitGemPurchase(
+  transactionId: string,
+  productId: string
+): Promise<IapGemDeliveryResult> {
+  return enqueuePersistence(async () => {
+    const state = useGameStore.getState();
+    const pack = getGemPackByProductId(productId);
+    if (!pack) {
+      return { status: "unknown-product", gems: 0 };
+    }
+    if (state.processedIapTransactionIds.includes(transactionId)) {
+      return { status: "already-delivered", gems: pack.gems };
+    }
+
+    const processedIapTransactionIds = [
+      ...state.processedIapTransactionIds,
+      transactionId
+    ];
+    const gems = state.gems + pack.gems;
+    const persistedState = {
+      ...state,
+      gems,
+      processedIapTransactionIds
+    };
+
+    await writeVillageSnapshot(persistedState);
+    useGameStore.setState({ gems, processedIapTransactionIds });
+    return { status: "delivered", gems: pack.gems };
+  });
 }
 
 /** Flushes the latest reconciled village snapshot before the app is suspended. */
@@ -2498,12 +2572,12 @@ export function flushVillageSave() {
   if (state.gameStatus !== "playing") {
     return Promise.resolve();
   }
-  return persistVillage(state);
+  return persistVillage();
 }
 
 /** Persists the current village even while Settings is open from the main menu. */
 export function persistVillageNow() {
-  return persistVillage(useGameStore.getState());
+  return persistVillage();
 }
 
 // Save as the village changes, throttled.
@@ -2524,12 +2598,12 @@ useGameStore.subscribe((state, previousState) => {
       (state.workerExpeditions.some((mission) => mission.resource === "wood" || mission.resource === "stones") || previousState.workerExpeditions.some((mission) => mission.resource === "wood" || mission.resource === "stones")));
   if (workplaceStateChanged) {
     lastSaveAt = now;
-    void persistVillage(state);
+    void persistVillage();
     return;
   }
   if (now - lastSaveAt < 3000) {
     return;
   }
   lastSaveAt = now;
-  void persistVillage(state);
+  void persistVillage();
 });

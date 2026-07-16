@@ -1,9 +1,10 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { playSound } from "../../game/audio/soundManager";
 import { GEM_PACKS, type GemPack } from "../../game/config/gemPacks";
 import { t } from "../../game/i18n";
+import { useStoreKit } from "../../game/iap/storeKitContext";
 import { useGameStore } from "../../game/state/gameStore";
 import type { Lang } from "../../game/types/game";
 import { theme } from "../../theme/theme";
@@ -99,17 +100,24 @@ const TIERS: Record<string, Tier> = {
 };
 
 /**
- * Player-facing Gem Store. Real StoreKit / Google Play Billing is not connected
- * yet: pressing a package never grants Gems, never simulates a purchase and
- * never changes any balance — it only surfaces a "coming soon" notice. Package
- * values come exclusively from GEM_PACKS; the USD figure is a reference price
- * that the store-provided localized price will replace once IAP is wired up.
+ * Player-facing Gem Store. Package values come exclusively from GEM_PACKS;
+ * price and availability come from Apple's live StoreKit catalog.
  */
 export function GemStoreModal({ visible, lang, onClose }: GemStoreModalProps) {
   const gems = useGameStore((state) => state.gems);
   const insets = useSafeAreaInsets();
-  const [comingSoon, setComingSoon] = useState(false);
-  const openComingSoon = useCallback(() => setComingSoon(true), []);
+  const {
+    catalogState,
+    productsById,
+    purchasingProductId,
+    notice,
+    requestGemPurchase,
+    dismissNotice
+  } = useStoreKit();
+  const handleBuy = useCallback(
+    (productId: string) => void requestGemPurchase(productId),
+    [requestGemPurchase]
+  );
 
   if (!visible) return null;
 
@@ -148,21 +156,50 @@ export function GemStoreModal({ visible, lang, onClose }: GemStoreModalProps) {
             bounces={false}
           >
             {GEM_PACKS.map((pack) => (
-              <GemPackCard key={pack.id} pack={pack} lang={lang} onBuy={openComingSoon} />
+              <GemPackCard
+                key={pack.id}
+                pack={pack}
+                lang={lang}
+                storeProduct={productsById[pack.platformProductId]}
+                catalogState={catalogState}
+                purchasing={purchasingProductId === pack.platformProductId}
+                onBuy={handleBuy}
+              />
             ))}
             <UsagePanel lang={lang} />
           </ScrollView>
         </View>
 
-        {comingSoon ? <ComingSoonPopup lang={lang} onClose={() => setComingSoon(false)} /> : null}
+        {notice ? <PurchaseStatusPopup lang={lang} notice={notice} onClose={dismissNotice} /> : null}
       </View>
     </Modal>
   );
 }
 
-const GemPackCard = memo(function GemPackCard({ pack, lang, onBuy }: { pack: GemPack; lang: Lang; onBuy: () => void }) {
+const GemPackCard = memo(function GemPackCard({
+  pack,
+  lang,
+  storeProduct,
+  catalogState,
+  purchasing,
+  onBuy
+}: {
+  pack: GemPack;
+  lang: Lang;
+  storeProduct?: { displayPrice: string; currency: string };
+  catalogState: "connecting" | "loading" | "ready" | "unavailable";
+  purchasing: boolean;
+  onBuy: (productId: string) => void;
+}) {
   const tier = TIERS[pack.id] ?? TIERS.gem_pouch!;
-  const referencePrice = `$${pack.referenceUsdPrice.toFixed(2)}`;
+  const catalogLoading = catalogState === "connecting" || catalogState === "loading";
+  const available = catalogState === "ready" && Boolean(storeProduct);
+  const price = catalogLoading
+    ? t("gemStore.loadingPrice", lang)
+    : storeProduct
+      ? `${storeProduct.displayPrice} · ${storeProduct.currency}`
+      : t("gemStore.unavailable", lang);
+  const handleBuy = useCallback(() => onBuy(pack.platformProductId), [onBuy, pack.platformProductId]);
 
   return (
     <View style={styles.cardOuter}>
@@ -216,18 +253,24 @@ const GemPackCard = memo(function GemPackCard({ pack, lang, onBuy }: { pack: Gem
           {t(`gemStore.pack.${pack.id}`, lang)}
         </Text>
         <Text style={[styles.priceText, { color: tier.accent }]} maxFontSizeMultiplier={theme.maxFontScale}>
-          {referencePrice}
+          {price}
         </Text>
 
         <SpringPressable
           accessibilityRole="button"
-          accessibilityLabel={`${t(`gemStore.pack.${pack.id}`, lang)} · ${t("gemStore.purchase", lang)}`}
-          onPress={onBuy}
+          accessibilityLabel={`${t(`gemStore.pack.${pack.id}`, lang)} · ${price}`}
+          accessibilityState={{ disabled: !available || purchasing, busy: purchasing }}
+          disabled={!available || purchasing}
+          onPress={handleBuy}
           pressedScale={0.96}
-          style={[styles.buyButton, { backgroundColor: tier.buttonBg, borderColor: tier.buttonBorder }]}
+          style={[
+            styles.buyButton,
+            { backgroundColor: tier.buttonBg, borderColor: tier.buttonBorder },
+            !available ? styles.buyButtonUnavailable : null
+          ]}
         >
           <Text style={[styles.buyText, { color: tier.accent }]} maxFontSizeMultiplier={theme.maxFontScale}>
-            {t("gemStore.purchase", lang)}
+            {t(purchasing ? "gemStore.processing" : available ? "gemStore.purchase" : "gemStore.unavailable", lang)}
           </Text>
         </SpringPressable>
       </View>
@@ -257,18 +300,37 @@ const UsagePanel = memo(function UsagePanel({ lang }: { lang: Lang }) {
 });
 
 /**
- * Rendered as an in-tree overlay (not a nested Modal) so it reliably appears
- * on top of the store on both native and web. Purely informational — it never
- * grants Gems or changes any balance.
+ * Rendered as an in-tree overlay (not a nested native Modal).
  */
-function ComingSoonPopup({ lang, onClose }: { lang: Lang; onClose: () => void }) {
+function PurchaseStatusPopup({
+  lang,
+  notice,
+  onClose
+}: {
+  lang: Lang;
+  notice: { kind: "success" | "cancelled" | "pending" | "error" | "delivery-pending"; gems?: number };
+  onClose: () => void;
+}) {
+  const messageKey =
+    notice.kind === "success"
+      ? "gemStore.purchaseSuccess"
+      : notice.kind === "cancelled"
+        ? "gemStore.purchaseCancelled"
+        : notice.kind === "pending"
+          ? "gemStore.purchasePending"
+          : notice.kind === "delivery-pending"
+            ? "gemStore.deliveryPending"
+            : "gemStore.purchaseError";
+
   return (
     <View style={[StyleSheet.absoluteFill, styles.popupScrim]}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       <View style={styles.popup}>
-        <AssetImage assetKey="resourceJungleGem" style={styles.popupGem} fallback={<View />} hideFallbackOnLoad />
+        <View pointerEvents="none">
+          <AssetImage assetKey="resourceJungleGem" style={styles.popupGem} fallback={<View />} hideFallbackOnLoad />
+        </View>
         <Text style={styles.popupText} maxFontSizeMultiplier={theme.maxFontScale}>
-          {t("gemStore.comingSoonMessage", lang)}
+          {t(messageKey, lang, { amount: notice.gems ?? 0 })}
         </Text>
         <SpringPressable accessibilityRole="button" onPress={onClose} style={styles.popupButton}>
           <Text style={styles.popupButtonText} maxFontSizeMultiplier={theme.maxFontScale}>{t("collection.ok", lang)}</Text>
@@ -502,6 +564,9 @@ const styles = StyleSheet.create({
     marginTop: 7,
     borderRadius: 11,
     borderWidth: 1.5
+  },
+  buyButtonUnavailable: {
+    opacity: 0.48
   },
   buyText: { fontSize: 12, fontFamily: theme.fonts.heavy, letterSpacing: 0.3 },
   usagePanel: {
