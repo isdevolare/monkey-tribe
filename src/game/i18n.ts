@@ -35,6 +35,7 @@ const dict: Record<string, Entry> = {
     en: "Tap a building to upgrade it"
   },
   "shortcut.select": { tr: "Bir bina seç", en: "Choose a building" },
+  "shortcut.quickAccess": { tr: "Hızlı Erişim", en: "Quick Access" },
   "shortcut.defaultAction": { tr: "Yönetmek için bir binaya dokun.", en: "Tap a building to manage it." },
   "shortcut.clan": { tr: "Klan", en: "Clan" },
   "shortcut.workers": { tr: "İşçiler", en: "Workers" },
@@ -420,6 +421,11 @@ const dict: Record<string, Entry> = {
     tr: "{resource} deposunda {free} boş alan var; {required} gerekli. Gem harcanmadı.",
     en: "{resource} storage has {free} free; {required} required. No Gems were spent."
   },
+  "shop.insufficientGems": { tr: "Yetersiz Gem", en: "Not enough Gems" },
+  "shop.insufficientMessage": {
+    tr: "Bu paket için daha fazla Gem gerekiyor. Gem Mağazasını açmak ister misin?",
+    en: "You need more Gems for this pack. Open the Gem Store?"
+  },
   "shop.bananaPack": { tr: "Muz Paketi", en: "Banana Pack" },
   "shop.stonePack": { tr: "Taş Paketi", en: "Stone Pack" },
   "shop.woodPack": { tr: "Odun Paketi", en: "Wood Pack" },
@@ -703,6 +709,7 @@ const dict: Record<string, Entry> = {
   "time.minutes": { tr: "{n} dk", en: "{n}m" },
   "quests.title": { tr: "Günlük Görevler", en: "Daily Missions" },
   "quests.claim": { tr: "Al", en: "Claim" },
+  "quests.inProgress": { tr: "Devam Ediyor", en: "In Progress" },
   "quests.done": { tr: "Alındı", en: "Done" },
   "quests.empty": { tr: "Şimdilik hepsi bu kadar, şef!", en: "That's all for now, chief!" },
   "quest.dailyTrain3": { tr: "3 birlik veya işçi üret", en: "Train 3 troops or workers" },

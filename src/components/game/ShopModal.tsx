@@ -1,3 +1,4 @@
+import { memo, useCallback, useEffect, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { playSound } from "../../game/audio/soundManager";
 import { storageCap } from "../../game/config/buildings";
@@ -28,18 +29,40 @@ export function ShopModal({ visible, lang, onClose, onOpenGemStore }: ShopModalP
   const hallLevel = useGameStore((state) => state.buildings.find((building) => building.type === "clanHall")?.level ?? 1);
   const buy = useGameStore((state) => state.buyShopItem);
   const shopItems = resourceShopItems();
+  const [showInsufficientGems, setShowInsufficientGems] = useState(false);
+
+  useEffect(() => {
+    if (!visible) setShowInsufficientGems(false);
+  }, [visible]);
+
+  const handleClose = useCallback(() => {
+    setShowInsufficientGems(false);
+    onClose();
+  }, [onClose]);
+  const handleBuy = useCallback(
+    (itemId: ShopItem["id"]) => {
+      playSound("coins");
+      buy(itemId);
+    },
+    [buy]
+  );
+  const handleNeedGems = useCallback(() => setShowInsufficientGems(true), []);
+  const handleOpenGemStore = useCallback(() => {
+    setShowInsufficientGems(false);
+    onOpenGemStore();
+  }, [onOpenGemStore]);
 
   if (!visible) return null;
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose}>
+    <Modal visible transparent animationType="fade" onRequestClose={handleClose}>
+      <Pressable style={styles.scrim} onPress={handleClose}>
         <Pressable style={styles.card} onPress={() => undefined}>
           <View style={styles.header}>
             <Text style={styles.title} maxFontSizeMultiplier={theme.maxFontScale}>
               {t("shop.title", lang)}
             </Text>
-            <View style={styles.gemPill}>
+            <View pointerEvents="none" style={styles.gemPill}>
               <AssetImage assetKey="resourceJungleGem" style={styles.gemIcon} fallback={<View />} />
               <Text style={styles.gemText} maxFontSizeMultiplier={theme.maxFontScale}>
                 {gems}
@@ -50,7 +73,7 @@ export function ShopModal({ visible, lang, onClose, onOpenGemStore }: ShopModalP
             {t("shop.subtitle", lang)}
           </Text>
 
-          <BuyGemsButton lang={lang} onPress={onOpenGemStore} style={styles.buyGems} />
+          <BuyGemsButton lang={lang} onPress={handleOpenGemStore} style={styles.buyGems} />
 
           <View style={styles.grid}>
             {shopItems.map((item) => {
@@ -66,11 +89,8 @@ export function ShopModal({ visible, lang, onClose, onOpenGemStore }: ShopModalP
                   lang={lang}
                   affordable={gems >= item.gemCost}
                   capacityIssues={capacityIssues}
-                  onBuy={() => {
-                    playSound("coins");
-                    buy(item.id);
-                  }}
-                  onOpenGemStore={onOpenGemStore}
+                  onBuy={handleBuy}
+                  onNeedGems={handleNeedGems}
                 />
               );
             })}
@@ -80,7 +100,7 @@ export function ShopModal({ visible, lang, onClose, onOpenGemStore }: ShopModalP
             accessibilityRole="button"
             onPress={() => {
               playSound("close");
-              onClose();
+              handleClose();
             }}
             style={styles.close}
           >
@@ -89,47 +109,86 @@ export function ShopModal({ visible, lang, onClose, onOpenGemStore }: ShopModalP
             </Text>
           </Pressable>
         </Pressable>
+
+        {showInsufficientGems ? (
+          <Pressable style={styles.noticeScrim} onPress={() => setShowInsufficientGems(false)}>
+            <Pressable style={styles.noticeCard} onPress={() => undefined}>
+              <View pointerEvents="none" style={styles.noticeIconWrap}>
+                <AssetImage assetKey="resourceJungleGem" style={styles.noticeIcon} fallback={<View />} />
+              </View>
+              <Text style={styles.noticeTitle} maxFontSizeMultiplier={theme.maxFontScale}>
+                {t("shop.insufficientGems", lang)}
+              </Text>
+              <Text style={styles.noticeText} maxFontSizeMultiplier={theme.maxFontScale}>
+                {t("shop.insufficientMessage", lang)}
+              </Text>
+              <View style={styles.noticeActions}>
+                <SpringPressable
+                  accessibilityRole="button"
+                  onPress={() => setShowInsufficientGems(false)}
+                  style={[styles.noticeButton, styles.noticeCancel]}
+                >
+                  <Text style={styles.noticeCancelText} maxFontSizeMultiplier={theme.maxFontScale}>
+                    {t("collection.cancel", lang)}
+                  </Text>
+                </SpringPressable>
+                <SpringPressable
+                  accessibilityRole="button"
+                  onPress={handleOpenGemStore}
+                  style={[styles.noticeButton, styles.noticeConfirm]}
+                >
+                  <Text style={styles.noticeConfirmText} numberOfLines={2} maxFontSizeMultiplier={theme.maxFontScale}>
+                    {t("gemStore.open", lang)}
+                  </Text>
+                </SpringPressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        ) : null}
       </Pressable>
     </Modal>
   );
 }
 
-function ShopCard({
+const ShopCard = memo(function ShopCard({
   item,
   lang,
   affordable,
   capacityIssues,
   onBuy,
-  onOpenGemStore
+  onNeedGems
 }: {
   item: ShopItem;
   lang: Lang;
   affordable: boolean;
   capacityIssues: readonly ResourceShopCapacityIssue[];
-  onBuy: () => void;
-  onOpenGemStore: () => void;
+  onBuy: (itemId: ShopItem["id"]) => void;
+  onNeedGems: () => void;
 }) {
   const rewards = (["bananas", "stones", "wood"] as (keyof Resources)[])
     .map((key) => ({ key, amount: item.reward[key] ?? 0 }))
     .filter((entry) => entry.amount > 0);
 
   const hasCapacity = capacityIssues.length === 0;
-  const enabled = affordable && hasCapacity;
-  // When storage is fine but the player is short on Gems, surface a direct
-  // route to the Gem Store instead of a dead disabled button.
   const needsGems = hasCapacity && !affordable;
+  const handlePress = useCallback(
+    () => (needsGems ? onNeedGems() : onBuy(item.id)),
+    [item.id, needsGems, onBuy, onNeedGems]
+  );
 
   return (
     <View style={styles.shopCard}>
       <Text style={styles.shopName} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
         {t(`shop.${item.id}`, lang)}
       </Text>
-      <AssetImage
-        assetKey={item.icon}
-        style={styles.shopIcon}
-        fallback={<View style={styles.shopIconFallback} />}
-      />
-      <View style={styles.rewardRow}>
+      <View pointerEvents="none">
+        <AssetImage
+          assetKey={item.icon}
+          style={styles.shopIcon}
+          fallback={<View style={styles.shopIconFallback} />}
+        />
+      </View>
+      <View pointerEvents="none" style={styles.rewardRow}>
         {rewards.map((entry) => (
           <View key={entry.key} style={styles.rewardChip}>
             <AssetImage
@@ -157,45 +216,33 @@ function ShopCard({
           ))}
         </View>
       ) : null}
-      {needsGems ? (
-        <SpringPressable
-          accessibilityRole="button"
-          accessibilityLabel={t("gemStore.open", lang)}
-          onPress={onOpenGemStore}
-          style={[styles.buy, styles.buyNeedsGems]}
-        >
+      <SpringPressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !hasCapacity }}
+        accessibilityLabel={!hasCapacity ? t("shop.storageShort", lang) : undefined}
+        disabled={!hasCapacity}
+        sound={needsGems ? undefined : null}
+        onPress={handlePress}
+        style={[
+          styles.buy,
+          affordable && hasCapacity ? styles.buyReady : needsGems ? styles.buyNeedsGems : styles.buyLocked
+        ]}
+      >
+        <View pointerEvents="none">
           <AssetImage assetKey="resourceJungleGem" style={styles.buyGem} fallback={<View />} />
-          <Text style={styles.buyText} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={theme.maxFontScale}>
-            {t("gemStore.open", lang)}
-          </Text>
-        </SpringPressable>
-      ) : (
-        <SpringPressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !enabled }}
-          accessibilityLabel={!hasCapacity ? t("shop.storageShort", lang) : undefined}
-          disabled={!enabled}
-          sound={null}
-          onPress={onBuy}
-          style={[styles.buy, enabled ? styles.buyReady : styles.buyLocked]}
-        >
-          {hasCapacity ? (
-            <>
-              <AssetImage assetKey="resourceJungleGem" style={styles.buyGem} fallback={<View />} />
-              <Text style={styles.buyText} maxFontSizeMultiplier={theme.maxFontScale}>
-                {item.gemCost}
-              </Text>
-            </>
-          ) : (
-            <Text style={styles.buyText} numberOfLines={1} adjustsFontSizeToFit maxFontSizeMultiplier={theme.maxFontScale}>
-              {t("shop.storageShort", lang)}
-            </Text>
-          )}
-        </SpringPressable>
-      )}
+        </View>
+        <Text style={styles.buyText} maxFontSizeMultiplier={theme.maxFontScale}>
+          {item.gemCost}
+        </Text>
+      </SpringPressable>
+      {needsGems ? (
+        <Text style={styles.insufficientText} maxFontSizeMultiplier={theme.maxFontScale}>
+          {t("shop.insufficientGems", lang)}
+        </Text>
+      ) : null}
     </View>
   );
-}
+});
 
 function rewardAsset(key: keyof Resources) {
   if (key === "bananas") return "resourceBanana" as const;
@@ -354,7 +401,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 4,
     alignSelf: "stretch",
-    minHeight: 40,
+    minHeight: 44,
     borderRadius: 10,
     borderWidth: 1.5,
     paddingHorizontal: theme.spacing.sm
@@ -367,8 +414,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(40, 70, 95, 0.85)"
   },
   buyNeedsGems: {
-    borderColor: "rgba(226, 177, 90, 0.6)",
-    backgroundColor: "rgba(90, 62, 26, 0.92)"
+    borderColor: "rgba(205, 151, 102, 0.5)",
+    backgroundColor: "rgba(67, 48, 38, 0.9)"
   },
   buyLocked: {
     borderColor: "rgba(255, 224, 151, 0.14)",
@@ -383,6 +430,94 @@ const styles = StyleSheet.create({
     color: "#bfe6ff",
     fontSize: theme.type.body,
     fontFamily: theme.fonts.heavy
+  },
+  insufficientText: {
+    minHeight: 11,
+    marginTop: 3,
+    color: "#e8b480",
+    fontSize: 8.5,
+    lineHeight: 10,
+    fontFamily: theme.fonts.bold,
+    textAlign: "center"
+  },
+  noticeScrim: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(5, 10, 7, 0.76)",
+    padding: 28
+  },
+  noticeCard: {
+    width: "100%",
+    maxWidth: 310,
+    alignItems: "center",
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: "rgba(226, 177, 90, 0.6)",
+    backgroundColor: "#171a12",
+    padding: 16,
+    elevation: 18
+  },
+  noticeIconWrap: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  noticeIcon: {
+    width: 38,
+    height: 38
+  },
+  noticeTitle: {
+    marginTop: 4,
+    color: "#ffe5a5",
+    fontSize: theme.type.title,
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
+  },
+  noticeText: {
+    marginTop: 5,
+    color: "#d8ccb0",
+    fontSize: theme.type.label,
+    lineHeight: 17,
+    fontFamily: theme.fonts.bold,
+    textAlign: "center"
+  },
+  noticeActions: {
+    width: "100%",
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 14
+  },
+  noticeButton: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: 1.5,
+    paddingHorizontal: 7
+  },
+  noticeCancel: {
+    borderColor: "rgba(226, 177, 90, 0.24)",
+    backgroundColor: "rgba(40, 40, 29, 0.88)"
+  },
+  noticeConfirm: {
+    borderColor: "rgba(120, 200, 255, 0.48)",
+    backgroundColor: "rgba(40, 70, 95, 0.9)"
+  },
+  noticeCancelText: {
+    color: "#d8ccb0",
+    fontSize: theme.type.label,
+    fontFamily: theme.fonts.heavy
+  },
+  noticeConfirmText: {
+    color: "#cceaff",
+    fontSize: theme.type.label,
+    lineHeight: 14,
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
   },
   close: {
     minHeight: 44,

@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { playSound } from "../../game/audio/soundManager";
 import {
@@ -32,18 +33,26 @@ export function QuestModal({ visible, lang, onClose }: QuestModalProps) {
   const progress = questDayKey === currentDay ? savedProgress : {};
   const claimed = questDayKey === currentDay ? savedClaimed : [];
 
-  // Claimable first, then in-progress, then done — keeps the useful ones on top.
-  const ordered = [...QUESTS].sort((a, b) => rank(a) - rank(b));
-  function rank(quest: QuestDef) {
-    const done = isQuestComplete(progress, quest);
-    const isClaimed = claimed.includes(quest.id);
-    if (done && !isClaimed) return 0;
-    if (!done) return 1;
-    return 2;
-  }
+  const ordered = useMemo(
+    () =>
+      [...QUESTS].sort((a, b) => {
+        const rank = (quest: QuestDef) => {
+          const done = isQuestComplete(progress, quest);
+          const isClaimed = claimed.includes(quest.id);
+          if (done && !isClaimed) return 0;
+          if (!done) return 1;
+          return 2;
+        };
+        return rank(a) - rank(b);
+      }),
+    [claimed, progress]
+  );
+  const handleClaim = useCallback((questId: string) => claimQuest(questId), [claimQuest]);
+
+  if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => undefined}>
           <Text style={styles.title} maxFontSizeMultiplier={theme.maxFontScale}>
@@ -64,10 +73,7 @@ export function QuestModal({ visible, lang, onClose }: QuestModalProps) {
                 done={isQuestComplete(progress, quest)}
                 claimed={claimed.includes(quest.id)}
                 reward={resolveQuestReward(quest, hallLevel)}
-                onClaim={() => {
-                  // soundBridge plays the reward jingle when the claim lands.
-                  claimQuest(quest.id);
-                }}
+                onClaim={handleClaim}
               />
             ))}
           </ScrollView>
@@ -90,7 +96,7 @@ export function QuestModal({ visible, lang, onClose }: QuestModalProps) {
   );
 }
 
-function QuestRow({
+const QuestRow = memo(function QuestRow({
   quest,
   lang,
   current,
@@ -105,12 +111,13 @@ function QuestRow({
   done: boolean;
   claimed: boolean;
   reward: QuestReward;
-  onClaim: () => void;
+  onClaim: (questId: string) => void;
 }) {
-  const pct = Math.round((current / quest.goal) * 100);
+  const pct = Math.min(100, Math.round((current / quest.goal) * 100));
+  const handleClaim = useCallback(() => onClaim(quest.id), [onClaim, quest.id]);
 
   return (
-    <View style={[styles.row, done && !claimed ? styles.rowReady : null]}>
+    <View style={[styles.row, done && !claimed ? styles.rowReady : null, claimed ? styles.rowClaimed : null]}>
       <View style={styles.rowBody}>
         <Text style={styles.rowLabel} numberOfLines={1} maxFontSizeMultiplier={theme.maxFontScale}>
           {t(`quest.${quest.id}`, lang)}
@@ -136,19 +143,19 @@ function QuestRow({
           accessibilityState={{ disabled: !done }}
           disabled={!done}
           sound={null}
-          onPress={onClaim}
+          onPress={handleClaim}
           style={[styles.claim, done ? styles.claimReady : styles.claimLocked]}
         >
           <Text style={styles.claimText} maxFontSizeMultiplier={theme.maxFontScale}>
-            {t("quests.claim", lang)}
+            {t(done ? "quests.claim" : "quests.inProgress", lang)}
           </Text>
         </SpringPressable>
       )}
     </View>
   );
-}
+});
 
-function RewardChips({ reward }: { reward: QuestReward }) {
+const RewardChips = memo(function RewardChips({ reward }: { reward: QuestReward }) {
   const entries = [
     { key: "b", asset: "resourceBanana" as const, amount: reward.bananas },
     { key: "s", asset: "resourceStone" as const, amount: reward.stones },
@@ -160,11 +167,13 @@ function RewardChips({ reward }: { reward: QuestReward }) {
     <View style={styles.rewardRow}>
       {entries.map((entry) => (
         <View key={entry.key} style={styles.rewardChip}>
-          <AssetImage
-            assetKey={entry.asset}
-            style={styles.rewardIcon}
-            fallback={<View style={styles.rewardIconFallback} />}
-          />
+          <View pointerEvents="none">
+            <AssetImage
+              assetKey={entry.asset}
+              style={styles.rewardIcon}
+              fallback={<View style={styles.rewardIconFallback} />}
+            />
+          </View>
           <Text style={styles.rewardText} maxFontSizeMultiplier={theme.maxFontScale}>
             {entry.amount}
           </Text>
@@ -172,7 +181,7 @@ function RewardChips({ reward }: { reward: QuestReward }) {
       ))}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   scrim: {
@@ -190,7 +199,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "rgba(226, 177, 90, 0.5)",
     backgroundColor: "rgba(17, 20, 14, 0.97)",
-    padding: theme.spacing.lg,
+    padding: 14,
     shadowColor: "#000",
     shadowOpacity: 0.5,
     shadowRadius: 14,
@@ -202,27 +211,32 @@ const styles = StyleSheet.create({
     fontSize: theme.type.h1,
     fontFamily: theme.fonts.heavy,
     textAlign: "center",
-    marginBottom: theme.spacing.md
+    marginBottom: 10
   },
   list: {
     flexGrow: 0
   },
   listContent: {
-    gap: theme.spacing.sm
+    gap: 7
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: theme.spacing.sm,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
     borderColor: "rgba(226, 177, 90, 0.22)",
     backgroundColor: "rgba(40, 34, 20, 0.7)",
-    padding: theme.spacing.sm
+    paddingVertical: 8,
+    paddingHorizontal: 9
   },
   rowReady: {
-    borderColor: "rgba(198, 238, 137, 0.75)",
-    backgroundColor: "rgba(54, 74, 34, 0.75)"
+    borderColor: "rgba(213, 179, 86, 0.72)",
+    backgroundColor: "rgba(50, 69, 32, 0.76)"
+  },
+  rowClaimed: {
+    borderColor: "rgba(226, 177, 90, 0.14)",
+    backgroundColor: "rgba(29, 30, 22, 0.62)"
   },
   rowBody: {
     flex: 1,
@@ -235,8 +249,8 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.heavy
   },
   track: {
-    height: 16,
-    borderRadius: 8,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: "rgba(0, 0, 0, 0.4)",
     overflow: "hidden",
     justifyContent: "center"
@@ -244,7 +258,7 @@ const styles = StyleSheet.create({
   fill: {
     ...StyleSheet.absoluteFillObject,
     right: undefined,
-    borderRadius: 8,
+    borderRadius: 6,
     backgroundColor: "#5b8f3d"
   },
   trackText: {
@@ -258,7 +272,7 @@ const styles = StyleSheet.create({
   },
   rewardRow: {
     flexDirection: "row",
-    gap: 8
+    gap: 7
   },
   rewardChip: {
     flexDirection: "row",
@@ -281,39 +295,43 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.heavy
   },
   claim: {
-    minWidth: 64,
+    width: 86,
     minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 10,
     borderWidth: 1.5,
-    paddingHorizontal: theme.spacing.sm
+    paddingHorizontal: 6
   },
   claimReady: {
-    borderColor: "rgba(198, 238, 137, 0.6)",
-    backgroundColor: "#5b8f3d"
+    borderColor: "rgba(221, 190, 100, 0.75)",
+    backgroundColor: "#557f39"
   },
   claimLocked: {
     borderColor: "rgba(255, 224, 151, 0.14)",
     backgroundColor: "rgba(28, 32, 20, 0.85)",
-    opacity: 0.5
+    opacity: 0.68
   },
   claimText: {
     color: theme.colors.paper,
-    fontSize: theme.type.body,
+    fontSize: 10,
+    lineHeight: 12,
+    textAlign: "center",
     fontFamily: theme.fonts.heavy
   },
   doneTag: {
-    width: 44,
-    height: 44,
+    width: 64,
+    minHeight: 28,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
-    backgroundColor: "rgba(91, 143, 61, 0.5)"
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(133, 157, 91, 0.32)",
+    backgroundColor: "rgba(53, 68, 43, 0.58)"
   },
   doneText: {
-    color: "#c6ee89",
-    fontSize: theme.type.h2,
+    color: "#b9c49c",
+    fontSize: 9.5,
     fontFamily: theme.fonts.heavy
   },
   close: {
