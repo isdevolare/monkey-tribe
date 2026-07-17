@@ -7,11 +7,14 @@ import type {
   Resources,
   StoneWorkerClass,
   WorkerClass,
+  WorkerCountSelection,
   WorkerExpedition,
   WorkerExpeditionOutcome,
   WorkerExpeditionStatus,
-  WorkerProductionItem
+  WorkerProductionItem,
+  WorkerProductionStartResult
 } from "../types/game";
+import { productionLevelMultiplier } from "../config/buildings";
 
 export type WorkerClassDefinition = {
   id: WorkerClass;
@@ -136,6 +139,7 @@ export const WORKER_RESOURCE_ORDER: readonly ResourceKind[] = [
 ];
 
 export const BANANA_GROVE_MAX_WORKERS = 3;
+export const RESOURCE_WORKPLACE_MAX_WORKERS = 3;
 
 export function isLumberWorkerClass(value: unknown): value is LumberWorkerClass {
   return LUMBER_WORKER_ORDER.includes(value as LumberWorkerClass);
@@ -299,6 +303,10 @@ export function sanitizeWorkerExpeditions(
     seen.add(expedition.id);
     expeditions.push({
       ...expedition,
+      dispatchId:
+        typeof expedition.dispatchId === "string" && expedition.dispatchId.length > 0
+          ? expedition.dispatchId
+          : undefined,
       expectedReward: Math.round(expedition.expectedReward),
       reward: Math.round(expedition.reward),
       storedReward:
@@ -447,6 +455,112 @@ export function calculateWorkerExpectedReward(
   return Math.round(safeBase * safeMultiplier * (1 + safeBonus));
 }
 
+/** Shared selection math used by workplace previews and persisted expeditions. */
+export function calculateWorkerGroupExpectedReward(
+  workers: readonly IdleWorker[],
+  missionMultiplier: number,
+  buildingBonus = 0
+) {
+  return workers.reduce(
+    (total, worker) =>
+      total +
+      calculateWorkerExpectedReward(
+        WORKER_CLASSES[worker.workerClass].baseYield,
+        missionMultiplier,
+        buildingBonus
+      ),
+    0
+  );
+}
+
+export function selectedWorkersFromCounts(
+  workers: readonly IdleWorker[],
+  selection: WorkerCountSelection
+) {
+  const selected: IdleWorker[] = [];
+  for (const workerClass of Object.keys(WORKER_CLASSES) as WorkerClass[]) {
+    const count = Math.max(0, Math.floor(selection[workerClass] ?? 0));
+    selected.push(
+      ...workers
+        .filter((worker) => worker.workerClass === workerClass)
+        .sort((left, right) => left.producedAt - right.producedAt || left.id.localeCompare(right.id))
+        .slice(0, count)
+    );
+  }
+  return selected;
+}
+
+export function removeDispatchedWorkers(
+  idleWorkers: readonly IdleWorker[],
+  dispatchedWorkers: readonly IdleWorker[]
+) {
+  const dispatchedIds = new Set(dispatchedWorkers.map((worker) => worker.id));
+  return idleWorkers.filter((worker) => !dispatchedIds.has(worker.id));
+}
+
+export function workerDispatchFitsCapacity(
+  assignedWorkers: number,
+  selectedWorkers: number,
+  capacity: number
+) {
+  return (
+    selectedWorkers > 0 &&
+    Math.max(0, assignedWorkers) + selectedWorkers <= Math.max(0, capacity)
+  );
+}
+
+export function evaluateWorkerProductionStart({
+  workerClass,
+  lodgeLevel,
+  managedWorkers,
+  capacity,
+  resources,
+  queue
+}: {
+  workerClass: WorkerClass;
+  lodgeLevel: number;
+  managedWorkers: number;
+  capacity: number;
+  resources: Resources;
+  queue: readonly WorkerProductionItem[];
+}): WorkerProductionStartResult {
+  const definition = WORKER_CLASSES[workerClass];
+  if (!definition) return "invalid";
+  if (managedWorkers >= capacity) return "capacity-full";
+  if (lodgeLevel < (definition.unlockLodgeLevel ?? 1)) return "locked";
+  if (queue.some((item) => item.workerClass === workerClass)) return "already-producing";
+  if (
+    resources.bananas < definition.cost.bananas ||
+    resources.stones < definition.cost.stones ||
+    resources.wood < definition.cost.wood
+  ) {
+    return "insufficient-resources";
+  }
+  return "queued";
+}
+
+export function workerDispatchId(expedition: WorkerExpedition) {
+  return expedition.dispatchId ?? expedition.id;
+}
+
+export function groupWorkerExpeditions(expeditions: readonly WorkerExpedition[]) {
+  const groups = new Map<string, WorkerExpedition[]>();
+  for (const expedition of expeditions) {
+    const id = workerDispatchId(expedition);
+    const group = groups.get(id);
+    if (group) group.push(expedition);
+    else groups.set(id, [expedition]);
+  }
+  return [...groups.entries()].map(([id, workers]) => ({ id, workers }));
+}
+
+export function workerTierCounts(expeditions: readonly WorkerExpedition[]) {
+  return expeditions.reduce<Partial<Record<WorkerClass, number>>>((counts, expedition) => {
+    counts[expedition.workerClass] = (counts[expedition.workerClass] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
 export function calculateWorkerFinalReward(
   expectedReward: number,
   outcome: WorkerExpeditionOutcome
@@ -565,6 +679,35 @@ export function createWorkerExpedition(
     missionMultiplier,
     buildingBonus
   };
+}
+
+/** Creates one persisted consumable contract per worker under one dispatch id. */
+export function createWorkerExpeditionBatch(
+  dispatchId: string,
+  workers: readonly IdleWorker[],
+  resource: ResourceKind,
+  missionTier: LumberMissionTier,
+  buildingLevel: number,
+  now: number
+) {
+  return workers.map((worker, index) => {
+    const id = `${dispatchId}-worker-${index + 1}`;
+    const expedition =
+      resource === "wood"
+        ? createLumberExpedition(id, worker, missionTier, buildingLevel, now)
+        : resource === "stones"
+          ? createStoneExpedition(id, worker, missionTier, buildingLevel, now)
+          : createWorkerExpedition(
+              id,
+              worker,
+              resource,
+              now,
+              WORKER_MISSIONS[missionTier].multiplier,
+              productionLevelMultiplier(buildingLevel) - 1,
+              missionTier
+            );
+    return { ...expedition, dispatchId };
+  });
 }
 
 export function managedWorkerCount(

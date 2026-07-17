@@ -10,7 +10,7 @@ import {
   View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { buildingName, storageCap, storageCanHoldCost, workerLodgeUpgrade } from "../../game/config/buildings";
+import { buildingName, storageCap } from "../../game/config/buildings";
 import {
   BANANA_WORKER_ASSETS,
   LUMBER_WORKER_ASSETS,
@@ -19,6 +19,7 @@ import {
 } from "../../game/assets/workerAssets";
 import { t, type Lang } from "../../game/i18n";
 import { playSound } from "../../game/audio/soundManager";
+import type { GameAssetKey } from "../../game/assets/gameAssets";
 import {
   WORKER_CLASSES,
   WORKER_CLASS_ORDER,
@@ -28,6 +29,7 @@ import {
   BANANA_GROVE_MAX_WORKERS,
   bananaGroveCapacity,
   expeditionStatus,
+  groupWorkerExpeditions,
   managedWorkerCount,
   isLumberWorkerClass,
   isStoneWorkerClass,
@@ -35,12 +37,18 @@ import {
   stoneQuarryCapacity,
   workerCapacity
 } from "../../game/state/workerExpeditions";
+import {
+  evaluateWorkerLodgeUpgrade,
+  type WorkerLodgeUpgradeBlock
+} from "../../game/state/workerLodgeUpgrades";
 import { useGameStore } from "../../game/state/gameStore";
 import type {
   ResourceKind,
   Resources,
   WorkerClass,
   WorkerCollectionSummary,
+  WorkerProductionItem,
+  WorkerProductionStartResult,
   WorkerExpeditionStatus
 } from "../../game/types/game";
 import { theme } from "../../theme/theme";
@@ -82,14 +90,6 @@ function levelOf(
   return buildings.find((building) => building.type === type)?.level ?? 1;
 }
 
-function hasResources(resources: Resources, cost: Resources) {
-  return (
-    resources.bananas >= cost.bananas &&
-    resources.stones >= cost.stones &&
-    resources.wood >= cost.wood
-  );
-}
-
 function formatTime(ms: number) {
   const total = Math.max(0, Math.ceil(ms / 1000));
   const minutes = Math.floor(total / 60);
@@ -121,11 +121,36 @@ function resourceName(resource: ResourceKind, lang: Lang) {
   return t(`res.${resource}`, lang);
 }
 
+function workerLodgeUpgradeBlockText(
+  block: Exclude<WorkerLodgeUpgradeBlock, null>,
+  lang: Lang
+) {
+  if (block.reason === "upgrade-active") return t("workerLodge.upgradeAlreadyActive", lang);
+  if (block.reason === "clan-level") {
+    return t("workerLodge.clanRequirement", lang, { level: block.requiredLevel });
+  }
+  if (block.reason === "storage") {
+    return t("workerLodge.needStorage", lang, { amount: block.capacity });
+  }
+  if (block.reason === "resource") {
+    return t("workerLodge.resourceMissing", lang, {
+      amount: block.missing,
+      resource: resourceName(block.resource, lang)
+    });
+  }
+  return t("workerLodge.maxLevel", lang);
+}
+
 export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalProps) {
   const state = useGameStore();
   const insets = useSafeAreaInsets();
   const [now, setNow] = useState(Date.now());
   const [collection, setCollection] = useState<WorkerCollectionSummary | null>(null);
+  const [productionToast, setProductionToast] = useState<{
+    workerClass: WorkerClass;
+    readyInMs: number;
+  } | null>(null);
+  const [productionError, setProductionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -135,6 +160,18 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
     return () => clearInterval(timer);
   }, [state.reconcileWorkTask, visible]);
 
+  useEffect(() => {
+    if (!productionToast) return;
+    const timer = setTimeout(() => setProductionToast(null), 2600);
+    return () => clearTimeout(timer);
+  }, [productionToast]);
+
+  useEffect(() => {
+    if (!productionError) return;
+    const timer = setTimeout(() => setProductionError(null), 2600);
+    return () => clearTimeout(timer);
+  }, [productionError]);
+
   const lodgeLevel = levelOf(state.buildings, "workerShelter");
   const clanLevel = levelOf(state.buildings, "clanHall");
   const capacity = workerCapacity(lodgeLevel);
@@ -143,17 +180,15 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
     state.idleWorkers,
     state.workerExpeditions
   );
-  const upgrade = workerLodgeUpgrade(lodgeLevel);
+  const upgradeEligibility = evaluateWorkerLodgeUpgrade({
+    lodgeLevel,
+    clanLevel,
+    resources: state.resources,
+    activeUpgrade: state.activeWorkerLodgeUpgrade
+  });
+  const upgrade = upgradeEligibility.definition;
   const cost = upgrade?.cost ?? { bananas: 0, stones: 0, wood: 0 };
-  const upgradeGated = upgrade != null && clanLevel < upgrade.requiredClanHallLevel;
-  const villageStorageCap = storageCap(clanLevel);
-  const storageBlocked = upgrade != null && !storageCanHoldCost(villageStorageCap, upgrade.cost);
-  const upgradeDisabled =
-    !upgrade ||
-    state.activeWorkerLodgeUpgrade != null ||
-    upgradeGated ||
-    storageBlocked ||
-    !hasResources(state.resources, cost);
+  const upgradeDisabled = !upgradeEligibility.enabled;
   const idleByClass = useMemo(
     () =>
       [...WORKER_CLASS_ORDER, ...LUMBER_WORKER_ORDER, ...STONE_WORKER_ORDER].map((workerClass) => ({
@@ -173,6 +208,28 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
   const stoneLevel = state.buildings.find((building) => building.type === "stoneQuarry")?.level ?? 1;
   const stoneFull = state.stoneQuarryStorage >= stoneQuarryCapacity(stoneLevel);
   const stoneBusy = state.workerExpeditions.some((expedition) => expedition.resource === "stones");
+  const expeditionGroups = useMemo(
+    () => groupWorkerExpeditions(state.workerExpeditions),
+    [state.workerExpeditions]
+  );
+
+  function queueWorker(workerClass: WorkerClass): WorkerProductionStartResult {
+    const result = state.queueWorker(workerClass);
+    if (result === "queued") {
+      setProductionError(null);
+      const item = useGameStore
+        .getState()
+        .workerProductionQueue.find((entry) => entry.workerClass === workerClass);
+      setProductionToast({
+        workerClass,
+        readyInMs: Math.max(0, (item?.finishesAt ?? Date.now()) - Date.now())
+      });
+    } else {
+      setProductionToast(null);
+      setProductionError(useGameStore.getState().feedback?.text ?? t("worker.invalidSelection", lang));
+    }
+    return result;
+  }
 
   function collect(expeditionId: string) {
     const result = state.collectWorkerExpedition(expeditionId);
@@ -226,8 +283,30 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
             </Pressable>
           </View>
 
+          {productionToast ? (
+            <View style={styles.productionToast} pointerEvents="none">
+              <Text style={styles.productionToastTitle}>
+                {t("worker.productionStarted", lang, {
+                  name: workerName(productionToast.workerClass, lang)
+                })}
+              </Text>
+              <Text style={styles.productionToastSubtitle}>
+                {t("worker.productionReadyIn", lang, {
+                  seconds: Math.max(1, Math.ceil(productionToast.readyInMs / 1000))
+                })}
+              </Text>
+            </View>
+          ) : productionError ? (
+            <View style={[styles.productionToast, styles.productionError]} pointerEvents="none">
+              <Text style={styles.productionToastTitle}>{productionError}</Text>
+            </View>
+          ) : null}
+
           <ScrollView
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[
+              styles.content,
+              { paddingBottom: Math.max(34, insets.bottom + 24) }
+            ]}
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
@@ -257,56 +336,20 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
               subtitle={t("workerLodge.produceSubtitle", lang)}
             />
             <View style={styles.workerCards}>
-              {WORKER_CLASS_ORDER.map((workerClass) => {
-                const definition = WORKER_CLASSES[workerClass];
-                const disabled =
-                  managed >= capacity || !hasResources(state.resources, definition.cost);
-                return (
-                  <View
-                    key={workerClass}
-                    style={[styles.workerCard, { borderColor: WORKER_ACCENTS[workerClass] }]}
-                  >
-                    <View style={styles.workerPortraitWrap}>
-                      <AssetImage
-                        assetKey={BANANA_WORKER_ASSETS[workerClass]}
-                        style={styles.workerPortrait}
-                        resizeMode="contain"
-                        fallback={<View />}
-                        hideFallbackOnLoad
-                      />
-                      <View
-                        style={[
-                          styles.classBadge,
-                          { backgroundColor: WORKER_ACCENTS[workerClass] }
-                        ]}
-                      >
-                        <Text style={styles.classBadgeText}>
-                          {workerClass === "gatherer" ? "I" : workerClass === "skilled" ? "II" : "III"}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.workerName} numberOfLines={1} adjustsFontSizeToFit>
-                      {workerName(workerClass, lang)}
-                    </Text>
-                    <Text style={styles.workerMeta}>
-                      {formatTime(definition.productionMs)} · {formatTime(definition.expeditionMs)}
-                    </Text>
-                    <View style={styles.rewardLine}>
-                      <Text style={styles.rewardLabel}>{t("workerLodge.baseYield", lang)}</Text>
-                      <Text style={styles.rewardValue}>{definition.baseYield}</Text>
-                    </View>
-                    <ResourceCost cost={definition.cost} />
-                    <SpringPressable
-                      accessibilityRole="button"
-                      accessibilityState={{ disabled }}
-                      onPress={() => state.queueWorker(workerClass)}
-                      style={[styles.produceButton, disabled ? styles.disabledButton : null]}
-                    >
-                      <Text style={styles.produceButtonText}>{t("workerLodge.produce", lang)}</Text>
-                    </SpringPressable>
-                  </View>
-                );
-              })}
+              {WORKER_CLASS_ORDER.map((workerClass, index) => (
+                <WorkerProductionCard
+                  key={workerClass}
+                  workerClass={workerClass}
+                  tier={index + 1}
+                  target={buildingName("bananaGrove", lang)}
+                  artwork={BANANA_WORKER_ASSETS[workerClass]}
+                  lodgeLevel={lodgeLevel}
+                  queueItem={state.workerProductionQueue.find((item) => item.workerClass === workerClass)}
+                  now={now}
+                  lang={lang}
+                  onQueue={queueWorker}
+                />
+              ))}
             </View>
 
             <SectionTitle
@@ -314,29 +357,20 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
               subtitle={t("workerLodge.lumberSubtitle", lang)}
             />
             <View style={styles.workerCards}>
-              {LUMBER_WORKER_ORDER.map((workerClass, index) => {
-                const definition = WORKER_CLASSES[workerClass];
-                const requiredLevel = definition.unlockLodgeLevel ?? 1;
-                const locked = lodgeLevel < requiredLevel;
-                const disabled = locked || managed >= capacity || !hasResources(state.resources, definition.cost);
-                return (
-                  <View key={workerClass} style={[styles.workerCard, { borderColor: WORKER_ACCENTS[workerClass] }]}>
-                    <View style={styles.workerPortraitWrap}>
-                      <AssetImage assetKey={LUMBER_WORKER_ASSETS[workerClass]} style={styles.workerPortrait} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
-                      <View style={[styles.classBadge, { backgroundColor: WORKER_ACCENTS[workerClass] }]}>
-                        <Text style={styles.classBadgeText}>{["I", "II", "III"][index]}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.workerName} numberOfLines={2} adjustsFontSizeToFit>{workerName(workerClass, lang)}</Text>
-                    <Text style={styles.workerMeta}>{formatTime(definition.productionMs)} · {buildingName("lumberCamp", lang)}</Text>
-                    <View style={styles.rewardLine}><Text style={styles.rewardLabel}>{t("workerLodge.baseYield", lang)}</Text><Text style={styles.rewardValue}>{definition.baseYield}</Text></View>
-                    <ResourceCost cost={definition.cost} />
-                    <SpringPressable accessibilityRole="button" accessibilityState={{ disabled }} onPress={() => state.queueWorker(workerClass)} style={[styles.produceButton, disabled ? styles.disabledButton : null]}>
-                      <Text style={styles.produceButtonText}>{locked ? t("workerLodge.unlockLevel", lang, { level: requiredLevel }) : t("workerLodge.produce", lang)}</Text>
-                    </SpringPressable>
-                  </View>
-                );
-              })}
+              {LUMBER_WORKER_ORDER.map((workerClass, index) => (
+                <WorkerProductionCard
+                  key={workerClass}
+                  workerClass={workerClass}
+                  tier={index + 1}
+                  target={buildingName("lumberCamp", lang)}
+                  artwork={LUMBER_WORKER_ASSETS[workerClass]}
+                  lodgeLevel={lodgeLevel}
+                  queueItem={state.workerProductionQueue.find((item) => item.workerClass === workerClass)}
+                  now={now}
+                  lang={lang}
+                  onQueue={queueWorker}
+                />
+              ))}
             </View>
 
             <SectionTitle
@@ -344,29 +378,20 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
               subtitle={t("workerLodge.stoneSubtitle", lang)}
             />
             <View style={styles.workerCards}>
-              {STONE_WORKER_ORDER.map((workerClass, index) => {
-                const definition = WORKER_CLASSES[workerClass];
-                const requiredLevel = definition.unlockLodgeLevel ?? 1;
-                const locked = lodgeLevel < requiredLevel;
-                const disabled = locked || managed >= capacity || !hasResources(state.resources, definition.cost);
-                return (
-                  <View key={workerClass} style={[styles.workerCard, { borderColor: WORKER_ACCENTS[workerClass] }]}>
-                    <View style={styles.workerPortraitWrap}>
-                      <AssetImage assetKey={STONE_WORKER_ASSETS[workerClass]} style={styles.workerPortrait} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
-                      <View style={[styles.classBadge, { backgroundColor: WORKER_ACCENTS[workerClass] }]}>
-                        <Text style={styles.classBadgeText}>{["I", "II", "III"][index]}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.workerName} numberOfLines={2} adjustsFontSizeToFit>{workerName(workerClass, lang)}</Text>
-                    <Text style={styles.workerMeta}>{formatTime(definition.productionMs)} · {buildingName("stoneQuarry", lang)}</Text>
-                    <View style={styles.rewardLine}><Text style={styles.rewardLabel}>{t("workerLodge.baseYield", lang)}</Text><Text style={styles.rewardValue}>{definition.baseYield}</Text></View>
-                    <ResourceCost cost={definition.cost} />
-                    <SpringPressable accessibilityRole="button" accessibilityState={{ disabled }} onPress={() => state.queueWorker(workerClass)} style={[styles.produceButton, disabled ? styles.disabledButton : null]}>
-                      <Text style={styles.produceButtonText}>{locked ? t("workerLodge.unlockLevel", lang, { level: requiredLevel }) : t("workerLodge.produce", lang)}</Text>
-                    </SpringPressable>
-                  </View>
-                );
-              })}
+              {STONE_WORKER_ORDER.map((workerClass, index) => (
+                <WorkerProductionCard
+                  key={workerClass}
+                  workerClass={workerClass}
+                  tier={index + 1}
+                  target={buildingName("stoneQuarry", lang)}
+                  artwork={STONE_WORKER_ASSETS[workerClass]}
+                  lodgeLevel={lodgeLevel}
+                  queueItem={state.workerProductionQueue.find((item) => item.workerClass === workerClass)}
+                  now={now}
+                  lang={lang}
+                  onQueue={queueWorker}
+                />
+              ))}
             </View>
 
             <SectionTitle
@@ -475,19 +500,39 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
               subtitle={t("workerLodge.expeditionsSubtitle", lang)}
             />
             <View style={styles.panel}>
-              {state.workerExpeditions.length === 0 ? (
+              {expeditionGroups.length === 0 ? (
                 <EmptyText text={t("workerLodge.expeditionsEmpty", lang)} />
               ) : (
-                state.workerExpeditions.map((expedition) => {
-                  const status = expeditionStatus(expedition, now);
+                expeditionGroups.map((group) => {
+                  const expedition = group.workers[0];
+                  if (!expedition) return null;
+                  const statuses = group.workers.map((worker) => expeditionStatus(worker, now));
+                  const status: WorkerExpeditionStatus = statuses.every((value) => value === "completed")
+                    ? "completed"
+                    : statuses.some((value) => value === "returning" || value === "completed")
+                      ? "returning"
+                      : "active";
+                  const expectedReward = group.workers.reduce((sum, worker) => sum + worker.expectedReward, 0);
+                  const returnsAt = Math.max(...group.workers.map((worker) => worker.returnsAt));
+                  const classCounts = group.workers.reduce<Partial<Record<WorkerClass, number>>>((counts, worker) => {
+                    counts[worker.workerClass] = (counts[worker.workerClass] ?? 0) + 1;
+                    return counts;
+                  }, {});
+                  const distribution = [...WORKER_CLASS_ORDER, ...LUMBER_WORKER_ORDER, ...STONE_WORKER_ORDER]
+                    .map((workerClass, index) => ({ count: classCounts[workerClass] ?? 0, tier: (index % 3) + 1 }))
+                    .filter((entry) => entry.count > 0)
+                    .map((entry) => `${entry.count}× T${entry.tier}`)
+                    .join(", ");
                   return (
                     <View
-                      key={expedition.id}
+                      key={group.id}
                       style={[styles.expeditionRow, status === "completed" && styles.completedRow]}
                     >
                       <WorkerMotion workerClass={expedition.workerClass} status={status} />
                       <View style={styles.flexCopy}>
-                        <Text style={styles.rowTitle}>{workerName(expedition.workerClass, lang)}</Text>
+                        <Text style={styles.rowTitle}>
+                          {t("workerDispatch.workerCount", lang, { n: group.workers.length })} · {distribution}
+                        </Text>
                         <View style={styles.expeditionDestination}>
                           <AssetImage
                             assetKey={RESOURCE_ASSETS[expedition.resource]}
@@ -499,7 +544,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                           </Text>
                         </View>
                         <Text style={styles.expectedText}>
-                          {t("workerLodge.expected", lang, { amount: expedition.expectedReward })}
+                          {t("workerLodge.expected", lang, { amount: expectedReward })}
                         </Text>
                       </View>
                       {status === "completed" && expedition.resource !== "bananas" && expedition.resource !== "wood" && expedition.resource !== "stones" ? (
@@ -513,7 +558,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                       ) : status === "completed" ? (
                         <Text style={styles.groveCollectHint}>{t(expedition.resource === "wood" ? "lumberCamp.collectThere" : expedition.resource === "stones" ? "stoneQuarry.collectThere" : "bananaGrove.collectThere", lang)}</Text>
                       ) : (
-                        <Text style={styles.timer}>{formatTime(expedition.returnsAt - now)}</Text>
+                        <Text style={styles.timer}>{formatTime(returnsAt - now)}</Text>
                       )}
                     </View>
                   );
@@ -547,11 +592,6 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                       ]}
                     />
                   </View>
-                  <Text style={styles.upgradeRequirement}>
-                    {t("workerLodge.clanRequirement", lang, {
-                      level: state.activeWorkerLodgeUpgrade.requiredClanHallLevel
-                    })}
-                  </Text>
                 </View>
               ) : upgrade ? (
                 <>
@@ -570,16 +610,15 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                         duration: formatUpgradeDuration(upgrade.durationMs, lang)
                       })}
                     </Text>
-                    <Text style={[styles.upgradeRequirement, upgradeGated && styles.requirementBlocked]}>
-                      {t("workerLodge.clanRequirement", lang, {
-                        level: upgrade.requiredClanHallLevel
-                      })}
-                    </Text>
-                    {storageBlocked ? (
-                      <Text style={styles.storageBlockedText}>
-                        {t("workerLodge.storageTooSmall", lang)} · {villageStorageCap}
+                    {upgradeEligibility.block ? (
+                      <Text style={styles.requirementBlocked}>
+                        {workerLodgeUpgradeBlockText(upgradeEligibility.block, lang)}
                       </Text>
-                    ) : null}
+                    ) : (
+                      <Text style={styles.requirementMet}>
+                        {t("workerLodge.requirementsMet", lang)}
+                      </Text>
+                    )}
                   </View>
                   <View style={styles.upgradeAction}>
                     <ResourceCost cost={cost} compact />
@@ -590,11 +629,9 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                       style={[styles.upgradeButton, upgradeDisabled && styles.disabledButton]}
                     >
                       <Text style={styles.upgradeButtonText}>
-                        {storageBlocked
-                          ? t("workerLodge.storageTooSmall", lang)
-                          : upgradeGated
-                            ? t("upgrade.needClanHall", lang)
-                            : t("upgrade.button", lang)}
+                        {upgradeEligibility.enabled
+                          ? t("upgrade.button", lang)
+                          : t("workerLodge.blockedButton", lang)}
                       </Text>
                     </SpringPressable>
                   </View>
@@ -621,6 +658,106 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
         </View>
       </View>
     </Modal>
+  );
+}
+
+function WorkerProductionCard({
+  workerClass,
+  tier,
+  target,
+  artwork,
+  lodgeLevel,
+  queueItem,
+  now,
+  lang,
+  onQueue
+}: {
+  workerClass: WorkerClass;
+  tier: number;
+  target: string;
+  artwork: GameAssetKey;
+  lodgeLevel: number;
+  queueItem?: WorkerProductionItem;
+  now: number;
+  lang: Lang;
+  onQueue: (workerClass: WorkerClass) => WorkerProductionStartResult;
+}) {
+  const definition = WORKER_CLASSES[workerClass];
+  const requiredLevel = definition.unlockLodgeLevel ?? 1;
+  const locked = lodgeLevel < requiredLevel;
+  const disabled = locked || queueItem != null;
+  const glow = useRef(new Animated.Value(0)).current;
+  const costResource = WORKER_RESOURCE_ORDER.find(
+    (resource) => definition.cost[resource] > 0
+  ) ?? "bananas";
+
+  function produce() {
+    const result = onQueue(workerClass);
+    if (result !== "queued") return;
+    glow.setValue(0);
+    Animated.sequence([
+      Animated.timing(glow, { toValue: 1, duration: 130, useNativeDriver: true }),
+      Animated.timing(glow, { toValue: 0, duration: 420, useNativeDriver: true })
+    ]).start();
+  }
+
+  const buttonLabel = locked
+    ? t("workerLodge.unlockLevelRequired", lang, { level: requiredLevel })
+    : queueItem
+      ? t("workerLodge.producingCountdown", lang, {
+          time: formatTime(queueItem.finishesAt - now)
+        })
+      : t("workerLodge.produceWithCost", lang, {
+          amount: definition.cost[costResource],
+          resource: resourceName(costResource, lang)
+        });
+
+  return (
+    <View
+      style={[styles.workerCard, { borderColor: WORKER_ACCENTS[workerClass] }]}
+    >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.productionGlow,
+          { opacity: glow, backgroundColor: WORKER_ACCENTS[workerClass] }
+        ]}
+      />
+      <View style={styles.workerPortraitWrap}>
+        <AssetImage
+          assetKey={artwork}
+          style={styles.workerPortrait}
+          resizeMode="contain"
+          fallback={<View />}
+          hideFallbackOnLoad
+        />
+        <View
+          style={[styles.classBadge, { backgroundColor: WORKER_ACCENTS[workerClass] }]}
+        >
+          <Text style={styles.classBadgeText}>{["I", "II", "III"][tier - 1]}</Text>
+        </View>
+      </View>
+      <Text style={styles.workerName} numberOfLines={2}>
+        {workerName(workerClass, lang)}
+      </Text>
+      <Text style={styles.workerMeta} numberOfLines={1} adjustsFontSizeToFit>
+        {formatTime(definition.productionMs)} · {target}
+      </Text>
+      <Text style={styles.productionValue}>
+        {t("workerLodge.productionValue", lang, { amount: definition.baseYield })}
+      </Text>
+      <SpringPressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={produce}
+        style={[styles.produceButton, disabled && styles.disabledButton]}
+      >
+        <Text style={styles.produceButtonText} numberOfLines={2} adjustsFontSizeToFit>
+          {buttonLabel}
+        </Text>
+      </SpringPressable>
+    </View>
   );
 }
 
@@ -866,7 +1003,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(8, 12, 7, 0.65)"
   },
   closeText: { color: "#fff2bd", fontSize: 29, lineHeight: 31, fontWeight: "800" },
-  content: { padding: 12, paddingBottom: 24, gap: 10 },
+  content: { padding: 12, gap: 13 },
   summaryRow: { flexDirection: "row", gap: 6 },
   summaryPill: {
     flex: 1,
@@ -882,21 +1019,24 @@ const styles = StyleSheet.create({
   summaryPillReady: { borderColor: "#80d160", backgroundColor: "rgba(51, 100, 36, 0.65)" },
   summaryValue: { color: "#ffe39a", fontSize: 18, fontWeight: "900", fontFamily: theme.fonts.heavy },
   summaryLabel: { color: "#cfc29b", fontSize: 9, fontWeight: "800", fontFamily: theme.fonts.bold },
-  sectionHeader: { marginTop: 4 },
+  sectionHeader: { marginTop: 8, gap: 2 },
   sectionTitle: { color: "#fff0bd", fontSize: 17, fontWeight: "900", fontFamily: theme.fonts.heavy },
   sectionSubtitle: { color: "#aeb995", fontSize: 11, fontFamily: theme.fonts.regular },
-  workerCards: { flexDirection: "row", gap: 7 },
+  workerCards: { flexDirection: "row", gap: 8, marginBottom: 3 },
   workerCard: {
     flex: 1,
     minWidth: 0,
+    minHeight: 215,
     alignItems: "center",
+    overflow: "hidden",
     padding: 7,
     borderRadius: 14,
     borderWidth: 1.5,
     backgroundColor: "rgba(15, 28, 14, 0.91)"
   },
-  workerPortraitWrap: { width: 68, height: 64, alignItems: "center", justifyContent: "center" },
-  workerPortrait: { width: 67, height: 67 },
+  productionGlow: { ...StyleSheet.absoluteFillObject, borderRadius: 13 },
+  workerPortraitWrap: { width: 76, height: 73, alignItems: "center", justifyContent: "center" },
+  workerPortrait: { width: 77, height: 77 },
   classBadge: {
     position: "absolute",
     right: 0,
@@ -910,13 +1050,16 @@ const styles = StyleSheet.create({
   classBadgeText: { color: "#172013", fontSize: 10, fontWeight: "900" },
   workerName: {
     width: "100%",
+    minHeight: 30,
     color: "#fff1c4",
-    fontSize: 12,
+    fontSize: 11.5,
+    lineHeight: 14,
     textAlign: "center",
     fontWeight: "900",
     fontFamily: theme.fonts.heavy
   },
-  workerMeta: { color: "#aeb995", fontSize: 9.5, textAlign: "center", fontFamily: theme.fonts.bold },
+  workerMeta: { width: "100%", color: "#c4cbaa", fontSize: 8.5, textAlign: "center", fontFamily: theme.fonts.bold },
+  productionValue: { marginTop: 4, color: "#9be67b", fontSize: 10.5, textAlign: "center", fontFamily: theme.fonts.heavy },
   rewardLine: { flexDirection: "row", alignItems: "baseline", gap: 3, marginTop: 3 },
   rewardLabel: { color: "#aeb995", fontSize: 9 },
   rewardValue: { color: "#8fe26f", fontSize: 12, fontWeight: "900" },
@@ -927,7 +1070,7 @@ const styles = StyleSheet.create({
   costText: { color: "#f4dd9b", fontSize: 9.5, fontWeight: "900" },
   produceButton: {
     width: "100%",
-    minHeight: 34,
+    minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 5,
@@ -936,8 +1079,12 @@ const styles = StyleSheet.create({
     borderColor: "#9bd475",
     backgroundColor: "#4d9a3d"
   },
-  produceButtonText: { color: "white", fontSize: 11, fontWeight: "900", fontFamily: theme.fonts.heavy },
+  produceButtonText: { color: "white", fontSize: 9.5, lineHeight: 11.5, textAlign: "center", fontWeight: "900", fontFamily: theme.fonts.heavy },
   disabledButton: { opacity: 0.38 },
+  productionToast: { position: "absolute", top: 94, left: 18, right: 18, zIndex: 40, borderRadius: 13, borderWidth: 1, borderColor: "#bddd82", backgroundColor: "rgba(38,77,31,0.97)", paddingHorizontal: 12, paddingVertical: 9, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 7, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
+  productionToastTitle: { color: "#fff3c8", fontSize: 12, textAlign: "center", fontFamily: theme.fonts.heavy },
+  productionToastSubtitle: { marginTop: 1, color: "#cbe9a9", fontSize: 10, textAlign: "center", fontFamily: theme.fonts.bold },
+  productionError: { borderColor: "#efaa8d", backgroundColor: "rgba(122,43,34,0.97)" },
   panel: {
     overflow: "hidden",
     borderRadius: 14,
@@ -1025,7 +1172,8 @@ const styles = StyleSheet.create({
   upgradeTitle: { color: "#ffe6a2", fontSize: 14, fontWeight: "900", fontFamily: theme.fonts.heavy },
   upgradeMeta: { color: "#cdbd91", fontSize: 10.5, fontFamily: theme.fonts.bold },
   upgradeRequirement: { color: "#d8c995", fontSize: 10.5, fontFamily: theme.fonts.bold },
-  requirementBlocked: { color: "#ffb56f" },
+  requirementBlocked: { color: "#ffb56f", fontSize: 10.5, fontFamily: theme.fonts.heavy },
+  requirementMet: { color: "#9be77b", fontSize: 10.5, fontFamily: theme.fonts.heavy },
   storageBlockedText: { color: "#ff9f68", fontSize: 10.5, fontWeight: "900", marginTop: 2 },
   activeUpgrade: { flex: 1, minWidth: 0 },
   activeUpgradeHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },

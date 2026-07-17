@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Animated,
   Modal,
   Pressable,
   ScrollView,
@@ -10,24 +9,31 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { playSound } from "../../game/audio/soundManager";
-import { buildingName, upgradeCost } from "../../game/config/buildings";
+import { buildingName, productionLevelMultiplier, upgradeCost } from "../../game/config/buildings";
 import { t, type Lang } from "../../game/i18n";
 import {
   bananaGroveCapacity,
-  expeditionStatus
+  calculateWorkerGroupExpectedReward,
+  expeditionStatus,
+  selectedWorkersFromCounts,
+  WORKER_CLASSES,
+  WORKER_CLASS_ORDER,
+  WORKER_MISSIONS
 } from "../../game/state/workerExpeditions";
 import { useGameStore } from "../../game/state/gameStore";
 import type {
   BananaGroveCollectionSummary,
   BananaWorkerClass,
   Resources,
-  WorkerClass
+  WorkerCountSelection
 } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 import { AssetImage } from "./AssetImage";
 import { BANANA_WORKER_ASSETS } from "../../game/assets/workerAssets";
 import { NineSliceFrame } from "./NineSliceFrame";
 import { SpringPressable } from "./SpringPressable";
+import { WorkerDispatchSelector } from "./WorkerDispatchSelector";
+import { WorkerHarvestPopup } from "./WorkerHarvestPopup";
 
 type Props = { visible: boolean; lang: Lang; onClose: () => void };
 
@@ -45,6 +51,7 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const [now, setNow] = useState(Date.now());
   const [summary, setSummary] = useState<BananaGroveCollectionSummary | null>(null);
+  const [selection, setSelection] = useState<WorkerCountSelection>({});
 
   useEffect(() => {
     if (!visible) return;
@@ -61,6 +68,18 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
   const clanLevel = state.buildings.find((building) => building.type === "clanHall")?.level ?? 1;
   const capacity = bananaGroveCapacity(level);
   const bananaWorkers = state.workerExpeditions.filter((entry) => entry.resource === "bananas");
+  const readyWorkers = useMemo(
+    () => state.idleWorkers.filter((worker) => WORKER_CLASS_ORDER.includes(worker.workerClass as BananaWorkerClass)),
+    [state.idleWorkers]
+  );
+  const selectedWorkers = selectedWorkersFromCounts(readyWorkers, selection);
+  const selectedExpected = calculateWorkerGroupExpectedReward(
+    selectedWorkers,
+    WORKER_MISSIONS.safe.multiplier,
+    productionLevelMultiplier(level) - 1
+  );
+  const selectedDuration = Math.max(0, ...selectedWorkers.map((worker) => WORKER_CLASSES[worker.workerClass].expeditionMs));
+  const availableSlots = Math.max(0, 3 - bananaWorkers.length);
   const completed = bananaWorkers.filter((entry) => entry.storedReward !== undefined);
   const active = bananaWorkers.filter((entry) => entry.storedReward === undefined);
   const full = state.bananaGroveStorage >= capacity;
@@ -134,6 +153,45 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
               ) : null}
             </View>
 
+            <Text style={styles.sectionTitle}>{t("bananaGrove.assignTitle", lang)}</Text>
+            <View style={styles.assignmentPanel}>
+              {readyWorkers.length > 0 && availableSlots > 0 && !full ? (
+                <>
+                  <WorkerDispatchSelector
+                    workerClasses={WORKER_CLASS_ORDER}
+                    availableWorkers={readyWorkers}
+                    selection={selection}
+                    maxWorkers={availableSlots}
+                    expectedReward={selectedExpected}
+                    durationLabel={formatTime(selectedDuration)}
+                    resourceName={t("res.bananas", lang)}
+                    lang={lang}
+                    onChange={setSelection}
+                  />
+                  <SpringPressable
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: selectedWorkers.length === 0 }}
+                    disabled={selectedWorkers.length === 0}
+                    onPress={() => {
+                      const result = state.sendWorkerExpeditionBatch(
+                        selectedWorkers.map((worker) => worker.id),
+                        "bananas",
+                        "safe"
+                      );
+                      if (result === "sent") setSelection({});
+                    }}
+                    style={[styles.sendButton, selectedWorkers.length === 0 && styles.disabled]}
+                  >
+                    <Text style={styles.sendButtonText}>{t("workerDispatch.send", lang)}</Text>
+                  </SpringPressable>
+                </>
+              ) : (
+                <Text style={styles.empty}>
+                  {full || availableSlots <= 0 ? t("bananaGrove.busyFeedback", lang) : t("bananaGrove.noIdleWorkers", lang)}
+                </Text>
+              )}
+            </View>
+
             <Text style={styles.sectionTitle}>{t("bananaGrove.workers", lang)} · {bananaWorkers.length}/3</Text>
             <View style={styles.workerPanel}>
               {bananaWorkers.length === 0 ? (
@@ -179,7 +237,20 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
             </View>
           </ScrollView>
 
-          {summary ? <HarvestPopup summary={summary} lang={lang} onClose={() => setSummary(null)} /> : null}
+          {summary ? (
+            <WorkerHarvestPopup
+              title={t("bananaGrove.harvestComplete", lang)}
+              body={t("workerHarvest.completedBody", lang, { resource: t("res.bananas", lang) })}
+              resourceAsset="resourceBanana"
+              resourceName={t("res.bananas", lang)}
+              collected={summary.collected}
+              workerClasses={summary.workerClasses}
+              accent="#9b6d25"
+              detail={summary.remainingStorage > 0 ? t("bananaGrove.storageRemainder", lang, { amount: summary.remainingStorage }) : null}
+              lang={lang}
+              onClose={() => setSummary(null)}
+            />
+          ) : null}
         </View>
       </View>
     </Modal>
@@ -195,25 +266,6 @@ function CostRow({ cost }: { cost: Resources }) {
   return <View style={styles.costRow}>{entries.filter(([kind]) => cost[kind] > 0).map(([kind, asset]) => (
     <View key={kind} style={styles.costChip}><AssetImage assetKey={asset} style={styles.costIcon} fallback={<View />} /><Text style={styles.costText}>{cost[kind]}</Text></View>
   ))}</View>;
-}
-
-function HarvestPopup({ summary, lang, onClose }: { summary: BananaGroveCollectionSummary; lang: Lang; onClose: () => void }) {
-  const scale = useRef(new Animated.Value(0.82)).current;
-  useEffect(() => {
-    Animated.spring(scale, { toValue: 1, friction: 7, tension: 90, useNativeDriver: true }).start();
-  }, [scale]);
-  const hero: WorkerClass = summary.workerClasses[summary.workerClasses.length - 1] ?? "gatherer";
-  return <View style={styles.popupScrim}>
-    <Animated.View style={[styles.popup, { transform: [{ scale }] }]}>
-      <NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} />
-      <Text style={styles.popupKicker}>{t("bananaGrove.harvestComplete", lang)}</Text>
-      <AssetImage assetKey={BANANA_WORKER_ASSETS[hero as BananaWorkerClass]} style={styles.popupWorker} fallback={<View />} hideFallbackOnLoad />
-      <View style={styles.rewardRow}><AssetImage assetKey="resourceBanana" style={styles.rewardIcon} fallback={<View />} /><Text style={styles.rewardAmount}>+{Math.floor(summary.collected)}</Text></View>
-      <Text style={styles.contractText}>{t("bananaGrove.contractEnded", lang)}</Text>
-      {summary.remainingStorage > 0 ? <Text style={styles.remainder}>{t("bananaGrove.storageRemainder", lang, { amount: summary.remainingStorage })}</Text> : null}
-      <SpringPressable accessibilityRole="button" onPress={onClose} style={styles.popupButton}><Text style={styles.popupButtonText}>{t("workerLodge.continue", lang)}</Text></SpringPressable>
-    </Animated.View>
-  </View>;
 }
 
 const styles = StyleSheet.create({
@@ -237,6 +289,9 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 8 }, statusDot: { color: "#85d962", fontSize: 11 }, statusText: { color: "#d9cca1", fontSize: 12, fontWeight: "800" },
   collectButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 11, borderRadius: 14, borderWidth: 1, borderColor: "#c8e69a", backgroundColor: "#519a3d" }, collectIcon: { width: 27, height: 27 }, collectText: { color: "white", fontSize: 16, fontWeight: "900", fontFamily: theme.fonts.heavy },
   sectionTitle: { color: "#4b2d13", fontSize: 17, fontWeight: "900", fontFamily: theme.fonts.heavy }, workerPanel: { overflow: "hidden", borderRadius: 16, borderWidth: 1, borderColor: "rgba(105,68,26,0.38)", backgroundColor: "rgba(8,17,8,0.75)" },
+  assignmentPanel: { gap: 9, padding: 11, borderRadius: 16, borderWidth: 1, borderColor: "rgba(105,68,26,0.38)", backgroundColor: "rgba(8,17,8,0.75)" },
+  sendButton: { minHeight: 49, alignItems: "center", justifyContent: "center", borderRadius: 14, borderWidth: 1, borderColor: "#d7bd79", backgroundColor: "#57923c" },
+  sendButtonText: { color: "white", fontSize: 15, fontFamily: theme.fonts.heavy },
   empty: { padding: 24, color: "#8d9a81", textAlign: "center" }, workerRow: { minHeight: 80, flexDirection: "row", alignItems: "center", gap: 8, padding: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(226,185,99,0.2)" }, workerReady: { backgroundColor: "rgba(65,116,43,0.28)" }, workerArt: { width: 64, height: 64 }, workerCopy: { flex: 1, minWidth: 0 }, workerName: { color: "#fff0bd", fontSize: 13, fontWeight: "900" }, workerMeta: { color: "#9bdc7b", fontSize: 11, fontWeight: "800" }, expected: { color: "#baaE87", fontSize: 10 }, timer: { color: "#9be77b", fontSize: 14, fontWeight: "900", fontVariant: ["tabular-nums"] }, readyMark: { width: 12, height: 12, marginRight: 10, borderRadius: 6, borderWidth: 2, borderColor: "#d9f6bd", backgroundColor: "#69b84d" },
   upgradeCard: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: "rgba(231,190,91,0.48)", backgroundColor: "rgba(65,42,16,0.76)" }, upgradeCopy: { flex: 1, minWidth: 0 }, upgradeTitle: { color: "#ffe6a2", fontSize: 14, fontWeight: "900" }, upgradeMeta: { color: "#cdbd91", fontSize: 11 }, costRow: { flexDirection: "row", gap: 8, marginTop: 5 }, costChip: { flexDirection: "row", alignItems: "center", gap: 2 }, costIcon: { width: 17, height: 17 }, costText: { color: "#f4dd9b", fontSize: 11, fontWeight: "900" }, upgradeButton: { minWidth: 98, minHeight: 42, alignItems: "center", justifyContent: "center", paddingHorizontal: 9, borderRadius: 11, backgroundColor: "#b56b25" }, upgradeButtonText: { color: "white", fontSize: 10, textAlign: "center", fontWeight: "900" }, disabled: { opacity: 0.38 },
   popupScrim: { ...StyleSheet.absoluteFillObject, zIndex: 30, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "rgba(2,7,3,0.84)" }, popup: { width: "100%", maxWidth: 340, alignItems: "center", overflow: "hidden", padding: 20, borderRadius: 22, borderWidth: 2, borderColor: "#e0bb5c", backgroundColor: "#20331c" }, popupKicker: { color: "#8fe76c", fontSize: 14, textAlign: "center", fontWeight: "900" }, popupWorker: { width: 145, height: 145 }, rewardRow: { flexDirection: "row", alignItems: "center", gap: 7 }, rewardIcon: { width: 44, height: 44 }, rewardAmount: { color: "#a0ed78", fontSize: 34, fontWeight: "900" }, contractText: { color: "#c9bc91", fontSize: 12, textAlign: "center", marginTop: 5 }, remainder: { color: "#f0c86d", fontSize: 11, textAlign: "center", marginTop: 5 }, popupButton: { minWidth: 170, minHeight: 47, alignItems: "center", justifyContent: "center", marginTop: 14, borderRadius: 14, borderWidth: 1, borderColor: "#b9e18e", backgroundColor: "#579f3e" }, popupButtonText: { color: "white", fontSize: 15, fontWeight: "900" }

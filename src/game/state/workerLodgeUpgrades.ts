@@ -3,7 +3,56 @@ import type {
   VillageBuilding,
   WorkerLodgeUpgrade
 } from "../types/game";
-import { WORKER_LODGE_UPGRADES } from "../config/buildings";
+import {
+  WORKER_LODGE_UPGRADES,
+  storageCanHoldCost,
+  storageCap,
+  workerLodgeUpgrade
+} from "../config/buildings";
+import type { ResourceKind } from "../types/game";
+
+export type WorkerLodgeUpgradeBlock =
+  | { reason: "max-level" }
+  | { reason: "upgrade-active" }
+  | { reason: "clan-level"; requiredLevel: number }
+  | { reason: "storage"; capacity: number }
+  | { reason: "resource"; resource: ResourceKind; missing: number }
+  | null;
+
+/** One source of truth for both the Lodge UI and the store mutation guard. */
+export function evaluateWorkerLodgeUpgrade({
+  lodgeLevel,
+  clanLevel,
+  resources,
+  activeUpgrade
+}: {
+  lodgeLevel: number;
+  clanLevel: number;
+  resources: Resources;
+  activeUpgrade: WorkerLodgeUpgrade | null;
+}) {
+  const definition = workerLodgeUpgrade(lodgeLevel);
+  let block: WorkerLodgeUpgradeBlock = null;
+  if (!definition) block = { reason: "max-level" };
+  else if (activeUpgrade) block = { reason: "upgrade-active" };
+  else if (clanLevel < definition.requiredClanHallLevel) {
+    block = { reason: "clan-level", requiredLevel: definition.requiredClanHallLevel };
+  } else {
+    const capacity = storageCap(clanLevel);
+    if (!storageCanHoldCost(capacity, definition.cost)) {
+      block = { reason: "storage", capacity };
+    } else {
+      const missing = (["bananas", "stones", "wood"] as const)
+        .map((resource) => ({
+          resource,
+          missing: Math.max(0, definition.cost[resource] - resources[resource])
+        }))
+        .find((entry) => entry.missing > 0);
+      if (missing) block = { reason: "resource", ...missing };
+    }
+  }
+  return { definition, block, enabled: definition != null && block == null };
+}
 
 function safeLevel(value: unknown) {
   return typeof value === "number" && Number.isInteger(value) && value >= 1

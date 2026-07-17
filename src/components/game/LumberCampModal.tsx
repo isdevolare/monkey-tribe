@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { playSound } from "../../game/audio/soundManager";
 import { buildingName, upgradeCost } from "../../game/config/buildings";
@@ -7,21 +7,27 @@ import { t, type Lang } from "../../game/i18n";
 import {
   LUMBER_MISSIONS,
   LUMBER_MISSION_ORDER,
-  WORKER_CLASSES,
-  calculateWorkerExpectedReward,
+  LUMBER_WORKER_ORDER,
+  RESOURCE_WORKPLACE_MAX_WORKERS,
+  STONE_WORKER_ORDER,
+  calculateWorkerGroupExpectedReward,
   expeditionStatus,
   isLumberWorkerClass,
   isStoneWorkerClass,
   lumberCampCapacity,
-  stoneQuarryCapacity
+  selectedWorkersFromCounts,
+  stoneQuarryCapacity,
+  workerTierCounts
 } from "../../game/state/workerExpeditions";
 import { useGameStore } from "../../game/state/gameStore";
-import type { LumberCampCollectionSummary, LumberMissionTier, Resources, StoneQuarryCollectionSummary, WorkerClass } from "../../game/types/game";
+import type { LumberCampCollectionSummary, LumberMissionTier, Resources, StoneQuarryCollectionSummary, WorkerCountSelection } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 import { AssetImage } from "./AssetImage";
 import { WORKER_ASSETS } from "../../game/assets/workerAssets";
 import { NineSliceFrame } from "./NineSliceFrame";
 import { SpringPressable } from "./SpringPressable";
+import { WorkerDispatchSelector } from "./WorkerDispatchSelector";
+import { WorkerHarvestPopup } from "./WorkerHarvestPopup";
 
 type Props = { visible: boolean; lang: Lang; onClose: () => void; onOpenWorkerLodge: () => void };
 type WorkplaceKind = "lumber" | "stone";
@@ -69,7 +75,7 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
   const config = WORKPLACE[kind];
   const insets = useSafeAreaInsets();
   const [now, setNow] = useState(Date.now());
-  const [workerId, setWorkerId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<WorkerCountSelection>({});
   const [missionTier, setMissionTier] = useState<LumberMissionTier>("safe");
   const [summary, setSummary] = useState<LumberCampCollectionSummary | StoneQuarryCollectionSummary | null>(null);
 
@@ -90,16 +96,22 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
     () => state.idleWorkers.filter((worker) => config.isWorker(worker.workerClass)),
     [config, state.idleWorkers]
   );
-  const mission = state.workerExpeditions.find((entry) => entry.resource === config.resource);
-  const selectedWorker = readyWorkers.find((worker) => worker.id === workerId) ?? readyWorkers[0];
+  const missionWorkers = state.workerExpeditions.filter((entry) => entry.resource === config.resource);
+  const mission = missionWorkers[0];
+  const selectedWorkers = selectedWorkersFromCounts(readyWorkers, selection);
   const storage = kind === "lumber" ? state.lumberCampStorage : state.stoneQuarryStorage;
   const full = storage >= capacity;
   const completed = mission?.storedReward !== undefined;
   const selectedMission = LUMBER_MISSIONS[missionTier];
-  const definition = selectedWorker ? WORKER_CLASSES[selectedWorker.workerClass] : null;
-  const potential = definition
-    ? calculateWorkerExpectedReward(definition.baseYield, selectedMission.multiplier, level * 0.03)
-    : 0;
+  const potential = calculateWorkerGroupExpectedReward(
+    selectedWorkers,
+    selectedMission.multiplier,
+    level * 0.03
+  );
+  const workerOrder = kind === "lumber" ? LUMBER_WORKER_ORDER : STONE_WORKER_ORDER;
+  const missionExpected = missionWorkers.reduce((sum, worker) => sum + worker.expectedReward, 0);
+  const missionReturnsAt = Math.max(0, ...missionWorkers.map((worker) => worker.returnsAt));
+  const tierCounts = workerTierCounts(missionWorkers);
 
   function collect() {
     const result = kind === "lumber" ? state.collectLumberCamp() : state.collectStoneQuarry();
@@ -135,14 +147,14 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
                 <View style={styles.workerRow}>
                   <AssetImage assetKey={WORKER_ASSETS[mission.workerClass]} style={styles.workerArt} fallback={<View />} hideFallbackOnLoad />
                   <View style={styles.flex}>
-                    <Text style={styles.workerName}>{t(`worker.${mission.workerClass}.name`, lang)}</Text>
+                    <Text style={styles.workerName}>{t("workerDispatch.workerCount", lang, { n: missionWorkers.length })}</Text>
                     <Text style={styles.missionName}>{t(`${config.missionPrefix}.${mission.missionTier ?? "safe"}.name`, lang)} · {mission.missionMultiplier ?? 2}x</Text>
-                    <Text style={styles.meta}>{t(`worker.status.${expeditionStatus(mission, now)}`, lang)}</Text>
+                    <Text style={styles.meta}>{workerOrder.map((workerClass, index) => `${tierCounts[workerClass] ?? 0}× T${index + 1}`).filter((entry) => !entry.startsWith("0×")).join(", ")} · {t(`worker.status.${expeditionStatus(mission, now)}`, lang)}</Text>
                   </View>
-                  <Text style={styles.timer}>{completed ? t(`${config.prefix}.ready`, lang) : clock(mission.returnsAt - now)}</Text>
+                  <Text style={styles.timer}>{completed ? t(`${config.prefix}.ready`, lang) : clock(missionReturnsAt - now)}</Text>
                 </View>
                 <View style={styles.detailGrid}>
-                  <Detail label={t(`${config.prefix}.potential`, lang)} value={`${mission.expectedReward} ${t(`res.${config.resource}`, lang)}`} />
+                  <Detail label={t(`${config.prefix}.potential`, lang)} value={`${missionExpected} ${t(`res.${config.resource}`, lang)}`} />
                   <Detail label={t(`${config.prefix}.storage`, lang)} value={`${Math.floor(storage)} / ${capacity}`} />
                 </View>
               </View>
@@ -153,13 +165,23 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
                   <View style={styles.emptyWrap}><Text style={styles.empty}>{t(`${config.prefix}.noWorkers`, lang)}</Text><SpringPressable accessibilityRole="button" onPress={onOpenWorkerLodge} style={styles.secondaryButton}><Text style={styles.secondaryText}>{t(`${config.prefix}.openLodge`, lang)}</Text></SpringPressable></View>
                 ) : (
                   <>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.workerPicker}>
-                      {readyWorkers.map((worker) => <SpringPressable key={worker.id} onPress={() => setWorkerId(worker.id)} style={[styles.workerChip, selectedWorker?.id === worker.id && styles.selected]}><AssetImage assetKey={WORKER_ASSETS[worker.workerClass]} style={styles.chipArt} fallback={<View />} /><Text style={styles.chipText} numberOfLines={2}>{t(`worker.${worker.workerClass}.name`, lang)}</Text></SpringPressable>)}
-                    </ScrollView>
+                    <WorkerDispatchSelector
+                      workerClasses={workerOrder}
+                      availableWorkers={readyWorkers}
+                      selection={selection}
+                      maxWorkers={RESOURCE_WORKPLACE_MAX_WORKERS}
+                      expectedReward={potential}
+                      durationLabel={clock(selectedMission.durationMs)}
+                      resourceName={t(`res.${config.resource}`, lang)}
+                      lang={lang}
+                      onChange={setSelection}
+                    />
                     <Text style={styles.sectionTitle}>{t(`${config.prefix}.chooseMission`, lang)}</Text>
                     <View style={styles.missionCards}>{LUMBER_MISSION_ORDER.map((tier) => { const option = LUMBER_MISSIONS[tier]; return <SpringPressable key={tier} onPress={() => setMissionTier(tier)} style={[styles.missionCard, missionTier === tier && styles.selected]}><Text style={styles.multiplier}>{option.multiplier}x</Text><Text style={styles.cardTitle} numberOfLines={1} adjustsFontSizeToFit>{t(`${config.missionPrefix}.${tier}.name`, lang)}</Text><Text style={styles.cardMeta}>{clock(option.durationMs)}</Text><Text style={styles.risk}>{t(`${config.missionPrefix}.${tier}.risk`, lang)}</Text></SpringPressable>; })}</View>
-                    <Text style={styles.potential}>{t(`${config.prefix}.potential`, lang)}: {potential} {t(`res.${config.resource}`, lang)}</Text>
-                    <SpringPressable accessibilityRole="button" accessibilityState={{ disabled: full }} onPress={() => selectedWorker && state.sendWorkerExpedition(selectedWorker.id, config.resource, missionTier)} style={[styles.sendButton, full && styles.disabled]}><Text style={styles.buttonText}>{t("bananaGrove.send", lang)}</Text></SpringPressable>
+                    <SpringPressable accessibilityRole="button" accessibilityState={{ disabled: full || selectedWorkers.length === 0 }} disabled={full || selectedWorkers.length === 0} onPress={() => {
+                      const result = state.sendWorkerExpeditionBatch(selectedWorkers.map((worker) => worker.id), config.resource, missionTier);
+                      if (result === "sent") setSelection({});
+                    }} style={[styles.sendButton, (full || selectedWorkers.length === 0) && styles.disabled]}><Text style={styles.buttonText}>{t("workerDispatch.send", lang)}</Text></SpringPressable>
                   </>
                 )}
               </View>
@@ -185,11 +207,27 @@ function CostRow({ cost }: { cost: Resources }) {
 
 function ResultPopup({ summary, lang, onClose, kind }: { summary: LumberCampCollectionSummary | StoneQuarryCollectionSummary; lang: Lang; onClose: () => void; kind: WorkplaceKind }) {
   const config = WORKPLACE[kind];
-  const scale = useRef(new Animated.Value(0.84)).current;
-  useEffect(() => { Animated.spring(scale, { toValue: 1, friction: 7, tension: 90, useNativeDriver: true }).start(); }, [scale]);
   const outcome = summary.outcome;
   const title = outcome === "success" ? t(`${config.resultPrefix}.success`, lang) : outcome === "half" ? t(`${config.resultPrefix}.partial`, lang) : outcome === "empty" ? t(`${config.resultPrefix}.failed`, lang) : t(`${config.resultPrefix}.storage`, lang);
-  return <View style={styles.popupScrim}><Animated.View style={[styles.popup, { transform: [{ scale }] }]}><NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} /><Text style={styles.popupTitle}>{title}</Text>{summary.workerClass ? <AssetImage assetKey={WORKER_ASSETS[summary.workerClass as WorkerClass]} style={styles.popupWorker} fallback={<View />} hideFallbackOnLoad /> : null}<Text style={styles.outcomeText}>{outcome ? t(`${config.resultPrefix}.${outcome}.body`, lang) : t(`${config.resultPrefix}.storage.body`, lang)}</Text><View style={styles.rewardRow}><AssetImage assetKey={config.resourceAsset} style={styles.rewardIcon} fallback={<View />} /><Text style={styles.rewardAmount}>+{Math.floor(summary.collected)}</Text></View>{summary.reward > summary.storedReward ? <Text style={styles.clamped}>{t(`${config.resultPrefix}.clamped`, lang, { amount: summary.storedReward })}</Text> : null}{summary.remainingStorage > 0 ? <Text style={styles.clamped}>{t(`${config.prefix}.storageRemainder`, lang, { amount: summary.remainingStorage })}</Text> : null}<SpringPressable accessibilityRole="button" onPress={onClose} style={styles.collectButton}><Text style={styles.buttonText}>{outcome === "empty" ? t("settings.close", lang) : t("workerLodge.continue", lang)}</Text></SpringPressable></Animated.View></View>;
+  const detail = summary.remainingStorage > 0
+    ? t(`${config.prefix}.storageRemainder`, lang, { amount: summary.remainingStorage })
+    : summary.reward > summary.storedReward
+      ? t(`${config.resultPrefix}.clamped`, lang, { amount: summary.storedReward })
+      : null;
+  return (
+    <WorkerHarvestPopup
+      title={title}
+      body={outcome ? t(`${config.resultPrefix}.${outcome}.body`, lang) : t(`${config.resultPrefix}.storage.body`, lang)}
+      resourceAsset={config.resourceAsset}
+      resourceName={t(`res.${config.resource}`, lang)}
+      collected={summary.collected}
+      workerClasses={summary.workerClasses}
+      accent={kind === "lumber" ? "#9a642e" : "#68757e"}
+      detail={detail}
+      lang={lang}
+      onClose={onClose}
+    />
+  );
 }
 
 const styles = StyleSheet.create({
