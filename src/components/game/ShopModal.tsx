@@ -29,6 +29,7 @@ export function ShopModal({ visible, lang, onClose, onOpenGemStore }: ShopModalP
   const hallLevel = useGameStore((state) => state.buildings.find((building) => building.type === "clanHall")?.level ?? 1);
   const buy = useGameStore((state) => state.buyShopItem);
   const shopItems = resourceShopItems();
+  const capacity = storageCap(hallLevel);
   const [showInsufficientGems, setShowInsufficientGems] = useState(false);
 
   useEffect(() => {
@@ -73,6 +74,26 @@ export function ShopModal({ visible, lang, onClose, onOpenGemStore }: ShopModalP
             {t("shop.subtitle", lang)}
           </Text>
 
+          <View style={styles.storageOverview}>
+            {(["bananas", "stones", "wood"] as const).map((resource) => (
+              <View
+                key={resource}
+                accessible
+                accessibilityLabel={t("shop.storageStatus", lang, {
+                  resource: t(`res.${resource}`, lang),
+                  current: Math.floor(resources[resource]),
+                  capacity
+                })}
+                style={styles.storagePill}
+              >
+                <AssetImage assetKey={rewardAsset(resource)} style={styles.storageIcon} fallback={<View />} />
+                <Text style={styles.storageValue} numberOfLines={1} adjustsFontSizeToFit>
+                  {Math.floor(resources[resource])}/{capacity}
+                </Text>
+              </View>
+            ))}
+          </View>
+
           <BuyGemsButton lang={lang} onPress={handleOpenGemStore} style={styles.buyGems} />
 
           <View style={styles.grid}>
@@ -80,7 +101,7 @@ export function ShopModal({ visible, lang, onClose, onOpenGemStore }: ShopModalP
               const capacityIssues = resourceShopCapacityIssues(
                 item,
                 resources,
-                storageCap(hallLevel)
+                capacity
               );
               return (
                 <ShopCard
@@ -310,6 +331,32 @@ const styles = StyleSheet.create({
     color: "#d8ccb0",
     fontSize: theme.type.label,
     fontFamily: theme.fonts.bold
+  },
+  storageOverview: {
+    flexDirection: "row",
+    gap: 5,
+    marginBottom: theme.spacing.sm
+  },
+  storagePill: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(226, 177, 90, 0.24)",
+    backgroundColor: "rgba(14, 12, 7, 0.72)",
+    paddingHorizontal: 4
+  },
+  storageIcon: { width: 15, height: 15 },
+  storageValue: {
+    flexShrink: 1,
+    color: "#ead8ab",
+    fontSize: 9.5,
+    fontFamily: theme.fonts.heavy
   },
   grid: {
     flexDirection: "row",

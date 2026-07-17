@@ -104,7 +104,10 @@ export type RaidPenalty = {
 export type RaidGemRewardReason = "first-victory" | "first-repeat" | "none";
 
 export type RaidRewardSummary = {
+  /** Resources actually added to main storage. */
   loot: Resources;
+  /** Reward portion that did not fit in main storage. */
+  discardedLoot: Resources;
   multiplier: number;
   gems: number;
   gemReason: RaidGemRewardReason;
@@ -209,6 +212,7 @@ export type StoneWorkerClass =
   | "worker_stone_experienced"
   | "worker_stone_master";
 export type WorkerClass = BananaWorkerClass | LumberWorkerClass | StoneWorkerClass;
+export type WorkerCountSelection = Partial<Record<WorkerClass, number>>;
 export type WorkerMissionTier = "safe" | "risky" | "dangerous";
 export type LumberMissionTier = WorkerMissionTier;
 export type WorkerExpeditionStatus = "active" | "returning" | "completed";
@@ -230,6 +234,8 @@ export type IdleWorker = {
 
 export type WorkerExpedition = {
   id: string;
+  /** Shared dispatch id for workers sent together; absent on legacy saves. */
+  dispatchId?: string;
   workerId: string;
   workerClass: WorkerClass;
   resource: ResourceKind;
@@ -257,7 +263,10 @@ export type LumberCampCollectionSummary = {
   collected: number;
   remainingStorage: number;
   workerClass?: LumberWorkerClass;
+  workerClasses: LumberWorkerClass[];
+  workerCount: number;
   outcome?: WorkerExpeditionOutcome;
+  expectedReward: number;
   reward: number;
   storedReward: number;
 };
@@ -266,10 +275,28 @@ export type StoneQuarryCollectionSummary = {
   collected: number;
   remainingStorage: number;
   workerClass?: StoneWorkerClass;
+  workerClasses: StoneWorkerClass[];
+  workerCount: number;
   outcome?: WorkerExpeditionOutcome;
+  expectedReward: number;
   reward: number;
   storedReward: number;
 };
+
+export type WorkerProductionStartResult =
+  | "queued"
+  | "invalid"
+  | "locked"
+  | "capacity-full"
+  | "insufficient-resources"
+  | "already-producing";
+
+export type WorkerDispatchResult =
+  | "sent"
+  | "invalid"
+  | "busy"
+  | "capacity-full"
+  | "storage-full";
 
 export type WorkerLodgeUpgrade = {
   fromLevel: number;
@@ -409,8 +436,9 @@ export type GameState = {
   startGame: () => void;
   hydrate: (save: VillageSave) => void;
   setLanguage: (lang: Lang) => void;
-  queueWorker: (workerClass: WorkerClass) => void;
+  queueWorker: (workerClass: WorkerClass) => WorkerProductionStartResult;
   sendWorkerExpedition: (workerId: string, resource: ResourceKind, missionTier?: WorkerMissionTier) => void;
+  sendWorkerExpeditionBatch: (workerIds: string[], resource: ResourceKind, missionTier?: WorkerMissionTier) => WorkerDispatchResult;
   collectWorkerExpedition: (expeditionId: string) => WorkerCollectionSummary | null;
   collectBananaGrove: () => BananaGroveCollectionSummary | null;
   collectLumberCamp: () => LumberCampCollectionSummary | null;

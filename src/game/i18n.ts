@@ -163,6 +163,10 @@ const dict: Record<string, Entry> = {
     tr: "Depo dolu! Klan Salonu'nu geliştir.",
     en: "Storage full! Upgrade the Clan Hall."
   },
+  "fb.resourcesCapped": {
+    tr: "Depoya alınan: {received} · Kapasite nedeniyle alınamayan: {lost}",
+    en: "Received: {received} · Not received due to capacity: {lost}"
+  },
   "fx.muz": { tr: "muz", en: "bananas" },
   "fx.odun": { tr: "odun", en: "wood" },
   "fx.tas": { tr: "taş", en: "stone" },
@@ -468,6 +472,10 @@ const dict: Record<string, Entry> = {
   "shop.storageInsufficient": {
     tr: "{resource} deposunda {free} boş alan var; {required} gerekli. Gem harcanmadı.",
     en: "{resource} storage has {free} free; {required} required. No Gems were spent."
+  },
+  "shop.storageStatus": {
+    tr: "{resource} {current}/{capacity}",
+    en: "{resource} {current}/{capacity}"
   },
   "shop.insufficientGems": { tr: "Yetersiz Gem", en: "Not enough Gems" },
   "shop.insufficientMessage": {
@@ -779,6 +787,10 @@ const dict: Record<string, Entry> = {
     en: "Workers are single-use and leave after their reward is collected."
   },
   "workerLodge.produce": { tr: "Üret", en: "Produce" },
+  "workerLodge.produceWithCost": { tr: "Üret · {amount} {resource}", en: "Produce · {amount} {resource}" },
+  "workerLodge.producingCountdown": { tr: "Üretiliyor · {time}", en: "Producing · {time}" },
+  "workerLodge.productionValue": { tr: "Üretim: {amount}", en: "Production: {amount}" },
+  "workerLodge.unlockLevelRequired": { tr: "Loca Sv. {level} gerekli", en: "Lodge Lv. {level} required" },
   "workerLodge.returns": { tr: "Getiri", en: "Returns" },
   "workerLodge.queueTitle": { tr: "Üretim Kuyruğu", en: "Production Queue" },
   "workerLodge.queueSubtitle": {
@@ -819,6 +831,9 @@ const dict: Record<string, Entry> = {
   "workerLodge.maxLevel": { tr: "İşçi Locası maksimum seviyede.", en: "The Worker Lodge is at maximum level." },
   "workerLodge.maxLevelShort": { tr: "Maksimum Seviye", en: "Maximum Level" },
   "workerLodge.upgrading": { tr: "Geliştiriliyor", en: "Upgrading" },
+  "workerLodge.requirementsMet": { tr: "Gereksinimler karşılandı", en: "Requirements met" },
+  "workerLodge.resourceMissing": { tr: "{amount} {resource} eksik", en: "Missing {amount} {resource}" },
+  "workerLodge.blockedButton": { tr: "Geliştirilemiyor", en: "Unavailable" },
   "duration.minute": { tr: "{n} dk", en: "{n} min" },
   "duration.hour": { tr: "{n} sa", en: "{n} hr" },
   "duration.day": { tr: "{n} gün", en: "{n} day" },
@@ -943,6 +958,23 @@ const dict: Record<string, Entry> = {
     tr: "İşçi Locası kapasitesi dolu.",
     en: "The Worker Lodge is at capacity."
   },
+  "worker.alreadyProducing": { tr: "{name} zaten üretiliyor.", en: "{name} is already in production." },
+  "worker.productionStarted": { tr: "{name} üretime alındı", en: "{name} entered production" },
+  "worker.productionReadyIn": { tr: "{seconds} saniye sonra hazır", en: "Ready in {seconds} seconds" },
+  "worker.invalidSelection": { tr: "Geçerli bir işçi seçimi yap.", en: "Choose a valid worker selection." },
+  "worker.workplaceCapacityFull": { tr: "Kaynak binası en fazla {n} işçi kabul ediyor.", en: "This workplace accepts at most {n} workers." },
+  "worker.batchSent": { tr: "{n} işçi {resource} görevine gönderildi.", en: "{n} workers were sent on a {resource} mission." },
+  "workerDispatch.tierAvailable": { tr: "Tier {tier} mevcut: {n}", en: "Tier {tier} available: {n}" },
+  "workerDispatch.remaining": { tr: "Boşta kalacak: {n}", en: "Remaining idle: {n}" },
+  "workerDispatch.total": { tr: "Gönderilecek", en: "Sending" },
+  "workerDispatch.duration": { tr: "Görev süresi", en: "Duration" },
+  "workerDispatch.expected": { tr: "Beklenen ödül", en: "Expected reward" },
+  "workerDispatch.consumedWarning": { tr: "Gönderilen işçi sözleşmeleri görev sonunda sona erer.", en: "Dispatched worker contracts end when the mission finishes." },
+  "workerDispatch.workerCount": { tr: "{n} İşçi", en: "{n} Workers" },
+  "workerDispatch.send": { tr: "Göreve Gönder", en: "Send on Mission" },
+  "workerHarvest.completedBody": { tr: "{resource} görevi tamamlandı ve ödül ana depoya taşındı.", en: "The {resource} mission is complete and its reward was moved to main storage." },
+  "workerHarvest.oneContractEnded": { tr: "Tamamlanan işçi sözleşmesi sona erdi.", en: "The completed worker contract has ended." },
+  "workerHarvest.contractsEnded": { tr: "{n} işçi sözleşmesi sona erdi.", en: "{n} worker contracts have ended." },
   "worker.queued": { tr: "{name} üretim kuyruğuna alındı.", en: "{name} entered production." },
   "worker.productionReady": { tr: "Yeni işçi sefere hazır!", en: "A new worker is ready!" },
   "worker.expeditionSent": {
@@ -968,6 +1000,8 @@ const dict: Record<string, Entry> = {
   "bananaGrove.ready": { tr: "Toplanmaya Hazır", en: "Ready to Collect" },
   "bananaGrove.workers": { tr: "Bahçedeki İşçiler", en: "Workers at the Grove" },
   "bananaGrove.noWorkers": { tr: "Bahçede çalışan işçi yok.", en: "No workers are assigned to the Grove." },
+  "bananaGrove.assignTitle": { tr: "Muz İşçisi Ata", en: "Assign Banana Workers" },
+  "bananaGrove.noIdleWorkers": { tr: "Gönderilmeye hazır Muz İşçisi yok.", en: "No Banana Workers are ready to send." },
   "bananaGrove.harvestComplete": { tr: "Muz Hasadı Tamamlandı", en: "Banana Harvest Complete" },
   "bananaGrove.contractEnded": { tr: "Tamamlanan işçi sözleşmeleri sona erdi.", en: "The completed worker contracts have ended." },
   "bananaGrove.storageRemainder": { tr: "Ana depo dolu: {amount} muz bahçede kaldı.", en: "Main storage is full: {amount} bananas remain at the Grove." },
@@ -992,6 +1026,11 @@ const dict: Record<string, Entry> = {
   "fb.victoryLoot": {
     tr: "Zafer! +{b} muz, +{s} taş, +{w} odun",
     en: "Victory! +{b} bananas, +{s} stone, +{w} wood"
+  },
+  "raid.lootReceived": { tr: "Depoya alınan", en: "Received" },
+  "raid.lootNotReceived": {
+    tr: "Kapasite nedeniyle alınamayan",
+    en: "Not received due to capacity"
   },
   "fb.raidFailed": {
     tr: "Baskın başarısız. Daha fazla savaşçı eğit.",

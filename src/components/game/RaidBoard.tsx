@@ -27,6 +27,7 @@ type RaidBoardProps = {
   raidStatus: RaidStatus;
   stars: number;
   loot: Resources;
+  discardedLoot: Resources;
   rewardMultiplier: number;
   gemReward: number;
   gemRewardReason: RaidGemRewardReason;
@@ -81,6 +82,7 @@ export function RaidBoard({
   raidStatus,
   stars,
   loot,
+  discardedLoot,
   rewardMultiplier,
   gemReward,
   gemRewardReason,
@@ -407,12 +409,25 @@ export function RaidBoard({
                         : t("raid.gemReason.firstVictory", lang, { stars, gems: gemReward })}
                     </Text>
                   ) : null}
+                  <Text style={styles.rewardSectionLabel}>{t("raid.lootReceived", lang)}</Text>
                   <View style={styles.rewardGrid}>
                     <RewardChip assetKey="resourceBananaPile" amount={loot.bananas} />
                     <RewardChip assetKey="resourceWoodBundle" amount={loot.wood} />
                     <RewardChip assetKey="resourceStonePile" amount={loot.stones} />
                     {gemReward > 0 ? <RewardChip assetKey="resourceJungleGem" amount={gemReward} /> : null}
                   </View>
+                  {discardedLoot.bananas + discardedLoot.stones + discardedLoot.wood > 0 ? (
+                    <>
+                      <Text style={[styles.rewardSectionLabel, styles.discardedLabel]}>
+                        {t("raid.lootNotReceived", lang)}
+                      </Text>
+                      <View style={styles.rewardGrid}>
+                        {discardedLoot.bananas > 0 ? <RewardChip assetKey="resourceBananaPile" amount={discardedLoot.bananas} discarded /> : null}
+                        {discardedLoot.wood > 0 ? <RewardChip assetKey="resourceWoodBundle" amount={discardedLoot.wood} discarded /> : null}
+                        {discardedLoot.stones > 0 ? <RewardChip assetKey="resourceStonePile" amount={discardedLoot.stones} discarded /> : null}
+                      </View>
+                    </>
+                  ) : null}
                 </>
               ) : null}
               {!victory && penalty ? (
@@ -517,11 +532,13 @@ function FloatingNumber({ marker, onDone }: { marker: DamageMarker; onDone: (id:
   );
 }
 
-function RewardChip({ assetKey, amount }: { assetKey: GameAssetKey; amount: number }) {
+function RewardChip({ assetKey, amount, discarded = false }: { assetKey: GameAssetKey; amount: number; discarded?: boolean }) {
   return (
-    <View style={styles.rewardChip}>
+    <View style={[styles.rewardChip, discarded ? styles.rewardChipDiscarded : null]}>
       <AssetImage assetKey={assetKey} style={styles.rewardIcon} fallback={<View style={styles.rewardIconFallback} />} />
-      <Text style={styles.rewardText}>+{amount}</Text>
+      <Text style={[styles.rewardText, discarded ? styles.rewardTextDiscarded : null]}>
+        {discarded ? "−" : "+"}{amount}
+      </Text>
     </View>
   );
 }
@@ -919,6 +936,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center"
   },
+  rewardSectionLabel: {
+    marginTop: 8,
+    color: "#d8ccb0",
+    fontSize: 10,
+    fontFamily: theme.fonts.heavy,
+    textAlign: "center"
+  },
+  discardedLabel: { color: "#efa58f" },
   gemReason: { marginTop: 3, color: "#8bd4ff", fontSize: 10, textAlign: "center", fontFamily: theme.fonts.bold },
   armyResultRow: { width: "100%", flexDirection: "row", gap: 7, marginTop: 9 },
   armyResultCard: { flex: 1, minHeight: 38, alignItems: "center", justifyContent: "center", borderRadius: 9, borderWidth: 1, paddingHorizontal: 5 },
@@ -958,6 +983,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6
   },
+  rewardChipDiscarded: { backgroundColor: "rgba(190, 72, 54, 0.16)" },
   rewardIcon: {
     width: 30,
     height: 30
@@ -973,6 +999,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "900", fontFamily: theme.fonts.heavy
   },
+  rewardTextDiscarded: { color: "#f2a08d" },
   strongholdCallout: {
     alignSelf: "stretch",
     alignItems: "center",

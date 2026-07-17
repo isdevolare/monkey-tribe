@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   RAID_REWARD_VERSION,
   migrateRaidVictoryCounts,
-  resolveRaidGemReward
+  resolveRaidGemReward,
+  resolveRaidVictoryReward
 } from "./raidRewards";
 
 describe("raid Gem rewards", () => {
@@ -34,5 +35,32 @@ describe("raid Gem rewards", () => {
       "stronghold-15": 1,
       "stronghold-16": 1
     });
+  });
+});
+
+describe("raid resource capacity", () => {
+  it("reports received and discarded loot separately at the level 8 cap", () => {
+    const reward = resolveRaidVictoryReward(
+      { bananas: 3_150, stones: 3_190, wood: 3_200 },
+      { bananas: 100, stones: 100, wood: 100 },
+      3_200,
+      0
+    );
+
+    expect(reward.resources).toEqual({ bananas: 3_200, stones: 3_200, wood: 3_200 });
+    expect(reward.loot).toEqual({ bananas: 50, stones: 10, wood: 0 });
+    expect(reward.discardedLoot).toEqual({ bananas: 50, stones: 90, wood: 100 });
+  });
+
+  it("does not increase existing overflow", () => {
+    const reward = resolveRaidVictoryReward(
+      { bananas: 4_000, stones: 4_000, wood: 4_000 },
+      { bananas: 100, stones: 100, wood: 100 },
+      3_200,
+      0
+    );
+
+    expect(reward.resources).toEqual({ bananas: 4_000, stones: 4_000, wood: 4_000 });
+    expect(reward.loot).toEqual({ bananas: 0, stones: 0, wood: 0 });
   });
 });

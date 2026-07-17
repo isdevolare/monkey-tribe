@@ -1,5 +1,6 @@
 import { STRONGHOLD_BASE_LEVEL } from "../config/camps";
 import type { RaidGemRewardReason, Resources } from "../types/game";
+import { addResourcesCapped } from "./resources";
 
 export type RaidVictoryCounts = Record<string, number>;
 
@@ -47,22 +48,15 @@ export function resolveRaidVictoryReward(
   previousVictories: number
 ) {
   const multiplier = raidRewardMultiplier(previousVictories);
-  const loot = scaleRaidLoot(baseLoot, multiplier);
-  const resources: Resources = {
-    bananas: Math.max(
-      currentResources.bananas,
-      Math.min(storageCap, currentResources.bananas + loot.bananas)
-    ),
-    stones: Math.max(
-      currentResources.stones,
-      Math.min(storageCap, currentResources.stones + loot.stones)
-    ),
-    wood: Math.max(
-      currentResources.wood,
-      Math.min(storageCap, currentResources.wood + loot.wood)
-    )
+  const requestedLoot = scaleRaidLoot(baseLoot, multiplier);
+  const grant = addResourcesCapped(currentResources, requestedLoot, storageCap);
+  return {
+    loot: grant.received,
+    requestedLoot,
+    discardedLoot: grant.discarded,
+    multiplier,
+    resources: grant.resources
   };
-  return { loot, multiplier, resources };
 }
 
 /** Keeps persisted victory counters finite, non-negative integers. */

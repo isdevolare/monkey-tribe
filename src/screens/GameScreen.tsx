@@ -172,6 +172,7 @@ export function GameScreen() {
   const currentArmyPower = armyPower(state.units);
   const troopCounts = troopCountByType(state.units);
   const clanLevel = levelOf(state.buildings, "clanHall");
+  const clanStorageCapacity = storageCap(clanLevel);
   const activeCamp = getCamp(state.activeCampId ?? "");
   const activeCampLoot =
     state.lastRaidReward?.loot ?? activeCamp?.loot ?? { bananas: 0, stones: 0, wood: 0 };
@@ -472,9 +473,9 @@ export function GameScreen() {
         </View>
 
         <View style={styles.resourceBar}>
-          <ResourceChip label="Muz" value={Math.floor(state.resources.bananas)} assetKey="resourceBanana" compact={compactHud} />
-          <ResourceChip label="Taş" value={Math.floor(state.resources.stones)} assetKey="resourceStone" compact={compactHud} />
-          <ResourceChip label="Odun" value={Math.floor(state.resources.wood)} assetKey="resourceWood" compact={compactHud} />
+          <ResourceChip label="Muz" value={Math.floor(state.resources.bananas)} capacity={clanStorageCapacity} assetKey="resourceBanana" compact={compactHud} />
+          <ResourceChip label="Taş" value={Math.floor(state.resources.stones)} capacity={clanStorageCapacity} assetKey="resourceStone" compact={compactHud} />
+          <ResourceChip label="Odun" value={Math.floor(state.resources.wood)} capacity={clanStorageCapacity} assetKey="resourceWood" compact={compactHud} />
           <ResourceChip
             label={t("res.population", lang)}
             value={`${housingUsed}/${armyCapacity(nestLevel)}`}
@@ -505,6 +506,7 @@ export function GameScreen() {
               raidStatus={state.raidStatus}
               stars={state.raidStars}
               loot={activeCampLoot}
+              discardedLoot={state.lastRaidReward?.discardedLoot ?? { bananas: 0, stones: 0, wood: 0 }}
               rewardMultiplier={state.lastRaidReward?.multiplier ?? 1}
               gemReward={state.lastRaidReward?.gems ?? 0}
               gemRewardReason={state.lastRaidReward?.gemReason ?? "none"}
@@ -1136,17 +1138,23 @@ function hasResources(resources: Resources, cost: Resources) {
 function ResourceChip({
   label,
   value,
+  capacity,
   assetKey,
   compact
 }: {
   label: string;
   value: number | string;
+  capacity?: number;
   assetKey: "resourceBanana" | "resourceStone" | "resourceWood" | "resourcePopulation";
   compact?: boolean;
 }) {
   const numeric = typeof value === "number" ? value : 0;
   const counted = useCountUp(numeric);
-  const shown = typeof value === "number" ? formatAmount(counted) : value;
+  const shown = typeof value === "number"
+    ? capacity == null
+      ? formatAmount(counted)
+      : `${formatAmount(counted)}/${formatAmount(capacity)}`
+    : value;
   return (
     <View style={[styles.resourceChip, compact ? styles.resourceChipCompact : null]}>
       <View style={[styles.resourceIcon, compact ? styles.resourceIconCompact : null]}>

@@ -1,4 +1,5 @@
 import type { Resources } from "../types/game";
+import { addResourcesCapped, RESOURCE_KEYS } from "../state/resources";
 
 export type ShopItem = {
   id: string;
@@ -61,10 +62,11 @@ export function resourceShopCapacityIssues(
   resources: Resources,
   capacity: number
 ): ResourceShopCapacityIssue[] {
-  return (["bananas", "stones", "wood"] as const).flatMap((resource) => {
+  const preview = addResourcesCapped(resources, item.reward, capacity);
+  return RESOURCE_KEYS.flatMap((resource) => {
     const reward = item.reward[resource] ?? 0;
     const free = Math.max(0, capacity - resources[resource]);
-    return reward > free
+    return preview.discarded[resource] > 0
       ? [{ resource, current: resources[resource], reward, free, requiredFree: reward }]
       : [];
   });
