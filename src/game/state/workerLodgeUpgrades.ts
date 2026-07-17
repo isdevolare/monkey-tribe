@@ -9,6 +9,7 @@ import {
   storageCap,
   workerLodgeUpgrade
 } from "../config/buildings";
+import { ROYAL_PALACE_UPGRADES } from "../config/royalPalace";
 import type { ResourceKind } from "../types/game";
 
 export type WorkerLodgeUpgradeBlock =
@@ -54,8 +55,8 @@ export function evaluateWorkerLodgeUpgrade({
   return { definition, block, enabled: definition != null && block == null };
 }
 
-function safeLevel(value: unknown) {
-  return typeof value === "number" && Number.isInteger(value) && value >= 1
+function safeLevel(value: unknown, allowZero = false) {
+  return typeof value === "number" && Number.isInteger(value) && value >= (allowZero ? 0 : 1)
     ? value
     : null;
 }
@@ -85,16 +86,21 @@ function safeResources(value: unknown): Resources | null {
 
 export function sanitizeWorkerLodgeUpgrade(
   value: WorkerLodgeUpgrade | null | undefined,
-  currentLevel: number
+  currentLevelOrBuildings: number | VillageBuilding[]
 ): WorkerLodgeUpgrade | null {
   if (!value || typeof value !== "object") return null;
-  const fromLevel = safeLevel(value.fromLevel);
+  const buildingType = value.buildingType === "royalPalace" ? "royalPalace" : "workerShelter";
+  const currentLevel = typeof currentLevelOrBuildings === "number"
+    ? currentLevelOrBuildings
+    : currentLevelOrBuildings.find((building) => building.type === buildingType)?.level ?? 0;
+  const fromLevel = safeLevel(value.fromLevel, buildingType === "royalPalace");
   const targetLevel = safeLevel(value.targetLevel);
   const startedAt = safeTimestamp(value.startedAt);
   const endsAt = safeTimestamp(value.endsAt);
   const requiredClanHallLevel = safeLevel(value.requiredClanHallLevel);
   const cost = safeResources(value.cost);
-  const definition = WORKER_LODGE_UPGRADES.find(
+  const definitions = buildingType === "royalPalace" ? ROYAL_PALACE_UPGRADES : WORKER_LODGE_UPGRADES;
+  const definition = definitions.find(
     (entry) => entry.targetLevel === targetLevel
   );
   if (
@@ -114,6 +120,7 @@ export function sanitizeWorkerLodgeUpgrade(
   // Persisted values are snapshots: balancing changes must not alter an
   // upgrade that was already paid for and started.
   return {
+    buildingType,
     fromLevel,
     targetLevel,
     startedAt,
@@ -132,13 +139,14 @@ export function reconcileWorkerLodgeUpgrade(
     return { buildings, activeUpgrade, completed: false };
   }
   const buildingsAfterUpgrade = buildings.map((building) =>
-    building.type === "workerShelter" && building.level < activeUpgrade.targetLevel
+    building.type === (activeUpgrade.buildingType ?? "workerShelter") && building.level < activeUpgrade.targetLevel
       ? { ...building, level: activeUpgrade.targetLevel }
       : building
   );
   return {
     buildings: buildingsAfterUpgrade,
     activeUpgrade: null,
-    completed: true
+    completed: true,
+    completedBuildingType: activeUpgrade.buildingType ?? "workerShelter"
   };
 }

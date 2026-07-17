@@ -23,7 +23,8 @@ export const BUILDING_ORDER: VillageBuildingType[] = [
   "stoneQuarry",
   "workerShelter",
   "trainingNest",
-  "watchTower"
+  "watchTower",
+  "royalPalace"
 ];
 
 export const BUILDING_NAMES: Record<VillageBuildingType, string> = {
@@ -33,7 +34,8 @@ export const BUILDING_NAMES: Record<VillageBuildingType, string> = {
   stoneQuarry: "Taş Ocağı",
   workerShelter: "İşçi Locası",
   trainingNest: "Eğitim Yuvası",
-  watchTower: "Gözetleme Kulesi"
+  watchTower: "Gözetleme Kulesi",
+  royalPalace: "Kraliyet Sarayı"
 };
 
 // Resource buildings define the destination type for Lodge expeditions.
@@ -59,10 +61,10 @@ export function storageCap(hallLevel: number) {
   return STORAGE_PER_HALL_LEVEL * Math.max(1, hallLevel);
 }
 
-// Every village starts with one of each building at level 1.
+// Existing village buildings start at level 1; the end-game Palace starts unbuilt.
 export const DEFAULT_BUILDINGS: VillageBuilding[] = BUILDING_ORDER.map((type) => ({
   type,
-  level: 1
+  level: type === "royalPalace" ? 0 : 1
 }));
 
 // Worker shelter level drives population capacity.
@@ -77,7 +79,8 @@ const UPGRADE_BASE: Record<VillageBuildingType, Resources> = {
   stoneQuarry: { bananas: 20, stones: 0, wood: 20 },
   workerShelter: { bananas: 30, stones: 15, wood: 30 },
   trainingNest: { bananas: 40, stones: 20, wood: 30 },
-  watchTower: { bananas: 20, stones: 30, wood: 20 }
+  watchTower: { bananas: 20, stones: 30, wood: 20 },
+  royalPalace: { bananas: 0, stones: 0, wood: 0 }
 };
 
 export type WorkerLodgeUpgradeDefinition = {
@@ -116,6 +119,9 @@ export function upgradeCost(type: VillageBuildingType, level: number): Resources
   if (type === "workerShelter") {
     return workerLodgeUpgrade(level)?.cost ?? { bananas: 0, stones: 0, wood: 0 };
   }
+  if (type === "royalPalace") {
+    return { bananas: 0, stones: 0, wood: 0 };
+  }
   const base = UPGRADE_BASE[type];
   const factor = Math.pow(1.6, level - 1);
   return {
@@ -144,6 +150,10 @@ export function buildingEffect(type: VillageBuildingType, level: number, lang: L
 
   if (type === "workerShelter") {
     return `${t("fx.capacity", lang)} ${populationCap(level)}`;
+  }
+
+  if (type === "royalPalace") {
+    return `${t("royalPalace.prestige", lang)} · ${Math.max(0, level) * 100}`;
   }
 
   if (type === "trainingNest") {

@@ -23,7 +23,8 @@ const SHORTCUTS: ShortcutDefinition[] = [
   { type: "lumberCamp", asset: "buildingLumberCampReference", labelKey: "shortcut.wood" },
   { type: "stoneQuarry", asset: "terrainRock", labelKey: "shortcut.stone" },
   { type: "trainingNest", asset: "buildingWarriorBarracks", labelKey: "shortcut.training" },
-  { type: "watchTower", asset: "buildingArcherTower", labelKey: "shortcut.tower" }
+  { type: "watchTower", asset: "buildingArcherTower", labelKey: "shortcut.tower" },
+  { type: "royalPalace", asset: "buildingPlayerCampL3", labelKey: "shortcut.palace" }
 ];
 
 export type VillageShortcutBadges = Partial<Record<VillageBuildingType, number>>;

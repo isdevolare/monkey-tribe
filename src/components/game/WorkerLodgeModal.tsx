@@ -175,6 +175,10 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
   const lodgeLevel = levelOf(state.buildings, "workerShelter");
   const clanLevel = levelOf(state.buildings, "clanHall");
   const capacity = workerCapacity(lodgeLevel);
+  const activeLodgeUpgrade = state.activeWorkerLodgeUpgrade &&
+    (state.activeWorkerLodgeUpgrade.buildingType ?? "workerShelter") === "workerShelter"
+    ? state.activeWorkerLodgeUpgrade
+    : null;
   const managed = managedWorkerCount(
     state.workerProductionQueue,
     state.idleWorkers,
@@ -567,16 +571,16 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
             </View>
 
             <View style={styles.upgradePanel}>
-              {state.activeWorkerLodgeUpgrade ? (
+              {activeLodgeUpgrade ? (
                 <View style={styles.activeUpgrade}>
                   <View style={styles.activeUpgradeHeader}>
                     <Text style={styles.upgradeTitle}>
                       {t("workerLodge.upgradeActive", lang, {
-                        level: state.activeWorkerLodgeUpgrade.targetLevel
+                        level: activeLodgeUpgrade.targetLevel
                       })}
                     </Text>
                     <Text style={styles.upgradeTimer}>
-                      {formatUpgradeCountdown(state.activeWorkerLodgeUpgrade.endsAt - now, lang)}
+                      {formatUpgradeCountdown(activeLodgeUpgrade.endsAt - now, lang)}
                     </Text>
                   </View>
                   <View style={styles.upgradeTrack}>
@@ -585,8 +589,8 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                         styles.upgradeFill,
                         {
                           width: `${Math.min(100, Math.max(0,
-                            ((now - state.activeWorkerLodgeUpgrade.startedAt) /
-                              Math.max(1, state.activeWorkerLodgeUpgrade.endsAt - state.activeWorkerLodgeUpgrade.startedAt)) * 100
+                            ((now - activeLodgeUpgrade.startedAt) /
+                              Math.max(1, activeLodgeUpgrade.endsAt - activeLodgeUpgrade.startedAt)) * 100
                           ))}%`
                         }
                       ]}

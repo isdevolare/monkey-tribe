@@ -36,7 +36,7 @@ export const BUILDING_GEOMETRY: Record<VillageBuildingType, BuildingGeometry> = 
   lumberCamp: {
     point: { x: 28, y: 69 },
     size: 21,
-    hitbox: { width: 24, height: 24, offsetY: -3.8 }
+    hitbox: { width: 20, height: 24, offsetY: -3.8 }
   },
   stoneQuarry: {
     point: { x: 79, y: 49 },
@@ -56,7 +56,12 @@ export const BUILDING_GEOMETRY: Record<VillageBuildingType, BuildingGeometry> = 
   trainingNest: {
     point: { x: 69, y: 69 },
     size: 21,
-    hitbox: { width: 24, height: 23, offsetY: -3.8 }
+    hitbox: { width: 20, height: 23, offsetY: -3.8 }
+  },
+  royalPalace: {
+    point: { x: 49, y: 74 },
+    size: 25,
+    hitbox: { width: 18, height: 15, offsetY: -4 }
   }
 };
 

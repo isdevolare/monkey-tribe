@@ -33,6 +33,7 @@ import { PopIn, TapHint } from "../components/game/Vfx";
 import { VillageBoard } from "../components/game/VillageBoard";
 import { VillageShortcutDock, VILLAGE_SHORTCUT_DOCK_HEIGHT } from "../components/game/VillageShortcutDock";
 import { WorkerLodgeModal } from "../components/game/WorkerLodgeModal";
+import { RoyalPalaceModal } from "../components/game/RoyalPalaceModal";
 import { BananaGroveModal } from "../components/game/BananaGroveModal";
 import { LumberCampModal, StoneQuarryModal } from "../components/game/LumberCampModal";
 import { playSound } from "../game/audio/soundManager";
@@ -156,6 +157,7 @@ export function GameScreen() {
   const [showBananaGrove, setShowBananaGrove] = useState(false);
   const [showLumberCamp, setShowLumberCamp] = useState(false);
   const [showStoneQuarry, setShowStoneQuarry] = useState(false);
+  const [showRoyalPalace, setShowRoyalPalace] = useState(false);
   const [showDaily, setShowDaily] = useState(false);
   const dailyAutoShown = useRef(false);
   const [selectedBuilding, setSelectedBuilding] = useState<VillageBuildingType | null>(null);
@@ -179,7 +181,7 @@ export function GameScreen() {
   // Use more of the viewport while retaining a scroll-safe fit on short phones.
   const boardMaxSize = Math.max(260, Math.min(layoutWidth - 8, 430, Math.round(height * 0.58)));
   const inlineSelectedBuilding =
-    selectedBuilding === "workerShelter" || selectedBuilding === "bananaGrove" || selectedBuilding === "lumberCamp" || selectedBuilding === "stoneQuarry"
+    selectedBuilding === "workerShelter" || selectedBuilding === "bananaGrove" || selectedBuilding === "lumberCamp" || selectedBuilding === "stoneQuarry" || selectedBuilding === "royalPalace"
       ? null
       : selectedBuilding;
 
@@ -189,6 +191,7 @@ export function GameScreen() {
     setShowBananaGrove(false);
     setShowLumberCamp(false);
     setShowStoneQuarry(false);
+    setShowRoyalPalace(false);
   }, []);
 
   const collectBananaGroveReward = useCallback(() => {
@@ -216,10 +219,11 @@ export function GameScreen() {
     setShowBananaGrove(type === "bananaGrove");
     setShowLumberCamp(type === "lumberCamp");
     setShowStoneQuarry(type === "stoneQuarry");
+    setShowRoyalPalace(type === "royalPalace");
 
     if (type === "trainingNest") {
       trainingScrollPending.current = true;
-    } else if (type !== "workerShelter" && type !== "bananaGrove" && type !== "lumberCamp" && type !== "stoneQuarry") {
+    } else if (type !== "workerShelter" && type !== "bananaGrove" && type !== "lumberCamp" && type !== "stoneQuarry" && type !== "royalPalace") {
       requestAnimationFrame(() => villageScrollRef.current?.scrollToEnd({ animated: true }));
     }
   }, []);
@@ -569,6 +573,7 @@ export function GameScreen() {
                   stoneWorkers={state.workerExpeditions.filter((entry) => entry.resource === "stones")}
                   stoneQuarryStorage={state.stoneQuarryStorage}
                   stoneQuarryCapacity={stoneQuarryCapacity(levelOf(state.buildings, "stoneQuarry"))}
+                  royalPalaceSlots={state.royalPalaceSlots}
                   onBuildingPress={selectBuilding}
                   onCollectBananas={collectBananaGroveReward}
                   onCollectWood={collectLumberCampReward}
@@ -758,6 +763,11 @@ export function GameScreen() {
         lang={lang}
         onClose={clearBuildingSelection}
         onOpenWorkerLodge={() => selectBuilding("workerShelter")}
+      />
+      <RoyalPalaceModal
+        visible={showRoyalPalace}
+        lang={lang}
+        onClose={clearBuildingSelection}
       />
     </View>
   );

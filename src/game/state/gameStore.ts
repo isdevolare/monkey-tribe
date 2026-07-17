@@ -66,6 +66,11 @@ import {
 } from "../config/profileMonkeys";
 import { getResourceShopItem, resourceShopCapacityIssues } from "../config/shop";
 import { getGemPackByProductId } from "../config/gemPacks";
+import {
+  placeRoyalPalaceResident,
+  sanitizeRoyalPalaceSlots,
+  startRoyalPalaceUpgrade
+} from "../config/royalPalace";
 import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import { applyRaidPenalty } from "./raidPenalty";
@@ -130,6 +135,7 @@ import type {
   ProfileMonkeyId,
   ProfileMonkeyUnlockResult,
   ProfileSkinId,
+  RoyalPalaceSlotId,
   ProductionItem,
   QuestMetric,
   Resources,
@@ -311,6 +317,7 @@ function createFreshState(now: number) {
     lumberCampStorage: 0,
     stoneQuarryStorage: 0,
     activeWorkerLodgeUpgrade: null,
+    royalPalaceSlots: [],
     playerCampHp: CAMP_MAX_HP,
     enemyCampHp: CAMP_MAX_HP,
     enemyCampMaxHp: CAMP_MAX_HP,
@@ -915,6 +922,43 @@ function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): Ga
   const level = buildingLevel(state.buildings, type);
   const name = buildingName(type, state.language);
 
+  if (type === "royalPalace") {
+    const now = Date.now();
+    const started = startRoyalPalaceUpgrade({
+      palaceLevel: level,
+      clanLevel: buildingLevel(state.buildings, "clanHall"),
+      resources: state.resources,
+      gems: state.gems,
+      activeUpgrade: state.activeWorkerLodgeUpgrade,
+      now
+    });
+    const definition = started.definition;
+    if (!definition || started.result === "max-level") {
+      return { ...state, feedback: { id: now, text: t("royalPalace.maxLevel", state.language) } };
+    }
+    if (started.result !== "started") {
+      const text = started.result === "upgrade-active"
+        ? t("royalPalace.otherUpgradeActive", state.language)
+        : started.result === "clan-level"
+          ? t("royalPalace.needClanHall", state.language, { level: definition.requiredClanHallLevel })
+          : started.result === "gems"
+            ? t("royalPalace.needGems", state.language, { amount: definition.gemCost })
+            : t("royalPalace.needResources", state.language, { cost: costText(definition.cost) });
+      return { ...state, feedback: { id: now, text } };
+    }
+    return {
+      ...state,
+      resources: started.resources,
+      gems: started.gems,
+      activeWorkerLodgeUpgrade: started.activeUpgrade,
+      ...advanceDailyMission(state, "upgradeAny", now),
+      feedback: {
+        id: now,
+        text: t("royalPalace.upgradeStarted", state.language, { level: definition.targetLevel })
+      }
+    };
+  }
+
   if (type === "workerShelter") {
     const now = Date.now();
     const clanLevel = buildingLevel(state.buildings, "clanHall");
@@ -973,6 +1017,7 @@ function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): Ga
       ...state,
       resources: spendResources(state.resources, definition.cost),
       activeWorkerLodgeUpgrade: {
+        buildingType: "workerShelter",
         fromLevel: level,
         targetLevel: definition.targetLevel,
         startedAt: now,
@@ -1057,7 +1102,7 @@ export const useGameStore = create<GameState>((set) => ({
       }));
       const savedWorkerLodgeUpgrade = sanitizeWorkerLodgeUpgrade(
         save.activeWorkerLodgeUpgrade,
-        buildingLevel(buildings, "workerShelter")
+        buildings
       );
       const reconciledWorkerLodgeUpgrade = reconcileWorkerLodgeUpgrade(
         buildings,
@@ -1261,6 +1306,12 @@ export const useGameStore = create<GameState>((set) => ({
         save.newProfileSkins,
         ownedProfileSkins
       );
+      const royalPalaceSlots = sanitizeRoyalPalaceSlots(
+        save.royalPalaceSlots,
+        buildingLevel(buildings, "royalPalace"),
+        unlockedProfileMonkeys,
+        ownedProfileSkins
+      );
       // Preserve legacy overflow instead of silently deleting paid or earned
       // stock. addResourcesCapped gives overflow zero headroom, so future
       // production/rewards cannot grow it until the player spends below cap.
@@ -1308,6 +1359,7 @@ export const useGameStore = create<GameState>((set) => ({
         lumberCampStorage: reconciledLumber.storage,
         stoneQuarryStorage: reconciledStone.storage,
         activeWorkerLodgeUpgrade: reconciledWorkerLodgeUpgrade.activeUpgrade,
+        royalPalaceSlots,
         language: save.language ?? state.language,
         // Migration: older saves tracked the stronghold from Sv4; the ladder
         // now has handcrafted camps through Sv7, so lift stale levels to the
@@ -1339,6 +1391,32 @@ export const useGameStore = create<GameState>((set) => ({
       return { language: lang };
     }),
   upgradeBuilding: (type) => set((state) => upgradeVillageBuilding(state, type)),
+  placeRoyalPalaceResident: (slotId, monkeyId, skinId) => {
+    let result: ReturnType<typeof placeRoyalPalaceResident>["result"] = "invalid-slot";
+    set((state) => {
+      const placed = placeRoyalPalaceResident(
+        state.royalPalaceSlots,
+        { slotId, equippedMonkeyId: monkeyId, equippedSkinId: skinId },
+        buildingLevel(state.buildings, "royalPalace"),
+        state.unlockedProfileMonkeys,
+        state.ownedProfileSkins
+      );
+      result = placed.result;
+      if (placed.result !== "placed") return state;
+      return {
+        ...state,
+        royalPalaceSlots: placed.assignments,
+        feedback: { id: Date.now(), text: t("royalPalace.residentPlaced", state.language) }
+      };
+    });
+    return result;
+  },
+  removeRoyalPalaceResident: (slotId: RoyalPalaceSlotId) =>
+    set((state) => ({
+      ...state,
+      royalPalaceSlots: state.royalPalaceSlots.filter((entry) => entry.slotId !== slotId),
+      feedback: { id: Date.now(), text: t("royalPalace.residentRemoved", state.language) }
+    })),
   openRaidMap: () =>
     set((state) => ({
       ...state,
@@ -2144,7 +2222,7 @@ export const useGameStore = create<GameState>((set) => ({
         feedback: reconciled.completed.length > 0
           ? { id: now, text: t("worker.productionReady", state.language) }
           : lodgeUpgrade.completed
-            ? { id: now, text: t("workerLodge.upgradeComplete", state.language) }
+            ? { id: now, text: t(lodgeUpgrade.completedBuildingType === "royalPalace" ? "royalPalace.upgradeComplete" : "workerLodge.upgradeComplete", state.language) }
           : grove.completed > 0
             ? { id: now, text: t("bananaGrove.harvestReady", state.language) }
           : lumber.completed > 0
@@ -2210,7 +2288,7 @@ export const useGameStore = create<GameState>((set) => ({
       if (reconciledWorkers.completed.length > 0) {
         game.feedbackText = t("worker.productionReady", state.language);
       } else if (lodgeUpgrade.completed) {
-        game.feedbackText = t("workerLodge.upgradeComplete", state.language);
+        game.feedbackText = t(lodgeUpgrade.completedBuildingType === "royalPalace" ? "royalPalace.upgradeComplete" : "workerLodge.upgradeComplete", state.language);
       } else if (reconciledGrove.completed > 0) {
         game.feedbackText = t("bananaGrove.harvestReady", state.language);
       } else if (reconciledLumber.completed > 0) {
@@ -2538,6 +2616,7 @@ function villageSavePayload(state: GameState): VillageSave {
     lumberCampStorage: state.lumberCampStorage,
     stoneQuarryStorage: state.stoneQuarryStorage,
     activeWorkerLodgeUpgrade: state.activeWorkerLodgeUpgrade,
+    royalPalaceSlots: state.royalPalaceSlots,
     language: state.language,
     raidLevel: state.raidLevel,
     raidVictoryCounts: state.raidVictoryCounts,

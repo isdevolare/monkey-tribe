@@ -11,7 +11,8 @@ export type VillageBuildingType =
   | "bananaGrove"
   | "workerShelter"
   | "trainingNest"
-  | "watchTower";
+  | "watchTower"
+  | "royalPalace";
 export type VillageBuilding = {
   type: VillageBuildingType;
   level: number;
@@ -119,6 +120,31 @@ export type Lang = "tr" | "en";
 // future cosmetics without expanding a compile-time union on every release.
 export type ProfileMonkeyId = string;
 export type ProfileSkinId = string;
+
+export type RoyalPalaceClass = "worker" | "scout" | "warrior" | "hunter" | "chief" | "king";
+export type RoyalPalaceSlotId =
+  | "palaceGarden"
+  | "scoutPath"
+  | "guardGate"
+  | "hunterTerrace"
+  | "royalCourt"
+  | "goldenThrone";
+export type RoyalPalaceSlotAssignment = {
+  slotId: RoyalPalaceSlotId;
+  equippedMonkeyId: ProfileMonkeyId;
+  /** Null means the character's default appearance. */
+  equippedSkinId: ProfileSkinId | null;
+};
+export type RoyalPalacePlacementResult =
+  | "placed"
+  | "invalid-slot"
+  | "slot-locked"
+  | "wrong-class"
+  | "monkey-not-owned"
+  | "skin-not-owned"
+  | "parent-monkey-required"
+  | "duplicate-monkey"
+  | "invalid-skin";
 
 export type FestivalFragmentProgress = Partial<Record<ProfileSkinId, number>>;
 
@@ -299,6 +325,8 @@ export type WorkerDispatchResult =
   | "storage-full";
 
 export type WorkerLodgeUpgrade = {
+  /** Missing on legacy saves and therefore interpreted as workerShelter. */
+  buildingType?: "workerShelter" | "royalPalace";
   fromLevel: number;
   targetLevel: number;
   startedAt: number;
@@ -358,6 +386,7 @@ export type VillageSave = {
   /** Quarry-local stone storage. Missing legacy values migrate to zero. */
   stoneQuarryStorage?: number;
   activeWorkerLodgeUpgrade?: WorkerLodgeUpgrade | null;
+  royalPalaceSlots?: RoyalPalaceSlotAssignment[];
   questProgress?: Partial<Record<QuestMetric, number>>;
   questsClaimed?: string[];
   questDayKey?: string;
@@ -411,6 +440,7 @@ export type GameState = {
   lumberCampStorage: number;
   stoneQuarryStorage: number;
   activeWorkerLodgeUpgrade: WorkerLodgeUpgrade | null;
+  royalPalaceSlots: RoyalPalaceSlotAssignment[];
   playerCampHp: number;
   enemyCampHp: number;
   enemyCampMaxHp: number;
@@ -463,6 +493,12 @@ export type GameState = {
   retreatFromRaid: () => void;
   returnToVillage: () => void;
   upgradeBuilding: (type: VillageBuildingType) => void;
+  placeRoyalPalaceResident: (
+    slotId: RoyalPalaceSlotId,
+    monkeyId: ProfileMonkeyId,
+    skinId: ProfileSkinId | null
+  ) => RoyalPalacePlacementResult;
+  removeRoyalPalaceResident: (slotId: RoyalPalaceSlotId) => void;
   reconcileWorkTask: (now?: number) => void;
   tickGame: (now?: number) => void;
   resetGame: () => void;

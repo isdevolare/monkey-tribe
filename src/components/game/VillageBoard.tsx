@@ -19,13 +19,15 @@ import {
   STONE_WORKER_ASSETS
 } from "../../game/assets/workerAssets";
 import { buildingName } from "../../game/config/buildings";
+import { getCosmeticAppearance, getDefaultSkinId } from "../../game/config/profileMonkeys";
+import { ROYAL_PALACE_SLOTS } from "../../game/config/royalPalace";
 import { t } from "../../game/i18n";
 import { useAppSettingsStore } from "../../game/settings/appSettings";
 import {
   createBuildingHitTargets,
   selectBuildingAtPoint
 } from "../../game/ui/buildingHitboxes";
-import type { BananaWorkerClass, Lang, LumberWorkerClass, StoneWorkerClass, Tile, VillageBuilding, VillageBuildingType, WorkerExpedition } from "../../game/types/game";
+import type { BananaWorkerClass, Lang, LumberWorkerClass, RoyalPalaceSlotAssignment, StoneWorkerClass, Tile, VillageBuilding, VillageBuildingType, WorkerExpedition } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type VillageBoardProps = {
@@ -45,6 +47,7 @@ type VillageBoardProps = {
   stoneWorkers?: WorkerExpedition[];
   stoneQuarryStorage?: number;
   stoneQuarryCapacity?: number;
+  royalPalaceSlots?: RoyalPalaceSlotAssignment[];
   onBuildingPress: (type: VillageBuildingType) => void;
   onCollectBananas: () => void;
   onCollectWood: () => void;
@@ -73,7 +76,8 @@ const VISUAL_BUILDING_POINTS: Record<VillageBuildingType, Point> = {
   lumberCamp: { x: 28, y: 69 },
   stoneQuarry: { x: 79, y: 49 },
   workerShelter: { x: 21, y: 49 },
-  trainingNest: { x: 69, y: 69 }
+  trainingNest: { x: 69, y: 69 },
+  royalPalace: { x: 49, y: 74 }
 };
 
 // Reference-matched visual composition. The touch geometry mirrors these
@@ -88,7 +92,8 @@ const BUILDING_LAYOUT: Record<
   stoneQuarry: { point: VISUAL_BUILDING_POINTS.stoneQuarry, size: 18, asset: "terrainRock" },
   watchTower: { point: VISUAL_BUILDING_POINTS.watchTower, size: 19, asset: "buildingArcherTower" },
   workerShelter: { point: VISUAL_BUILDING_POINTS.workerShelter, size: 22, asset: "buildingHut" },
-  trainingNest: { point: VISUAL_BUILDING_POINTS.trainingNest, size: 23, asset: "buildingWarriorBarracks" }
+  trainingNest: { point: VISUAL_BUILDING_POINTS.trainingNest, size: 23, asset: "buildingWarriorBarracks" },
+  royalPalace: { point: VISUAL_BUILDING_POINTS.royalPalace, size: 25, asset: "buildingPlayerCamp" }
 };
 
 export function VillageBoard({
@@ -108,6 +113,7 @@ export function VillageBoard({
   stoneWorkers = [],
   stoneQuarryStorage = 0,
   stoneQuarryCapacity = 100,
+  royalPalaceSlots = [],
   onBuildingPress,
   onCollectBananas,
   onCollectWood,
@@ -195,6 +201,7 @@ export function VillageBoard({
             bananaWorkers={building.type === "bananaGrove" ? bananaWorkers : []}
             lumberWorkers={building.type === "lumberCamp" ? lumberWorkers : []}
             stoneWorkers={building.type === "stoneQuarry" ? stoneWorkers : []}
+            royalPalaceSlots={building.type === "royalPalace" ? royalPalaceSlots : []}
             onAccessibilityPress={() => onBuildingPress(building.type)}
           />
         ))}
@@ -532,6 +539,7 @@ const MemoBuildingSprite = memo(
     a.bananaWorkers === b.bananaWorkers &&
     a.lumberWorkers === b.lumberWorkers &&
     a.stoneWorkers === b.stoneWorkers &&
+    a.royalPalaceSlots === b.royalPalaceSlots &&
     a.lang === b.lang
 );
 
@@ -574,6 +582,14 @@ const TIER_PROPS: Record<VillageBuildingType, TierProp[]> = {
   trainingNest: [
     { minLevel: 2, asset: "propTrainingDummy", left: 68, top: 56, size: 40 },
     { minLevel: 4, asset: "propRopeCoil", left: -6, top: 72, size: 28 }
+  ],
+  royalPalace: [
+    { minLevel: 1, asset: "propBananaBasket", left: -7, top: 72, size: 25 },
+    { minLevel: 2, asset: "propRopeCoil", left: 75, top: 75, size: 21 },
+    { minLevel: 3, asset: "propCrate", left: 76, top: 70, size: 24 },
+    { minLevel: 4, asset: "propLogPile", left: -5, top: 76, size: 26 },
+    { minLevel: 5, asset: "resourceJungleGem", left: 43, top: 4, size: 18 },
+    { minLevel: 6, asset: "resourceJungleGem", left: 65, top: 8, size: 15 }
   ]
 };
 
@@ -641,6 +657,12 @@ const BuildingIdleDetails = memo(function BuildingIdleDetails({ type }: { type: 
   if (type === "lumberCamp") {
     return <Animated.View style={[styles.resourceIdleIcon, { opacity: flicker, transform: [{ rotate: sway }] }]}><AssetImage assetKey="resourceWood" style={styles.full} fallback={<View />} /></Animated.View>;
   }
+  if (type === "royalPalace") {
+    return <>
+      <WavingFlag idle={idle} style={styles.clanFlagLeft} color="#d4a62e" />
+      <WavingFlag idle={idle} style={styles.clanFlagRight} color="#d4a62e" mirrored />
+    </>;
+  }
   return <Animated.View style={[styles.quarryDust, { opacity: idle.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0.08, 0.34, 0.08] }), transform: [{ translateY: idle.interpolate({ inputRange: [0, 1], outputRange: [1, -5] }) }, { scale: idle.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.15] }) }] }]} />;
 });
 
@@ -661,7 +683,8 @@ function BuildingSprite({
   onAccessibilityPress,
   bananaWorkers,
   lumberWorkers,
-  stoneWorkers
+  stoneWorkers,
+  royalPalaceSlots
 }: {
   building: VillageBuilding;
   layout: { point: Point; size: number; asset: GameAssetKey };
@@ -671,6 +694,7 @@ function BuildingSprite({
   bananaWorkers: WorkerExpedition[];
   lumberWorkers: WorkerExpedition[];
   stoneWorkers: WorkerExpedition[];
+  royalPalaceSlots: RoyalPalaceSlotAssignment[];
 }) {
   const { point, asset } = layout;
   const size = layout.size;
@@ -700,7 +724,7 @@ function BuildingSprite({
       ) : null}
       {selected ? <View style={styles.buildingSelected} pointerEvents="none" /> : null}
       <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
-      <BuildingIdleDetails type={building.type} />
+      {building.type !== "royalPalace" || building.level > 0 ? <BuildingIdleDetails type={building.type} /> : null}
       {building.type === "bananaGrove" ? (
         <BananaGroveActivity workers={bananaWorkers} />
       ) : null}
@@ -709,6 +733,9 @@ function BuildingSprite({
       ) : null}
       {building.type === "stoneQuarry" ? (
         <ResourceWorkplaceActivity kind="stone" workers={stoneWorkers} />
+      ) : null}
+      {building.type === "royalPalace" ? (
+        <RoyalPalaceResidents assignments={royalPalaceSlots} />
       ) : null}
       {props.map((prop) => (
         <View
@@ -777,6 +804,39 @@ function ResourceWorkplaceActivity({ kind, workers }: { kind: "lumber" | "stone"
   const worker = workers[0];
   return <View pointerEvents="none" style={StyleSheet.absoluteFill}>
     {worker ? <View style={styles.lumberWorker}><AssetImage assetKey={kind === "lumber" ? LUMBER_WORKER_ASSETS[worker.workerClass as LumberWorkerClass] : STONE_WORKER_ASSETS[worker.workerClass as StoneWorkerClass]} style={styles.full} fallback={<View />} hideFallbackOnLoad /></View> : null}
+  </View>;
+}
+
+const PALACE_RESIDENT_SPOTS = [
+  { left: -2, top: 66 },
+  { left: 76, top: 61 },
+  { left: 8, top: 42 },
+  { left: 68, top: 35 },
+  { left: 24, top: 16 },
+  { left: 43, top: 18 }
+] as const;
+
+function RoyalPalaceResidents({ assignments }: { assignments: RoyalPalaceSlotAssignment[] }) {
+  return <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    {assignments.map((assignment) => {
+      const appearance = getCosmeticAppearance(
+        assignment.equippedMonkeyId,
+        assignment.equippedSkinId ?? getDefaultSkinId(assignment.equippedMonkeyId)
+      );
+      const slotIndex = ROYAL_PALACE_SLOTS.findIndex((slot) => slot.slotId === assignment.slotId);
+      const spot = PALACE_RESIDENT_SPOTS[slotIndex] ?? PALACE_RESIDENT_SPOTS[0];
+      const king = assignment.slotId === "goldenThrone";
+      return <View
+        key={assignment.slotId}
+        style={[
+          styles.palaceResident,
+          king ? styles.palaceKing : null,
+          { left: `${spot.left}%`, top: `${spot.top}%` }
+        ]}
+      >
+        <AssetImage assetKey={appearance.villageAsset} style={styles.full} fallback={<View />} hideFallbackOnLoad />
+      </View>;
+    })}
   </View>;
 }
 
@@ -908,6 +968,11 @@ function assetForBuilding(building: VillageBuilding, fallback: GameAssetKey): Ga
     }
     return "buildingPlayerCamp";
   }
+  if (building.type === "royalPalace") {
+    if (building.level >= 5) return "buildingPlayerCampL3";
+    if (building.level >= 2) return "buildingPlayerCampL2";
+    return "buildingHut";
+  }
   return fallback;
 }
 
@@ -933,6 +998,8 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(12, 25, 14, 0.035)"
   },
+  palaceResident: { position: "absolute", width: "25%", height: "25%", zIndex: 30 },
+  palaceKing: { width: "30%", height: "30%", zIndex: 31 },
   groundLayer: {
     ...StyleSheet.absoluteFillObject,
     opacity: 0.98
