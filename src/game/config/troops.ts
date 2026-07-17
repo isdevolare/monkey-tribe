@@ -268,14 +268,22 @@ export function isLivingPlayerTroop(
   );
 }
 
-export function summarizeRaidArmy(units: Unit[]): RaidArmyResult {
+export function summarizeRaidArmy(
+  units: Unit[],
+  deployedUnitIds?: ReadonlyArray<string>
+): RaidArmyResult {
+  const deployedIds = deployedUnitIds ? new Set(deployedUnitIds) : null;
   const survivorTypes: Partial<Record<TroopType, number>> = {};
   const lostTypes: Partial<Record<TroopType, number>> = {};
   let deployed = 0;
   let survivors = 0;
 
   for (const unit of units) {
-    if (unit.owner !== "player" || !isTroopType(unit.type)) {
+    if (
+      unit.owner !== "player" ||
+      !isTroopType(unit.type) ||
+      (deployedIds && !deployedIds.has(unit.id))
+    ) {
       continue;
     }
     deployed += 1;

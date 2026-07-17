@@ -1,15 +1,29 @@
-import type { Resources } from "../types/game";
+import { STRONGHOLD_BASE_LEVEL } from "../config/camps";
+import type { RaidGemRewardReason, Resources } from "../types/game";
 
 export type RaidVictoryCounts = Record<string, number>;
 
 const REPEAT_REWARD_MULTIPLIERS = [1, 0.6, 0.35] as const;
 const REPEAT_REWARD_FLOOR = 0.2;
+export const RAID_REWARD_VERSION = 1;
 
 /** First clear pays its stars, the first repeat pays 1 Gem, later farming pays none. */
-export function raidGemReward(stars: number, previousVictories: number) {
+export function resolveRaidGemReward(stars: number, previousVictories: number): {
+  gems: number;
+  reason: RaidGemRewardReason;
+} {
   const safeStars = Math.max(0, Math.min(3, Math.floor(stars)));
-  if (previousVictories <= 0) return safeStars;
-  return previousVictories === 1 ? Math.min(1, safeStars) : 0;
+  if (previousVictories <= 0) {
+    return { gems: safeStars, reason: safeStars > 0 ? "first-victory" : "none" };
+  }
+  if (previousVictories === 1 && safeStars > 0) {
+    return { gems: 1, reason: "first-repeat" };
+  }
+  return { gems: 0, reason: "none" };
+}
+
+export function raidGemReward(stars: number, previousVictories: number) {
+  return resolveRaidGemReward(stars, previousVictories).gems;
 }
 
 /** Reward multiplier for a camp based on its completed victories before this win. */
@@ -62,6 +76,30 @@ export function sanitizeRaidVictoryCounts(value: unknown): RaidVictoryCounts {
     if (typeof rawCount === "number" && Number.isFinite(rawCount) && rawCount >= 0) {
       counts[campId] = Math.floor(rawCount);
     }
+  }
+  return counts;
+}
+
+/**
+ * Preserves existing per-camp counters and reconstructs completed procedural
+ * strongholds for legacy saves that only carried a stronghold level.
+ */
+export function migrateRaidVictoryCounts(
+  value: unknown,
+  raidLevel: unknown,
+  rewardVersion: unknown
+): RaidVictoryCounts {
+  const counts = sanitizeRaidVictoryCounts(value);
+  if (rewardVersion === RAID_REWARD_VERSION || Object.keys(counts).length > 0) {
+    return counts;
+  }
+
+  const legacyLevel =
+    typeof raidLevel === "number" && Number.isFinite(raidLevel)
+      ? Math.floor(raidLevel)
+      : STRONGHOLD_BASE_LEVEL;
+  for (let level = STRONGHOLD_BASE_LEVEL; level < legacyLevel; level += 1) {
+    counts[`stronghold-${level}`] = Math.max(1, counts[`stronghold-${level}`] ?? 0);
   }
   return counts;
 }

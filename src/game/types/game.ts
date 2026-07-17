@@ -101,10 +101,13 @@ export type RaidPenalty = {
   amounts: Resources;
 };
 
+export type RaidGemRewardReason = "first-victory" | "first-repeat" | "none";
+
 export type RaidRewardSummary = {
   loot: Resources;
   multiplier: number;
   gems: number;
+  gemReason: RaidGemRewardReason;
 };
 
 export type Lang = "tr" | "en";
@@ -185,6 +188,8 @@ export type RaidArmyResult = {
   survivorTypes: Partial<Record<TroopType, number>>;
   lostTypes: Partial<Record<TroopType, number>>;
 };
+
+export type RaidArmySelection = Record<TroopType, number>;
 
 export type ActiveWorkTask = {
   startedAt: number;
@@ -313,6 +318,8 @@ export type VillageSave = {
   language?: Lang;
   raidLevel?: number;
   raidVictoryCounts?: Record<string, number>;
+  /** Migration marker for the bounded per-camp Gem reward rules. */
+  raidRewardVersion?: number;
   activeWorkTask?: ActiveWorkTask | null;
   /** Legacy save field. Hydration cancels it instead of replaying old production. */
   workShiftUntil?: number | null;
@@ -381,6 +388,8 @@ export type GameState = {
   enemyCampHp: number;
   enemyCampMaxHp: number;
   activeCampId: string | null;
+  /** Runtime-only roster participating in the current raid. */
+  activeRaidUnitIds: string[];
   raidStars: number;
   raidLevel: number;
   raidVictoryCounts: Record<string, number>;
@@ -422,7 +431,7 @@ export type GameState = {
   rushProduction: () => void;
   openRaidMap: () => void;
   closeRaidMap: () => void;
-  startRaidOn: (campId: string) => void;
+  startRaidOn: (campId: string, selection: RaidArmySelection) => void;
   retreatFromRaid: () => void;
   returnToVillage: () => void;
   upgradeBuilding: (type: VillageBuildingType) => void;

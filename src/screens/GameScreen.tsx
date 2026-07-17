@@ -486,10 +486,8 @@ export function GameScreen() {
         {state.gameMode === "raidMap" ? (
           <FadeIn key="raidmap">
             <RaidMapScreen
-              troopCounts={troopCounts}
-              housingUsed={housingUsed}
+              units={state.units}
               housingCapacity={armyCapacity(nestLevel)}
-              armyPower={currentArmyPower}
               trainingNestLevel={nestLevel}
               raidLevel={state.raidLevel}
               watchTowerLevel={levelOf(state.buildings, "watchTower")}
@@ -509,6 +507,8 @@ export function GameScreen() {
               loot={activeCampLoot}
               rewardMultiplier={state.lastRaidReward?.multiplier ?? 1}
               gemReward={state.lastRaidReward?.gems ?? 0}
+              gemRewardReason={state.lastRaidReward?.gemReason ?? "none"}
+              activeRaidUnitIds={state.activeRaidUnitIds}
               penalty={state.lastRaidPenalty}
               armyResult={state.lastRaidArmyResult}
               playerIdentityAsset={equippedAppearance.raidAsset}

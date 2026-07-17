@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -15,7 +16,7 @@ import { LivelyUnit } from "./LivelyUnit";
 import { Confetti, SparkBurst } from "./Vfx";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { t } from "../../game/i18n";
-import type { Lang, RaidArmyResult, RaidPenalty, RaidStatus, Resources, TroopType, Unit } from "../../game/types/game";
+import type { Lang, RaidArmyResult, RaidGemRewardReason, RaidPenalty, RaidStatus, Resources, TroopType, Unit } from "../../game/types/game";
 import { calculateTroopPower, isTroopType } from "../../game/config/troops";
 import { theme } from "../../theme/theme";
 
@@ -28,6 +29,8 @@ type RaidBoardProps = {
   loot: Resources;
   rewardMultiplier: number;
   gemReward: number;
+  gemRewardReason: RaidGemRewardReason;
+  activeRaidUnitIds: string[];
   penalty: RaidPenalty | null;
   armyResult: RaidArmyResult | null;
   playerIdentityAsset: GameAssetKey;
@@ -69,6 +72,7 @@ const enemySpots: Spot[] = [
 
 const CAMP_CENTER: Spot = { x: 73, y: 37 };
 const STRIKE_WINDOW_MS = 220;
+const DAMAGE_X_OFFSETS = [-5, 4, -2, 6, 0] as const;
 
 export function RaidBoard({
   units,
@@ -79,6 +83,8 @@ export function RaidBoard({
   loot,
   rewardMultiplier,
   gemReward,
+  gemRewardReason,
+  activeRaidUnitIds,
   penalty,
   armyResult,
   playerIdentityAsset,
@@ -93,9 +99,14 @@ export function RaidBoard({
   const { width } = useWindowDimensions();
   const sceneWidth = Math.min(width - theme.spacing.lg * 2, maxSize);
   const sceneHeight = sceneWidth * 1.06;
+  const activeRaidIds = new Set(activeRaidUnitIds);
+  const deployed = units.filter(
+    (unit) => unit.owner === "player" && activeRaidIds.has(unit.id) && isTroopType(unit.type)
+  );
   const fighters = units.filter(
     (unit) =>
       unit.owner === "player" &&
+      activeRaidIds.has(unit.id) &&
       isTroopType(unit.type) &&
       unit.state !== "dead" &&
       unit.hp > 0
@@ -107,6 +118,8 @@ export function RaidBoard({
     (total, unit) => total + calculateTroopPower(unit.type as TroopType, unit),
     0
   );
+  const armyHp = deployed.reduce((total, unit) => total + Math.max(0, unit.hp), 0);
+  const armyMaxHp = deployed.reduce((total, unit) => total + unit.maxHp, 0);
   const resultVisible =
     raidStatus === "victory" || raidStatus === "defeat" || raidStatus === "retreat";
   const victory = raidStatus === "victory";
@@ -163,9 +176,10 @@ export function RaidBoard({
       const spot = spotRef.current[unit.id];
       if (spot) {
         markerSeq.current += 1;
+        const xOffset = DAMAGE_X_OFFSETS[markerSeq.current % DAMAGE_X_OFFSETS.length] ?? 0;
         fresh.push({
           id: markerSeq.current,
-          x: spot.x,
+          x: spot.x + xOffset,
           y: spot.y - 7,
           amount: previous - unit.hp,
           tone: unit.owner === "player" ? "ally" : "enemy"
@@ -175,9 +189,10 @@ export function RaidBoard({
 
     if (enemyCampHp < prevCampRef.current) {
       markerSeq.current += 1;
+      const xOffset = DAMAGE_X_OFFSETS[markerSeq.current % DAMAGE_X_OFFSETS.length] ?? 0;
       fresh.push({
         id: markerSeq.current,
-        x: CAMP_CENTER.x,
+        x: CAMP_CENTER.x + xOffset,
         y: CAMP_CENTER.y - 4,
         amount: prevCampRef.current - enemyCampHp,
         tone: "camp"
@@ -187,7 +202,7 @@ export function RaidBoard({
     prevCampRef.current = enemyCampHp;
 
     if (fresh.length > 0) {
-      setMarkers((current) => [...current, ...fresh]);
+      setMarkers((current) => [...current, ...fresh].slice(-24));
     }
   }, [units, enemyCampHp, punchCamp]);
 
@@ -310,9 +325,19 @@ export function RaidBoard({
       </View>
 
       <View style={styles.raidHud}>
-        <Text style={styles.raidTitle}>{t("raid.title", lang)}</Text>
-        <Text style={styles.raidStat}>{t("raid.campHp", lang)} {Math.max(0, Math.round(enemyCampHp))} / {enemyCampMaxHp}</Text>
-        <Text style={styles.raidStat}>{t("raid.power", lang)} {raidPower}</Text>
+        <View style={styles.hudSide}>
+          <Text style={styles.hudLabel}>{t("raid.hud.troops", lang)}</Text>
+          <Text style={styles.hudValue}>{fighters.length}/{deployed.length}</Text>
+          <Text style={styles.hudSubvalue}>{t("raid.hud.hp", lang)} {Math.round(armyHp)}/{Math.round(armyMaxHp)}</Text>
+        </View>
+        <View style={styles.hudPower}>
+          <AssetImage assetKey="resourcePopulation" style={styles.hudPowerIcon} fallback={<View style={styles.hudPowerFallback} />} />
+          <Text style={styles.hudPowerValue}>{raidPower}</Text>
+        </View>
+        <View style={[styles.hudSide, styles.hudSideEnemy]}>
+          <Text style={styles.hudLabel}>{t("raid.hud.camp", lang)}</Text>
+          <Text style={[styles.hudValue, styles.hudEnemyValue]}>{Math.max(0, Math.round(enemyCampHp))}/{enemyCampMaxHp}</Text>
+        </View>
       </View>
 
       {feedbackText ? (
@@ -333,57 +358,80 @@ export function RaidBoard({
             <View style={[styles.resultEmblem, victory ? styles.resultEmblemWin : styles.resultEmblemLose]}>
               <AssetImage assetKey={playerIdentityAsset} style={styles.resultIdentity} resizeMode="contain" fallback={<Text style={styles.resultEmblemText}>{victory ? "V" : "!"}</Text>} />
             </View>
-            <Text style={styles.resultTitle}>
-              {victory
-                ? t("raid.victory", lang)
-                : retreated
-                  ? t("raid.retreatResult", lang)
-                  : t("raid.defeat", lang)}
-            </Text>
-            {victory ? (
-              <View style={styles.starRow}>
-                {[1, 2, 3].map((slot) => (
-                  <View key={slot} style={[styles.star, slot <= stars ? styles.starOn : styles.starOff]} />
-                ))}
-              </View>
-            ) : null}
-            {victory && strongholdLevelUp ? (
-              <StrongholdCallout level={strongholdLevelUp} lang={lang} />
-            ) : null}
-            <Text style={styles.resultText}>
-              {victory
-                ? t("raid.victoryText", lang)
-                : retreated
-                  ? t("raid.retreatText", lang)
-                  : t("raid.defeatText", lang)}
-            </Text>
-            {victory ? (
-              <>
-                <Text style={styles.rewardMultiplier}>
-                  {rewardMultiplier === 1
-                    ? t("raid.firstVictoryReward", lang)
-                    : t("raid.repeatReward", lang, {
-                        percent: Math.round(rewardMultiplier * 100)
-                      })}
-                </Text>
-                <View style={styles.rewardRow}>
-                  <RewardChip assetKey="resourceBananaPile" amount={loot.bananas} />
-                  <RewardChip assetKey="resourceWoodBundle" amount={loot.wood} />
-                  <RewardChip assetKey="resourceStonePile" amount={loot.stones} />
-                  {gemReward > 0 ? <RewardChip assetKey="resourceJungleGem" amount={gemReward} /> : null}
+            <ScrollView
+              style={styles.resultScroll}
+              contentContainerStyle={styles.resultContent}
+              bounces={false}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.resultTitle}>
+                {victory
+                  ? t("raid.victory", lang)
+                  : retreated
+                    ? t("raid.retreatResult", lang)
+                    : t("raid.defeat", lang)}
+              </Text>
+              {victory ? (
+                <View style={styles.starRow}>
+                  {[1, 2, 3].map((slot) => <StarIcon key={slot} filled={slot <= stars} />)}
                 </View>
-              </>
-            ) : null}
-            {!victory && penalty ? (
-              <PenaltySummary penalty={penalty} lang={lang} />
-            ) : null}
-            {armyResult ? <View style={styles.armyResultRow}>
-              <Text style={styles.armyResultSurvivors}>{t("raid.result.survivors", lang, { n: armyResult.survivors })}</Text>
-              <Text style={styles.armyResultLosses}>{t("raid.result.losses", lang, { n: armyResult.losses })}</Text>
-            </View> : null}
-            <View style={styles.returnButtonWrap}>
-              <WoodButton label={t("raid.return", lang)} onPress={onReturn} primary />
-            </View>
+              ) : null}
+              {victory && gemRewardReason === "first-victory" ? (
+                <View style={styles.firstVictoryBadge}>
+                  <Text style={styles.firstVictoryBadgeText}>{t("raid.firstVictoryBadge", lang)}</Text>
+                </View>
+              ) : null}
+              {victory && strongholdLevelUp ? (
+                <StrongholdCallout level={strongholdLevelUp} lang={lang} />
+              ) : null}
+              <Text style={styles.resultText}>
+                {victory
+                  ? t("raid.victoryText", lang)
+                  : retreated
+                    ? t("raid.retreatText", lang)
+                    : t("raid.defeatText", lang)}
+              </Text>
+              {victory ? (
+                <>
+                  <Text style={styles.rewardMultiplier}>
+                    {rewardMultiplier === 1
+                      ? t("raid.firstVictoryReward", lang)
+                      : t("raid.repeatReward", lang, {
+                          percent: Math.round(rewardMultiplier * 100)
+                        })}
+                  </Text>
+                  {gemReward > 0 ? (
+                    <Text style={styles.gemReason}>
+                      {gemRewardReason === "first-repeat"
+                        ? t("raid.gemReason.firstRepeat", lang)
+                        : t("raid.gemReason.firstVictory", lang, { stars, gems: gemReward })}
+                    </Text>
+                  ) : null}
+                  <View style={styles.rewardGrid}>
+                    <RewardChip assetKey="resourceBananaPile" amount={loot.bananas} />
+                    <RewardChip assetKey="resourceWoodBundle" amount={loot.wood} />
+                    <RewardChip assetKey="resourceStonePile" amount={loot.stones} />
+                    {gemReward > 0 ? <RewardChip assetKey="resourceJungleGem" amount={gemReward} /> : null}
+                  </View>
+                </>
+              ) : null}
+              {!victory && penalty ? (
+                <PenaltySummary penalty={penalty} lang={lang} />
+              ) : null}
+              {armyResult ? (
+                <View style={styles.armyResultRow}>
+                  <View style={[styles.armyResultCard, styles.armyResultCardSurvivors]}>
+                    <Text style={styles.armyResultSurvivors}>{t("raid.result.survivors", lang, { n: armyResult.survivors })}</Text>
+                  </View>
+                  <View style={[styles.armyResultCard, styles.armyResultCardLosses]}>
+                    <Text style={styles.armyResultLosses}>{t("raid.result.losses", lang, { n: armyResult.losses })}</Text>
+                  </View>
+                </View>
+              ) : null}
+              <View style={styles.returnButtonWrap}>
+                <WoodButton label={t("raid.return", lang)} onPress={onReturn} primary />
+              </View>
+            </ScrollView>
           </Animated.View>
         </View>
       ) : (
@@ -478,6 +526,20 @@ function RewardChip({ assetKey, amount }: { assetKey: GameAssetKey; amount: numb
   );
 }
 
+function StarIcon({ filled }: { filled: boolean }) {
+  return (
+    <Svg width={25} height={25} viewBox="0 0 24 24" accessibilityLabel={filled ? "star" : undefined}>
+      <Path
+        d="M12 2.4l2.82 5.72 6.31.92-4.56 4.45 1.08 6.28L12 16.8l-5.65 2.97 1.08-6.28-4.56-4.45 6.31-.92L12 2.4z"
+        fill={filled ? "#ffd95a" : "rgba(255,255,255,0.12)"}
+        stroke={filled ? "#fff0a0" : "rgba(255,255,255,0.32)"}
+        strokeWidth={1.4}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 function PenaltySummary({ penalty, lang }: { penalty: RaidPenalty; lang: Lang }) {
   const entries = [
     { key: "bananas" as const, assetKey: "resourceBananaPile" as const },
@@ -491,7 +553,7 @@ function PenaltySummary({ penalty, lang }: { penalty: RaidPenalty; lang: Lang })
         {entries.length > 0 ? t("raid.resourcesLost", lang) : t("raid.resourcesProtected", lang)}
       </Text>
       {entries.length > 0 ? (
-        <View style={styles.rewardRow}>
+        <View style={styles.rewardGrid}>
           {entries.map(({ key, assetKey }) => (
             <PenaltyChip key={key} assetKey={assetKey} amount={penalty.amounts[key]} />
           ))}
@@ -707,37 +769,45 @@ const styles = StyleSheet.create({
     top: 10,
     left: 10,
     right: 10,
-    borderRadius: 12,
-    backgroundColor: "rgba(17, 20, 14, 0.82)",
-    paddingHorizontal: 12,
-    paddingVertical: 10
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: "rgba(226,177,90,0.28)",
+    backgroundColor: "rgba(17, 20, 14, 0.84)",
+    paddingHorizontal: 9,
+    paddingVertical: 6
   },
-  raidTitle: {
-    color: theme.colors.paper,
-    fontSize: 17,
-    fontWeight: "900", fontFamily: theme.fonts.heavy
+  hudSide: {
+    flex: 1,
+    minWidth: 0
   },
-  raidStat: {
-    marginTop: 2,
-    color: "#d8ccb0",
-    fontSize: 12,
-    fontWeight: "800", fontFamily: theme.fonts.bold
-  },
+  hudSideEnemy: { alignItems: "flex-end" },
+  hudLabel: { color: "#cabd9e", fontSize: 8.5, fontFamily: theme.fonts.bold },
+  hudValue: { color: "#a9e6a8", fontSize: 14, lineHeight: 16, fontFamily: theme.fonts.heavy },
+  hudEnemyValue: { color: "#ffab96" },
+  hudSubvalue: { color: "#ddd0b1", fontSize: 7.5, fontFamily: theme.fonts.bold },
+  hudPower: { minWidth: 66, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3, borderLeftWidth: 1, borderRightWidth: 1, borderColor: "rgba(226,177,90,0.22)" },
+  hudPowerIcon: { width: 22, height: 22 },
+  hudPowerFallback: { width: 18, height: 18, borderRadius: 9, backgroundColor: "rgba(255,217,90,0.35)" },
+  hudPowerValue: { color: "#ffd95a", fontSize: 14, fontFamily: theme.fonts.heavy },
   feedbackBanner: {
     position: "absolute",
-    left: "8%",
-    right: "8%",
-    bottom: "15%",
-    minHeight: 34,
+    left: "15%",
+    right: "15%",
+    bottom: "14%",
+    minHeight: 28,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
+    borderRadius: 9,
     backgroundColor: "rgba(44, 31, 15, 0.84)",
-    paddingHorizontal: 12
+    paddingHorizontal: 9,
+    paddingVertical: 4
   },
   feedbackText: {
     color: "#ffe28b",
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "900", fontFamily: theme.fonts.heavy,
     textAlign: "center"
   },
@@ -747,10 +817,10 @@ const styles = StyleSheet.create({
     bottom: 12,
     borderRadius: 11,
     borderWidth: 1.5,
-    borderColor: "rgba(226, 177, 90, 0.45)",
-    backgroundColor: "rgba(20, 16, 9, 0.92)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderColor: "rgba(255, 179, 137, 0.72)",
+    backgroundColor: "rgba(139, 45, 34, 0.94)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     shadowColor: "#000",
     shadowOpacity: 0.4,
     shadowRadius: 5,
@@ -767,19 +837,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(8, 14, 9, 0.55)",
-    padding: 18,
+    padding: 10,
     zIndex: 500
   },
   resultPanel: {
     width: "100%",
-    maxWidth: 320,
-    alignItems: "center",
+    maxWidth: 340,
+    maxHeight: "94%",
     borderRadius: 16,
     borderWidth: 2,
     backgroundColor: "rgba(17, 20, 14, 0.95)",
-    paddingTop: 26,
-    paddingBottom: 18,
-    paddingHorizontal: 18
+    paddingTop: 0,
+    paddingBottom: 0,
+    paddingHorizontal: 0
   },
   resultPanelWin: {
     borderColor: "rgba(122, 200, 110, 0.65)"
@@ -813,6 +883,8 @@ const styles = StyleSheet.create({
     width: 39,
     height: 39
   },
+  resultScroll: { width: "100%" },
+  resultContent: { alignItems: "center", paddingTop: 26, paddingBottom: 14, paddingHorizontal: 14 },
   resultTitle: {
     color: theme.colors.paper,
     fontSize: 24,
@@ -822,23 +894,10 @@ const styles = StyleSheet.create({
   starRow: {
     flexDirection: "row",
     gap: 6,
-    marginTop: 8
+    marginTop: 5
   },
-  star: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
-    borderRadius: 3,
-    transform: [{ rotate: "45deg" }]
-  },
-  starOn: {
-    borderColor: "#fff0a0",
-    backgroundColor: "#ffd95a"
-  },
-  starOff: {
-    borderColor: "rgba(255, 255, 255, 0.28)",
-    backgroundColor: "rgba(255, 255, 255, 0.12)"
-  },
+  firstVictoryBadge: { marginTop: 5, borderRadius: 999, borderWidth: 1, borderColor: "rgba(255,217,90,0.55)", backgroundColor: "rgba(255,217,90,0.13)", paddingHorizontal: 10, paddingVertical: 3 },
+  firstVictoryBadgeText: { color: "#ffe78d", fontSize: 9.5, letterSpacing: 0.4, fontFamily: theme.fonts.heavy },
   resultText: {
     marginTop: 8,
     color: "#d8ccb0",
@@ -846,21 +905,27 @@ const styles = StyleSheet.create({
     fontWeight: "800", fontFamily: theme.fonts.bold,
     textAlign: "center"
   },
-  rewardRow: {
+  rewardGrid: {
+    width: "100%",
     flexDirection: "row",
-    gap: 8,
-    marginTop: 14
+    flexWrap: "wrap",
+    gap: 7,
+    marginTop: 9
   },
   rewardMultiplier: {
     color: "#f7dda0",
     fontFamily: theme.fonts.bold,
     fontSize: 13,
-    marginTop: 12,
+    marginTop: 8,
     textAlign: "center"
   },
-  armyResultRow: { flexDirection: "row", gap: 14, marginTop: 10 },
-  armyResultSurvivors: { color: "#9be39a", fontSize: 12, fontFamily: theme.fonts.heavy },
-  armyResultLosses: { color: "#f2a08d", fontSize: 12, fontFamily: theme.fonts.heavy },
+  gemReason: { marginTop: 3, color: "#8bd4ff", fontSize: 10, textAlign: "center", fontFamily: theme.fonts.bold },
+  armyResultRow: { width: "100%", flexDirection: "row", gap: 7, marginTop: 9 },
+  armyResultCard: { flex: 1, minHeight: 38, alignItems: "center", justifyContent: "center", borderRadius: 9, borderWidth: 1, paddingHorizontal: 5 },
+  armyResultCardSurvivors: { borderColor: "rgba(102,190,104,0.42)", backgroundColor: "rgba(70,150,76,0.13)" },
+  armyResultCardLosses: { borderColor: "rgba(218,100,78,0.42)", backgroundColor: "rgba(190,72,54,0.13)" },
+  armyResultSurvivors: { color: "#9be39a", fontSize: 10, textAlign: "center", fontFamily: theme.fonts.heavy },
+  armyResultLosses: { color: "#f2a08d", fontSize: 10, textAlign: "center", fontFamily: theme.fonts.heavy },
   penaltyBlock: {
     alignItems: "center",
     marginTop: 12
@@ -882,12 +947,15 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.heavy
   },
   rewardChip: {
+    width: "48%",
+    flexGrow: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
     borderRadius: 10,
     backgroundColor: "rgba(255, 224, 151, 0.12)",
-    paddingHorizontal: 10,
+    justifyContent: "center",
+    paddingHorizontal: 8,
     paddingVertical: 6
   },
   rewardIcon: {

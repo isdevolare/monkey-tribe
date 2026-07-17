@@ -34,7 +34,6 @@ import {
   armyCapacity,
   armyHousing,
   calculateTroopPower,
-  isLivingPlayerTroop,
   isTroopType,
   migrateTroopType,
   sanitizeTroopUpgrades,
@@ -74,9 +73,15 @@ import { t } from "../i18n";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import { applyRaidPenalty } from "./raidPenalty";
 import {
-  raidGemReward,
-  resolveRaidVictoryReward,
-  sanitizeRaidVictoryCounts
+  livingVillageRosterAfterRaid,
+  raidSelectionStats,
+  selectedRaidUnits
+} from "./raidArmy";
+import {
+  RAID_REWARD_VERSION,
+  migrateRaidVictoryCounts,
+  resolveRaidGemReward,
+  resolveRaidVictoryReward
 } from "./raidRewards";
 import {
   WORKER_CLASSES,
@@ -330,6 +335,7 @@ function createFreshState(now: number) {
     enemyCampHp: CAMP_MAX_HP,
     enemyCampMaxHp: CAMP_MAX_HP,
     activeCampId: null,
+    activeRaidUnitIds: [] as string[],
     raidStars: 0,
     raidLevel: STRONGHOLD_BASE_LEVEL,
     raidVictoryCounts: {} as Record<string, number>,
@@ -458,9 +464,18 @@ function resolveTargetPosition(units: Unit[], target: UnitTarget): Position | nu
   return targetUnit ? { x: targetUnit.x, y: targetUnit.y } : null;
 }
 
-function nearestPlayerInRange(enemy: Unit, units: Unit[]) {
+function nearestPlayerInRange(
+  enemy: Unit,
+  units: Unit[],
+  deployedUnitIds: ReadonlySet<string>
+) {
   const playerUnits = units.filter(
-    (unit) => unit.owner === "player" && isCombatant(unit) && unit.state !== "dead" && unit.hp > 0
+    (unit) =>
+      unit.owner === "player" &&
+      deployedUnitIds.has(unit.id) &&
+      isCombatant(unit) &&
+      unit.state !== "dead" &&
+      unit.hp > 0
   );
   let closest: Unit | null = null;
   let closestDistance = Number.POSITIVE_INFINITY;
@@ -478,13 +493,13 @@ function nearestPlayerInRange(enemy: Unit, units: Unit[]) {
   return closest;
 }
 
-function assignEnemyOrders(units: Unit[]) {
+function assignEnemyOrders(units: Unit[], deployedUnitIds: ReadonlySet<string>) {
   for (const unit of units) {
     if (unit.owner !== "enemy" || unit.state === "dead" || unit.hp <= 0) {
       continue;
     }
 
-    const playerTarget = nearestPlayerInRange(unit, units);
+    const playerTarget = nearestPlayerInRange(unit, units, deployedUnitIds);
     if (playerTarget) {
       unit.state = "attacking";
       unit.target = { kind: "unit", unitId: playerTarget.id };
@@ -657,14 +672,24 @@ function createRaidEnemies(now: number, camp: RaidCamp): Unit[] {
   });
 }
 
-function deployRaidUnits(units: Unit[], now: number, camp: RaidCamp) {
+function deployRaidUnits(
+  units: Unit[],
+  now: number,
+  camp: RaidCamp,
+  deployedUnitIds: ReadonlySet<string>
+) {
   let fighterIndex = 0;
 
   return [
     ...units
       .filter((unit) => unit.owner === "player")
       .map((unit) => {
-        if (!isCombatant(unit) || unit.state === "dead" || unit.hp <= 0) {
+        if (
+          !deployedUnitIds.has(unit.id) ||
+          !isCombatant(unit) ||
+          unit.state === "dead" ||
+          unit.hp <= 0
+        ) {
           return {
             ...unit,
             state: "idle" as const,
@@ -699,8 +724,7 @@ function deployRaidUnits(units: Unit[], now: number, camp: RaidCamp) {
 function returnPlayerUnitsToVillage(units: Unit[]) {
   let playerIndex = 0;
 
-  return units
-    .filter(isLivingPlayerTroop)
+  return livingVillageRosterAfterRaid(units)
     .map((unit) => {
       const slot = playerIndex;
       playerIndex += 1;
@@ -739,11 +763,17 @@ function nearestEnemyUnit(attacker: Unit, units: Unit[]): Unit | null {
   return closest;
 }
 
-function assignRaidOrders(units: Unit[]) {
-  assignEnemyOrders(units);
+function assignRaidOrders(units: Unit[], deployedUnitIds: ReadonlySet<string>) {
+  assignEnemyOrders(units, deployedUnitIds);
 
   for (const unit of units) {
-    if (unit.owner !== "player" || !isCombatant(unit) || unit.state === "dead" || unit.hp <= 0) {
+    if (
+      unit.owner !== "player" ||
+      !deployedUnitIds.has(unit.id) ||
+      !isCombatant(unit) ||
+      unit.state === "dead" ||
+      unit.hp <= 0
+    ) {
       continue;
     }
 
@@ -1002,6 +1032,7 @@ export const useGameStore = create<GameState>((set) => ({
       playerCampHp: CAMP_MAX_HP,
       enemyCampHp: CAMP_MAX_HP,
       activeCampId: null,
+      activeRaidUnitIds: [],
       raidStars: 0,
       lastRaidReward: null,
       lastRaidPenalty: null,
@@ -1278,7 +1309,12 @@ export const useGameStore = create<GameState>((set) => ({
         // now has handcrafted camps through Sv7, so lift stale levels to the
         // new base (higher progress is kept as-is).
         raidLevel: Math.max(save.raidLevel ?? STRONGHOLD_BASE_LEVEL, STRONGHOLD_BASE_LEVEL),
-        raidVictoryCounts: sanitizeRaidVictoryCounts(save.raidVictoryCounts),
+        raidVictoryCounts: migrateRaidVictoryCounts(
+          save.raidVictoryCounts,
+          save.raidLevel,
+          save.raidRewardVersion
+        ),
+        activeRaidUnitIds: [],
         lastRaidReward: null,
         lastRaidArmyResult: null,
         questProgress: save.questDayKey === todayKey() ? save.questProgress ?? {} : {},
@@ -1313,7 +1349,7 @@ export const useGameStore = create<GameState>((set) => ({
       lastProductionAt: Date.now(),
       feedback: null
     })),
-  startRaidOn: (campId) =>
+  startRaidOn: (campId, selection) =>
     set((state) => {
       const now = Date.now();
       const camp = getCamp(campId);
@@ -1336,29 +1372,41 @@ export const useGameStore = create<GameState>((set) => ({
         };
       }
 
-      const fighters = state.units.filter(
-        (unit) => unit.owner === "player" && isCombatant(unit) && unit.state !== "dead" && unit.hp > 0
+      const requestedCount = TROOP_TYPES.reduce(
+        (sum, type) => sum + Math.max(0, Math.floor(selection[type] ?? 0)),
+        0
       );
+      const fighters = selectedRaidUnits(state.units, selection);
+      const selectionStats = raidSelectionStats(state.units, selection);
+      const capacity = armyCapacity(buildingLevel(state.buildings, "trainingNest"));
 
-      if (fighters.length <= 0) {
+      if (
+        fighters.length <= 0 ||
+        fighters.length !== requestedCount ||
+        selectionStats.housing > capacity
+      ) {
         return {
           ...state,
-          feedback: { id: now, text: t("fb.needFighter", state.language) }
+          feedback: { id: now, text: t("raid.confirm.invalidSelection", state.language) }
         };
       }
+
+      const activeRaidUnitIds = fighters.map((unit) => unit.id);
+      const deployedUnitIds = new Set(activeRaidUnitIds);
 
       return {
         ...state,
         gameMode: "raid",
         raidStatus: "active",
         activeCampId: camp.id,
+        activeRaidUnitIds,
         enemyCampHp: camp.campHp,
         enemyCampMaxHp: camp.campHp,
         raidStars: 0,
         lastRaidReward: null,
         lastRaidPenalty: null,
         lastRaidArmyResult: null,
-        units: deployRaidUnits(state.units, now, camp),
+        units: deployRaidUnits(state.units, now, camp, deployedUnitIds),
         lastProductionAt: now,
         feedback: {
           id: now,
@@ -1379,7 +1427,10 @@ export const useGameStore = create<GameState>((set) => ({
         resources: penalized.resources,
         raidStatus: "retreat",
         lastRaidPenalty: { reason: "retreat", amounts: penalized.amounts },
-        lastRaidArmyResult: summarizeRaidArmy(state.units),
+        lastRaidArmyResult: summarizeRaidArmy(
+          state.units,
+          state.activeRaidUnitIds
+        ),
         feedback: { id: now, text: t("fb.raidRetreated", state.language) }
       };
     }),
@@ -1389,6 +1440,7 @@ export const useGameStore = create<GameState>((set) => ({
       gameMode: "village",
       raidStatus: "idle",
       activeCampId: null,
+      activeRaidUnitIds: [],
       lastRaidReward: null,
       lastRaidPenalty: null,
       lastRaidArmyResult: null,
@@ -2198,17 +2250,25 @@ export const useGameStore = create<GameState>((set) => ({
       }
 
       if (state.gameMode === "raid" && state.raidStatus === "active") {
-        assignRaidOrders(units);
+        const deployedUnitIds = new Set(state.activeRaidUnitIds);
+        assignRaidOrders(units, deployedUnitIds);
 
         for (const unit of units) {
-          if (unit.owner === "enemy" || (unit.owner === "player" && isCombatant(unit))) {
+          if (
+            unit.owner === "enemy" ||
+            (unit.owner === "player" && deployedUnitIds.has(unit.id) && isCombatant(unit))
+          ) {
             processUnit(unit, game, now);
           }
         }
 
         const raidFightersAlive = units.some(
           (unit) =>
-            unit.owner === "player" && isCombatant(unit) && unit.state !== "dead" && unit.hp > 0
+            unit.owner === "player" &&
+            deployedUnitIds.has(unit.id) &&
+            isCombatant(unit) &&
+            unit.state !== "dead" &&
+            unit.hp > 0
         );
 
         if (game.enemyCampHp <= 0) {
@@ -2228,7 +2288,10 @@ export const useGameStore = create<GameState>((set) => ({
             ? { ...state.raidVictoryCounts, [camp.id]: previousVictories + 1 }
             : state.raidVictoryCounts;
           const fighters = units.filter(
-            (unit) => unit.owner === "player" && isCombatant(unit)
+            (unit) =>
+              unit.owner === "player" &&
+              deployedUnitIds.has(unit.id) &&
+              isCombatant(unit)
           );
           const aliveCount = fighters.filter(
             (unit) => unit.state !== "dead" && unit.hp > 0
@@ -2239,7 +2302,9 @@ export const useGameStore = create<GameState>((set) => ({
               : aliveCount >= Math.ceil(fighters.length / 2)
                 ? 2
                 : 1;
-          const gemsEarned = camp ? raidGemReward(stars, previousVictories) : 0;
+          const gemReward = camp
+            ? resolveRaidGemReward(stars, previousVictories)
+            : { gems: 0, reason: "none" as const };
 
           return {
             ...state,
@@ -2256,11 +2321,19 @@ export const useGameStore = create<GameState>((set) => ({
             enemyCampHp: 0,
             raidStars: stars,
             raidVictoryCounts,
-            lastRaidReward: { loot, multiplier: rewardMultiplier, gems: gemsEarned },
-            gems: state.gems + gemsEarned,
+            lastRaidReward: {
+              loot,
+              multiplier: rewardMultiplier,
+              gems: gemReward.gems,
+              gemReason: gemReward.reason
+            },
+            gems: state.gems + gemReward.gems,
             ...advanceDailyMission(state, "winRaid", now),
             lastRaidPenalty: null,
-            lastRaidArmyResult: summarizeRaidArmy(game.units),
+            lastRaidArmyResult: summarizeRaidArmy(
+              game.units,
+              state.activeRaidUnitIds
+            ),
             feedback: {
               id: now,
               text: t("fb.victoryLoot", state.language, {
@@ -2295,7 +2368,10 @@ export const useGameStore = create<GameState>((set) => ({
             feedback: { id: now, text: t("fb.raidFailed", state.language) },
             raidStatus: "defeat",
             lastRaidPenalty: { reason: "defeat", amounts: penalized.amounts },
-            lastRaidArmyResult: summarizeRaidArmy(game.units)
+            lastRaidArmyResult: summarizeRaidArmy(
+              game.units,
+              state.activeRaidUnitIds
+            )
           };
         }
 
@@ -2494,6 +2570,7 @@ function villageSavePayload(state: GameState): VillageSave {
     language: state.language,
     raidLevel: state.raidLevel,
     raidVictoryCounts: state.raidVictoryCounts,
+    raidRewardVersion: RAID_REWARD_VERSION,
     questProgress: state.questProgress,
     questsClaimed: state.questsClaimed,
     questDayKey: state.questDayKey,

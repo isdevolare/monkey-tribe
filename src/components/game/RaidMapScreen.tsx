@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Line, Path } from "react-native-svg";
 import { AssetImage } from "./AssetImage";
@@ -7,26 +7,40 @@ import { SpringPressable } from "./SpringPressable";
 import { WoodButton } from "./WoodButton";
 import type { GameAssetKey } from "../../game/assets/gameAssets";
 import { RAID_CAMPS, campName, strongholdCamp, type RaidCamp } from "../../game/config/camps";
-import { TROOP_TYPES, raidRisk } from "../../game/config/troops";
+import {
+  TROOPS,
+  TROOP_TYPES,
+  armyPower,
+  raidRisk,
+  troopCountByType
+} from "../../game/config/troops";
 import { t } from "../../game/i18n";
-import type { Lang, TroopType } from "../../game/types/game";
+import {
+  bestRaidArmySelection,
+  emptyRaidArmySelection,
+  estimatedRaidLossRange,
+  raidRiskBand,
+  raidSelectionStats
+} from "../../game/state/raidArmy";
+import type { Lang, RaidArmySelection, TroopType, Unit } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type RaidMapScreenProps = {
-  troopCounts: Record<TroopType, number>;
-  housingUsed: number;
+  units: Unit[];
   housingCapacity: number;
-  armyPower: number;
   trainingNestLevel: number;
   raidLevel: number;
   watchTowerLevel: number;
   lang: Lang;
-  onAttack: (campId: string) => void;
+  onAttack: (campId: string, selection: RaidArmySelection) => void;
   onClose: () => void;
 };
 
-export function RaidMapScreen({ troopCounts, housingUsed, housingCapacity, armyPower, trainingNestLevel, raidLevel, watchTowerLevel, lang, onAttack, onClose }: RaidMapScreenProps) {
+export function RaidMapScreen({ units, housingCapacity, trainingNestLevel, raidLevel, watchTowerLevel, lang, onAttack, onClose }: RaidMapScreenProps) {
   const [confirmCamp, setConfirmCamp] = useState<RaidCamp | null>(null);
+  const [selection, setSelection] = useState<RaidArmySelection>(emptyRaidArmySelection);
+  const troopCounts = useMemo(() => troopCountByType(units), [units]);
+  const fullArmyPower = useMemo(() => armyPower(units), [units]);
   const fighterCount = Object.values(troopCounts).reduce((sum, count) => sum + count, 0);
   const noFighters = fighterCount <= 0;
   // The endless stronghold sits after the handcrafted camps and levels up
@@ -92,10 +106,10 @@ export function RaidMapScreen({ troopCounts, housingUsed, housingCapacity, armyP
                   {t("raidmap.endless", lang)}
                 </Text>
               ) : null}
-              <Text style={styles.scoutingLine}>{t("raidmap.armyPower", lang, { n: armyPower })}</Text>
+              <Text style={styles.scoutingLine}>{t("raidmap.armyPower", lang, { n: fullArmyPower })}</Text>
               <Text style={styles.scoutingLine}>{t("raidmap.enemyPower", lang, { n: camp.enemyPower })}</Text>
               <Text style={styles.scoutingLine}>{t("raidmap.recommendedPower", lang, { n: camp.recommendedPower })}</Text>
-              <Text style={styles.riskLine}>{t(`raid.risk.${raidRisk(armyPower, camp.recommendedPower)}`, lang)}</Text>
+              <Text style={styles.riskLine}>{t(`raid.risk.${raidRisk(fullArmyPower, camp.recommendedPower)}`, lang)}</Text>
               {locked ? <Text style={styles.scoutingLocked}>{t("raidmap.unlockNest", lang, { level: camp.requiredTrainingNestLevel })}</Text> : null}
               {watchTowerLevel >= 5 ? <Text style={styles.scoutingLine}>{t("raidmap.compositionFull", lang, {
                 fighters: camp.defenders.fighter,
@@ -114,7 +128,10 @@ export function RaidMapScreen({ troopCounts, housingUsed, housingCapacity, armyP
               accessibilityRole="button"
               accessibilityState={{ disabled: noFighters || locked }}
               disabled={noFighters || locked}
-              onPress={() => setConfirmCamp(camp)}
+              onPress={() => {
+                setSelection(emptyRaidArmySelection());
+                setConfirmCamp(camp);
+              }}
               style={[styles.attackButton, noFighters || locked ? styles.attackButtonDisabled : null]}
             >
               <NineSliceFrame preset="attackPlaque" cornerSize={18} style={StyleSheet.absoluteFill} />
@@ -131,35 +148,238 @@ export function RaidMapScreen({ troopCounts, housingUsed, housingCapacity, armyP
       <WoodButton label={t("raidmap.close", lang)} onPress={onClose} />
       <Modal visible={confirmCamp !== null} transparent animationType="fade" onRequestClose={() => setConfirmCamp(null)}>
         <View style={styles.confirmScrim}>
-          {confirmCamp ? <View style={styles.confirmCard}>
-            <NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} />
-            <Text style={styles.confirmTitle}>{campName(confirmCamp.id, lang)}</Text>
-            <View style={styles.confirmStats}>
-              <Text style={styles.confirmStat}>{t("trainingNest.armyCapacity", lang, { used: housingUsed, max: housingCapacity })}</Text>
-              <Text style={styles.confirmStat}>{t("raidmap.armyPower", lang, { n: armyPower })}</Text>
-              <Text style={styles.confirmStat}>{t("raidmap.enemyPower", lang, { n: confirmCamp.enemyPower })}</Text>
-              <Text style={styles.confirmStat}>{t("raidmap.recommendedPower", lang, { n: confirmCamp.recommendedPower })}</Text>
-            </View>
-            <Text style={styles.confirmRisk}>{t(`raid.risk.${raidRisk(armyPower, confirmCamp.recommendedPower)}`, lang)}</Text>
-            <Text style={styles.confirmWarning}>{t("raid.confirm.warning", lang)}</Text>
-            <View style={styles.rosterRow}>
-              {TROOP_TYPES.filter((type) => troopCounts[type] > 0).map((type) => <View key={type} style={styles.rosterChip}>
-                <AssetImage assetKey={type === "fighter" ? "unitWarrior" : type === "archer" ? "unitArcher" : type === "shield_guardian" ? "unitShieldGuardian" : "unitCrossbowman"} style={styles.rosterIcon} fallback={<View />} />
-                <Text style={styles.rosterText}>{troopCounts[type]}× {t(`unit.${type}`, lang)}</Text>
-              </View>)}
-            </View>
-            <View style={styles.confirmActions}>
-              <WoodButton label={t("raid.confirm.cancel", lang)} onPress={() => setConfirmCamp(null)} />
-              <WoodButton label={t("raid.confirm.continue", lang)} onPress={() => {
+          {confirmCamp ? (
+            <ArmySelectionCard
+              camp={confirmCamp}
+              units={units}
+              troopCounts={troopCounts}
+              capacity={housingCapacity}
+              selection={selection}
+              lang={lang}
+              onChange={setSelection}
+              onCancel={() => setConfirmCamp(null)}
+              onContinue={() => {
                 const id = confirmCamp.id;
                 setConfirmCamp(null);
-                onAttack(id);
-              }} primary />
-            </View>
-          </View> : null}
+                onAttack(id, selection);
+              }}
+            />
+          ) : null}
         </View>
       </Modal>
     </View>
+  );
+}
+
+function ArmySelectionCard({
+  camp,
+  units,
+  troopCounts,
+  capacity,
+  selection,
+  lang,
+  onChange,
+  onCancel,
+  onContinue
+}: {
+  camp: RaidCamp;
+  units: Unit[];
+  troopCounts: Record<TroopType, number>;
+  capacity: number;
+  selection: RaidArmySelection;
+  lang: Lang;
+  onChange: (selection: RaidArmySelection) => void;
+  onCancel: () => void;
+  onContinue: () => void;
+}) {
+  const stats = useMemo(() => raidSelectionStats(units, selection), [selection, units]);
+  const risk = raidRiskBand(stats.power, camp.recommendedPower);
+  const lossRange = estimatedRaidLossRange(
+    stats.count,
+    stats.power,
+    camp.recommendedPower
+  );
+
+  function change(type: TroopType, delta: number) {
+    const next = Math.max(0, Math.min(troopCounts[type], selection[type] + delta));
+    if (delta > 0 && stats.housing + TROOPS[type].housing > capacity) return;
+    onChange({ ...selection, [type]: next });
+  }
+
+  return (
+    <View style={styles.confirmCard}>
+      <NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} />
+      <ScrollView
+        style={styles.confirmScroll}
+        contentContainerStyle={styles.confirmContent}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.confirmEyebrow}>{t("raid.confirm.eyebrow", lang)}</Text>
+        <Text style={styles.confirmTitle}>{campName(camp.id, lang)}</Text>
+
+        <View style={styles.confirmSummary}>
+          <SummaryCell
+            label={t("raid.confirm.armyCount", lang)}
+            value={`${stats.count} · ${stats.housing}/${capacity}`}
+          />
+          <SummaryCell label={t("trainingNest.armyPowerLabel", lang)} value={stats.power} />
+          <SummaryCell label={t("raid.confirm.enemyPower", lang)} value={camp.enemyPower} />
+          <SummaryCell label={t("raid.confirm.recommended", lang)} value={camp.recommendedPower} />
+        </View>
+
+        <View style={[styles.riskBadge, styles[`riskBadge_${risk}`]]}>
+          <Text style={styles.riskBadgeText}>{t(`raid.riskBand.${risk}`, lang)}</Text>
+          <Text style={styles.lossEstimate}>
+            {t("raid.confirm.estimatedLoss", lang, {
+              min: lossRange.min,
+              max: lossRange.max
+            })}
+          </Text>
+        </View>
+
+        <View style={styles.selectorHeader}>
+          <Text style={styles.selectorTitle}>{t("raid.confirm.chooseArmy", lang)}</Text>
+          <Text style={styles.selectorCapacity}>
+            {t("raid.confirm.capacity", lang, { used: stats.housing, max: capacity })}
+          </Text>
+        </View>
+
+        <View style={styles.selectorList}>
+          {TROOP_TYPES.map((type) => {
+            const canSubtract = selection[type] > 0;
+            const canAdd =
+              selection[type] < troopCounts[type] &&
+              stats.housing + TROOPS[type].housing <= capacity;
+            return (
+              <View key={type} style={styles.selectorRow}>
+                <AssetImage
+                  assetKey={TROOPS[type].artwork}
+                  style={styles.selectorIcon}
+                  fallback={<View style={styles.selectorIconFallback} />}
+                />
+                <View style={styles.selectorCopy}>
+                  <Text style={styles.selectorName} numberOfLines={1}>
+                    {t(`unit.${type}`, lang)}
+                  </Text>
+                  <Text style={styles.selectorOwned}>
+                    {t("raid.confirm.available", lang, { n: troopCounts[type] })} · {TROOPS[type].housing} {t("raid.confirm.space", lang)}
+                  </Text>
+                </View>
+                <CountButton
+                  label="−"
+                  disabled={!canSubtract}
+                  accessibilityLabel={t("raid.confirm.remove", lang, { unit: t(`unit.${type}`, lang) })}
+                  onPress={() => change(type, -1)}
+                />
+                <Text style={styles.selectedCount}>{selection[type]}</Text>
+                <CountButton
+                  label="+"
+                  disabled={!canAdd}
+                  accessibilityLabel={t("raid.confirm.add", lang, { unit: t(`unit.${type}`, lang) })}
+                  onPress={() => change(type, 1)}
+                />
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={styles.quickActions}>
+          <SpringPressable
+            accessibilityRole="button"
+            onPress={() => onChange(bestRaidArmySelection(units, capacity))}
+            style={styles.quickButton}
+          >
+            <Text style={styles.quickButtonText}>{t("raid.confirm.bestArmy", lang)}</Text>
+          </SpringPressable>
+          <SpringPressable
+            accessibilityRole="button"
+            onPress={() => onChange(emptyRaidArmySelection())}
+            style={styles.quickButton}
+          >
+            <Text style={styles.quickButtonText}>{t("raid.confirm.clear", lang)}</Text>
+          </SpringPressable>
+        </View>
+
+        <View style={styles.confirmWarningCard}>
+          <Text style={styles.confirmWarning}>{t("raid.confirm.warningShort", lang)}</Text>
+        </View>
+
+        <View style={styles.confirmActions}>
+          <BambooAction label={t("raid.confirm.cancel", lang)} onPress={onCancel} />
+          <BambooAction
+            label={t("raid.confirm.continue", lang)}
+            onPress={onContinue}
+            primary
+            disabled={stats.count <= 0}
+          />
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+function SummaryCell({ label, value }: { label: string; value: string | number }) {
+  return (
+    <View style={styles.summaryCell}>
+      <Text style={styles.summaryLabel} numberOfLines={1}>{label}</Text>
+      <Text style={styles.summaryValue} numberOfLines={1}>{value}</Text>
+    </View>
+  );
+}
+
+function CountButton({
+  label,
+  disabled,
+  accessibilityLabel,
+  onPress
+}: {
+  label: string;
+  disabled: boolean;
+  accessibilityLabel: string;
+  onPress: () => void;
+}) {
+  return (
+    <SpringPressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      hitSlop={4}
+      onPress={onPress}
+      style={[styles.countButton, disabled ? styles.countButtonDisabled : null]}
+    >
+      <Text style={styles.countButtonText}>{label}</Text>
+    </SpringPressable>
+  );
+}
+
+function BambooAction({
+  label,
+  onPress,
+  primary,
+  disabled
+}: {
+  label: string;
+  onPress: () => void;
+  primary?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <SpringPressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
+      disabled={disabled}
+      onPress={onPress}
+      style={[
+        styles.bambooAction,
+        primary ? styles.bambooActionPrimary : null,
+        disabled ? styles.bambooActionDisabled : null
+      ]}
+    >
+      <NineSliceFrame preset="woodButton" cornerSize={20} style={StyleSheet.absoluteFill} />
+      <Text style={styles.bambooActionText} numberOfLines={1}>{label}</Text>
+    </SpringPressable>
   );
 }
 
@@ -402,16 +622,45 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 2
   },
-  confirmScrim: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,12,8,0.82)", padding: 18 },
-  confirmCard: { width: "100%", maxWidth: 370, borderRadius: 20, backgroundColor: "#f4df9e", padding: 24, overflow: "hidden" },
-  confirmTitle: { color: theme.colors.ink, fontSize: 20, textAlign: "center", fontFamily: theme.fonts.heavy },
-  confirmStats: { marginTop: 12, gap: 3 },
-  confirmStat: { color: "#4b3b24", fontSize: 13, fontFamily: theme.fonts.bold },
-  confirmRisk: { marginTop: 10, color: "#8a2f1e", fontSize: 18, textAlign: "center", fontFamily: theme.fonts.heavy },
-  confirmWarning: { marginTop: 4, color: "#5b4930", fontSize: 12, textAlign: "center", fontFamily: theme.fonts.bold },
-  rosterRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
-  rosterChip: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 10, backgroundColor: "rgba(91,61,27,0.12)", paddingHorizontal: 7, paddingVertical: 4 },
-  rosterIcon: { width: 28, height: 28 },
-  rosterText: { color: theme.colors.ink, fontSize: 10, fontFamily: theme.fonts.heavy },
-  confirmActions: { flexDirection: "row", gap: 8, marginTop: 16 }
+  confirmScrim: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(5,12,8,0.82)", padding: 12 },
+  confirmCard: { width: "100%", maxWidth: 390, maxHeight: "94%", borderRadius: 20, backgroundColor: "#f4df9e", overflow: "hidden" },
+  confirmScroll: { width: "100%" },
+  confirmContent: { padding: 18, paddingBottom: 16 },
+  confirmEyebrow: { color: "#88602b", fontSize: 10, textAlign: "center", letterSpacing: 1.2, fontFamily: theme.fonts.heavy },
+  confirmTitle: { marginTop: 2, color: theme.colors.ink, fontSize: 20, textAlign: "center", fontFamily: theme.fonts.heavy },
+  confirmSummary: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  summaryCell: { width: "48%", flexGrow: 1, borderRadius: 10, backgroundColor: "rgba(75,51,24,0.10)", paddingHorizontal: 9, paddingVertical: 7 },
+  summaryLabel: { color: "#72522c", fontSize: 9, fontFamily: theme.fonts.bold },
+  summaryValue: { color: theme.colors.ink, fontSize: 15, fontFamily: theme.fonts.heavy },
+  riskBadge: { marginTop: 8, borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 7 },
+  riskBadge_safe: { backgroundColor: "rgba(50,130,70,0.14)", borderColor: "rgba(50,130,70,0.42)" },
+  riskBadge_balanced: { backgroundColor: "rgba(203,151,45,0.16)", borderColor: "rgba(158,112,24,0.48)" },
+  riskBadge_risky: { backgroundColor: "rgba(199,102,34,0.15)", borderColor: "rgba(175,75,24,0.48)" },
+  riskBadge_veryRisky: { backgroundColor: "rgba(165,43,34,0.15)", borderColor: "rgba(165,43,34,0.52)" },
+  riskBadgeText: { color: "#5a351c", fontSize: 14, textAlign: "center", fontFamily: theme.fonts.heavy },
+  lossEstimate: { marginTop: 1, color: "#6a4b2c", fontSize: 10, textAlign: "center", fontFamily: theme.fonts.bold },
+  selectorHeader: { marginTop: 11, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
+  selectorTitle: { flex: 1, color: theme.colors.ink, fontSize: 14, fontFamily: theme.fonts.heavy },
+  selectorCapacity: { color: "#76532a", fontSize: 10, fontFamily: theme.fonts.bold },
+  selectorList: { marginTop: 5, gap: 5 },
+  selectorRow: { minHeight: 52, flexDirection: "row", alignItems: "center", borderRadius: 11, backgroundColor: "rgba(91,61,27,0.11)", paddingHorizontal: 6 },
+  selectorIcon: { width: 42, height: 42 },
+  selectorIconFallback: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(91,61,27,0.2)" },
+  selectorCopy: { flex: 1, minWidth: 0, paddingHorizontal: 5 },
+  selectorName: { color: theme.colors.ink, fontSize: 11, fontFamily: theme.fonts.heavy },
+  selectorOwned: { marginTop: 1, color: "#765b36", fontSize: 8.5, fontFamily: theme.fonts.bold },
+  countButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1.5, borderColor: "rgba(83,57,27,0.42)", backgroundColor: "rgba(255,242,190,0.68)" },
+  countButtonDisabled: { opacity: 0.32 },
+  countButtonText: { color: "#4c3018", fontSize: 22, lineHeight: 25, fontFamily: theme.fonts.heavy },
+  selectedCount: { width: 30, color: theme.colors.ink, fontSize: 17, textAlign: "center", fontFamily: theme.fonts.heavy },
+  quickActions: { flexDirection: "row", gap: 6, marginTop: 8 },
+  quickButton: { flex: 1, minHeight: 38, alignItems: "center", justifyContent: "center", borderRadius: 10, borderWidth: 1, borderColor: "rgba(102,70,30,0.35)", backgroundColor: "rgba(89,125,51,0.15)", paddingHorizontal: 6 },
+  quickButtonText: { color: "#4f3a20", fontSize: 10, textAlign: "center", fontFamily: theme.fonts.heavy },
+  confirmWarningCard: { marginTop: 8, borderRadius: 9, borderWidth: 1, borderColor: "rgba(170,55,42,0.48)", backgroundColor: "rgba(170,55,42,0.12)", paddingHorizontal: 9, paddingVertical: 6 },
+  confirmWarning: { color: "#9b3327", fontSize: 10, textAlign: "center", fontFamily: theme.fonts.heavy },
+  confirmActions: { flexDirection: "row", gap: 8, marginTop: 9 },
+  bambooAction: { flex: 1, minHeight: 48, alignItems: "center", justifyContent: "center", borderRadius: 12, overflow: "hidden", paddingHorizontal: 8 },
+  bambooActionPrimary: { shadowColor: "#5b3518", shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+  bambooActionDisabled: { opacity: 0.42 },
+  bambooActionText: { color: theme.colors.paper, fontSize: 13, textAlign: "center", fontFamily: theme.fonts.heavy, textShadowColor: "rgba(44,24,9,0.9)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }
 });
