@@ -89,6 +89,13 @@ export type GameAssetKey =
   | "bgVillageReferenceLayout"
   | "buildingPlayerCampL2"
   | "buildingPlayerCampL3"
+  | "royalPalaceLevel0"
+  | "royalPalaceLevel1"
+  | "royalPalaceLevel2"
+  | "royalPalaceLevel3"
+  | "royalPalaceLevel4"
+  | "royalPalaceLevel5"
+  | "royalPalaceLevel6"
   | "buildingArcherTower"
   | "buildingWarriorBarracks"
   | "unitWarrior"
@@ -355,6 +362,34 @@ export const gameAssets = {
   buildingPlayerCampL3: {
     ...asset("buildingPlayerCampL3", "buildings", "camp_player_level3.png", "generated camp lvl 3"),
     source: require("../../../assets/game/generated/camps/camp_player_level3.png") as ImageSourcePropType
+  },
+  royalPalaceLevel0: {
+    ...asset("royalPalaceLevel0", "buildings", "royal_palace/royal_palace_level_0.png", "1024x1024 transparent Royal Palace construction site"),
+    source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_0.png") as ImageSourcePropType
+  },
+  royalPalaceLevel1: {
+    ...asset("royalPalaceLevel1", "buildings", "royal_palace/royal_palace_level_1.png", "1024x1024 transparent Palace Garden"),
+    source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_1.png") as ImageSourcePropType
+  },
+  royalPalaceLevel2: {
+    ...asset("royalPalaceLevel2", "buildings", "royal_palace/royal_palace_level_2.png", "1024x1024 transparent Scout Lodge"),
+    source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_2.png") as ImageSourcePropType
+  },
+  royalPalaceLevel3: {
+    ...asset("royalPalaceLevel3", "buildings", "royal_palace/royal_palace_level_3.png", "1024x1024 transparent Guard Courtyard"),
+    source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_3.png") as ImageSourcePropType
+  },
+  royalPalaceLevel4: {
+    ...asset("royalPalaceLevel4", "buildings", "royal_palace/royal_palace_level_4.png", "1024x1024 transparent Hunter Terrace"),
+    source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_4.png") as ImageSourcePropType
+  },
+  royalPalaceLevel5: {
+    ...asset("royalPalaceLevel5", "buildings", "royal_palace/royal_palace_level_5.png", "1024x1024 transparent Chiefs' Court"),
+    source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_5.png") as ImageSourcePropType
+  },
+  royalPalaceLevel6: {
+    ...asset("royalPalaceLevel6", "buildings", "royal_palace/royal_palace_level_6.png", "1024x1024 transparent Golden Throne Palace"),
+    source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_6.png") as ImageSourcePropType
   },
   buildingArcherTower: {
     ...asset("buildingArcherTower", "buildings", "camp_archer_tower.png", "generated archer tower"),

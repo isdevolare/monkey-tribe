@@ -21,9 +21,15 @@ import {
 import { buildingName } from "../../game/config/buildings";
 import { getCosmeticAppearance, getDefaultSkinId } from "../../game/config/profileMonkeys";
 import { ROYAL_PALACE_SLOTS } from "../../game/config/royalPalace";
+import {
+  ROYAL_PALACE_RESIDENT_SPOTS,
+  royalPalaceAsset,
+  type RoyalPalaceResidentMotion
+} from "../../game/config/royalPalaceVisuals";
 import { t } from "../../game/i18n";
 import { useAppSettingsStore } from "../../game/settings/appSettings";
 import {
+  BUILDING_GEOMETRY,
   createBuildingHitTargets,
   selectBuildingAtPoint
 } from "../../game/ui/buildingHitboxes";
@@ -69,31 +75,24 @@ type SceneItem = {
 
 const CAMPFIRE_SLOT: Point = { x: 50, y: 58 };
 
-const VISUAL_BUILDING_POINTS: Record<VillageBuildingType, Point> = {
-  clanHall: { x: 50, y: 39 },
-  watchTower: { x: 74, y: 22 },
-  bananaGrove: { x: 25, y: 22 },
-  lumberCamp: { x: 28, y: 69 },
-  stoneQuarry: { x: 79, y: 49 },
-  workerShelter: { x: 21, y: 49 },
-  trainingNest: { x: 69, y: 69 },
-  royalPalace: { x: 49, y: 74 }
-};
+function buildingLayout(type: VillageBuildingType, asset: GameAssetKey) {
+  const geometry = BUILDING_GEOMETRY[type];
+  return { point: geometry.point, size: geometry.size, asset };
+}
 
-// Reference-matched visual composition. The touch geometry mirrors these
-// centers in buildingHitboxes.ts so art and interaction remain aligned.
+// Visual and interaction coordinates share BUILDING_GEOMETRY.
 const BUILDING_LAYOUT: Record<
   VillageBuildingType,
   { point: Point; size: number; asset: GameAssetKey }
 > = {
-  clanHall: { point: VISUAL_BUILDING_POINTS.clanHall, size: 30, asset: "buildingPlayerCamp" },
-  bananaGrove: { point: VISUAL_BUILDING_POINTS.bananaGrove, size: 18, asset: "terrainBananaTree" },
-  lumberCamp: { point: VISUAL_BUILDING_POINTS.lumberCamp, size: 23, asset: "buildingLumberCampReference" },
-  stoneQuarry: { point: VISUAL_BUILDING_POINTS.stoneQuarry, size: 18, asset: "terrainRock" },
-  watchTower: { point: VISUAL_BUILDING_POINTS.watchTower, size: 19, asset: "buildingArcherTower" },
-  workerShelter: { point: VISUAL_BUILDING_POINTS.workerShelter, size: 22, asset: "buildingHut" },
-  trainingNest: { point: VISUAL_BUILDING_POINTS.trainingNest, size: 23, asset: "buildingWarriorBarracks" },
-  royalPalace: { point: VISUAL_BUILDING_POINTS.royalPalace, size: 25, asset: "buildingPlayerCamp" }
+  clanHall: buildingLayout("clanHall", "buildingPlayerCamp"),
+  bananaGrove: buildingLayout("bananaGrove", "terrainBananaTree"),
+  lumberCamp: buildingLayout("lumberCamp", "buildingLumberCampReference"),
+  stoneQuarry: buildingLayout("stoneQuarry", "terrainRock"),
+  watchTower: buildingLayout("watchTower", "buildingArcherTower"),
+  workerShelter: buildingLayout("workerShelter", "buildingHut"),
+  trainingNest: buildingLayout("trainingNest", "buildingWarriorBarracks"),
+  royalPalace: buildingLayout("royalPalace", "royalPalaceLevel0")
 };
 
 export function VillageBoard({
@@ -125,7 +124,7 @@ export function VillageBoard({
   const sceneWidth = Math.min(width - theme.spacing.sm * 2, maxSize);
   const sceneHeight = sceneWidth * (1450 / 941);
   const prevLevelsRef = useRef<Record<string, number>>({});
-  const [upgradeFx, setUpgradeFx] = useState<{ key: number; point: Point; size: number } | null>(null);
+  const [upgradeFx, setUpgradeFx] = useState<{ key: number; point: Point; size: number; type: VillageBuildingType } | null>(null);
   const fxSeq = useRef(0);
   useEffect(() => {
     for (const building of buildings) {
@@ -134,7 +133,7 @@ export function VillageBoard({
       if (previous !== undefined && building.level > previous) {
         const layout = BUILDING_LAYOUT[building.type];
         fxSeq.current += 1;
-        setUpgradeFx({ key: fxSeq.current, point: layout.point, size: layout.size });
+        setUpgradeFx({ key: fxSeq.current, point: layout.point, size: layout.size, type: building.type });
       }
     }
   }, [buildings]);
@@ -202,6 +201,7 @@ export function VillageBoard({
             lumberWorkers={building.type === "lumberCamp" ? lumberWorkers : []}
             stoneWorkers={building.type === "stoneQuarry" ? stoneWorkers : []}
             royalPalaceSlots={building.type === "royalPalace" ? royalPalaceSlots : []}
+            animatePalaceResidents={!reduceAmbientEffects}
             onAccessibilityPress={() => onBuildingPress(building.type)}
           />
         ))}
@@ -269,6 +269,7 @@ export function VillageBoard({
           ]}
         >
           <PulseRing size={Math.round((sceneWidth * upgradeFx.size * 1.5) / 100)} />
+          {upgradeFx.type === "royalPalace" && !reduceAmbientEffects ? <RoyalUpgradeSparkles /> : null}
         </View>
       ) : null}
 
@@ -540,6 +541,7 @@ const MemoBuildingSprite = memo(
     a.lumberWorkers === b.lumberWorkers &&
     a.stoneWorkers === b.stoneWorkers &&
     a.royalPalaceSlots === b.royalPalaceSlots &&
+    a.animatePalaceResidents === b.animatePalaceResidents &&
     a.lang === b.lang
 );
 
@@ -583,14 +585,7 @@ const TIER_PROPS: Record<VillageBuildingType, TierProp[]> = {
     { minLevel: 2, asset: "propTrainingDummy", left: 68, top: 56, size: 40 },
     { minLevel: 4, asset: "propRopeCoil", left: -6, top: 72, size: 28 }
   ],
-  royalPalace: [
-    { minLevel: 1, asset: "propBananaBasket", left: -7, top: 72, size: 25 },
-    { minLevel: 2, asset: "propRopeCoil", left: 75, top: 75, size: 21 },
-    { minLevel: 3, asset: "propCrate", left: 76, top: 70, size: 24 },
-    { minLevel: 4, asset: "propLogPile", left: -5, top: 76, size: 26 },
-    { minLevel: 5, asset: "resourceJungleGem", left: 43, top: 4, size: 18 },
-    { minLevel: 6, asset: "resourceJungleGem", left: 65, top: 8, size: 15 }
-  ]
+  royalPalace: []
 };
 
 const PENNANT_LEVEL = 4;
@@ -657,12 +652,6 @@ const BuildingIdleDetails = memo(function BuildingIdleDetails({ type }: { type: 
   if (type === "lumberCamp") {
     return <Animated.View style={[styles.resourceIdleIcon, { opacity: flicker, transform: [{ rotate: sway }] }]}><AssetImage assetKey="resourceWood" style={styles.full} fallback={<View />} /></Animated.View>;
   }
-  if (type === "royalPalace") {
-    return <>
-      <WavingFlag idle={idle} style={styles.clanFlagLeft} color="#d4a62e" />
-      <WavingFlag idle={idle} style={styles.clanFlagRight} color="#d4a62e" mirrored />
-    </>;
-  }
   return <Animated.View style={[styles.quarryDust, { opacity: idle.interpolate({ inputRange: [0, 0.55, 1], outputRange: [0.08, 0.34, 0.08] }), transform: [{ translateY: idle.interpolate({ inputRange: [0, 1], outputRange: [1, -5] }) }, { scale: idle.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1.15] }) }] }]} />;
 });
 
@@ -684,7 +673,8 @@ function BuildingSprite({
   bananaWorkers,
   lumberWorkers,
   stoneWorkers,
-  royalPalaceSlots
+  royalPalaceSlots,
+  animatePalaceResidents
 }: {
   building: VillageBuilding;
   layout: { point: Point; size: number; asset: GameAssetKey };
@@ -695,6 +685,7 @@ function BuildingSprite({
   lumberWorkers: WorkerExpedition[];
   stoneWorkers: WorkerExpedition[];
   royalPalaceSlots: RoyalPalaceSlotAssignment[];
+  animatePalaceResidents: boolean;
 }) {
   const { point, asset } = layout;
   const size = layout.size;
@@ -724,7 +715,7 @@ function BuildingSprite({
       ) : null}
       {selected ? <View style={styles.buildingSelected} pointerEvents="none" /> : null}
       <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
-      {building.type !== "royalPalace" || building.level > 0 ? <BuildingIdleDetails type={building.type} /> : null}
+      {building.type !== "royalPalace" ? <BuildingIdleDetails type={building.type} /> : null}
       {building.type === "bananaGrove" ? (
         <BananaGroveActivity workers={bananaWorkers} />
       ) : null}
@@ -735,7 +726,7 @@ function BuildingSprite({
         <ResourceWorkplaceActivity kind="stone" workers={stoneWorkers} />
       ) : null}
       {building.type === "royalPalace" ? (
-        <RoyalPalaceResidents assignments={royalPalaceSlots} />
+        <RoyalPalaceResidents assignments={royalPalaceSlots} palaceLevel={building.level} animate={animatePalaceResidents} />
       ) : null}
       {props.map((prop) => (
         <View
@@ -754,7 +745,7 @@ function BuildingSprite({
           </PopIn>
         </View>
       ))}
-      {building.level >= PENNANT_LEVEL ? <Pennant /> : null}
+      {building.type !== "royalPalace" && building.level >= PENNANT_LEVEL ? <Pennant /> : null}
 
       <View style={styles.nameTagWrap} pointerEvents="none">
         <View style={styles.nameTag}>
@@ -807,36 +798,110 @@ function ResourceWorkplaceActivity({ kind, workers }: { kind: "lumber" | "stone"
   </View>;
 }
 
-const PALACE_RESIDENT_SPOTS = [
-  { left: -2, top: 66 },
-  { left: 76, top: 61 },
-  { left: 8, top: 42 },
-  { left: 68, top: 35 },
-  { left: 24, top: 16 },
-  { left: 43, top: 18 }
-] as const;
+function RoyalPalaceResidents({ assignments, palaceLevel, animate }: {
+  assignments: RoyalPalaceSlotAssignment[];
+  palaceLevel: number;
+  animate: boolean;
+}) {
+  const idle = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!animate) {
+      idle.stopAnimation();
+      idle.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(idle, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(idle, { toValue: 0, duration: 3400, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [animate, idle]);
 
-function RoyalPalaceResidents({ assignments }: { assignments: RoyalPalaceSlotAssignment[] }) {
   return <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-    {assignments.map((assignment) => {
+    {assignments.filter((assignment) => {
+      const definition = ROYAL_PALACE_SLOTS.find((slot) => slot.slotId === assignment.slotId);
+      return definition != null && definition.requiredPalaceLevel <= palaceLevel;
+    }).map((assignment) => {
       const appearance = getCosmeticAppearance(
         assignment.equippedMonkeyId,
         assignment.equippedSkinId ?? getDefaultSkinId(assignment.equippedMonkeyId)
       );
-      const slotIndex = ROYAL_PALACE_SLOTS.findIndex((slot) => slot.slotId === assignment.slotId);
-      const spot = PALACE_RESIDENT_SPOTS[slotIndex] ?? PALACE_RESIDENT_SPOTS[0];
+      const spot = ROYAL_PALACE_RESIDENT_SPOTS[assignment.slotId];
       const king = assignment.slotId === "goldenThrone";
-      return <View
+      return <Animated.View
         key={assignment.slotId}
         style={[
           styles.palaceResident,
           king ? styles.palaceKing : null,
-          { left: `${spot.left}%`, top: `${spot.top}%` }
+          {
+            left: `${spot.left}%`,
+            top: `${spot.top}%`,
+            width: `${spot.size}%`,
+            height: `${spot.size}%`,
+            transform: palaceResidentTransform(spot.motion, idle)
+          }
         ]}
       >
+        {king ? <Animated.View style={[styles.palaceKingGlow, { opacity: idle.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.38] }) }]} /> : null}
         <AssetImage assetKey={appearance.villageAsset} style={styles.full} fallback={<View />} hideFallbackOnLoad />
-      </View>;
+      </Animated.View>;
     })}
+  </View>;
+}
+
+function palaceResidentTransform(motion: RoyalPalaceResidentMotion, idle: Animated.Value) {
+  const translateX = idle.interpolate({
+    inputRange: [0, 1],
+    outputRange: motion === "walk" ? [-2.5, 2.5] : motion === "look" || motion === "chief" ? [-1.2, 1.2] : [0, 0]
+  });
+  const translateY = idle.interpolate({
+    inputRange: [0, 1],
+    outputRange: motion === "guard" || motion === "turn" ? [0, -1] : motion === "king" ? [0, -0.5] : [0, 0]
+  });
+  const scale = idle.interpolate({
+    inputRange: [0, 1],
+    outputRange: motion === "king" ? [0.99, 1.01] : [1, 1]
+  });
+  return [{ translateX }, { translateY }, { scale }];
+}
+
+const ROYAL_SPARKLES = [
+  { left: "18%", top: "56%", delay: 0 },
+  { left: "31%", top: "31%", delay: 70 },
+  { left: "48%", top: "19%", delay: 120 },
+  { left: "63%", top: "30%", delay: 50 },
+  { left: "77%", top: "54%", delay: 150 }
+] as const;
+
+function RoyalUpgradeSparkles() {
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 700,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true
+    }).start();
+  }, [progress]);
+  return <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    {ROYAL_SPARKLES.map((sparkle, index) => (
+      <Animated.View
+        key={`${sparkle.left}-${sparkle.top}`}
+        style={[
+          styles.royalSparkle,
+          {
+            left: sparkle.left,
+            top: sparkle.top,
+            opacity: progress.interpolate({ inputRange: [sparkle.delay / 700, 0.75, 1], outputRange: [0, 1, 0] }),
+            transform: [
+              { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [4 + index, -13 - index * 2] }) },
+              { scale: progress.interpolate({ inputRange: [0, 0.45, 1], outputRange: [0.45, 1, 0.3] }) }
+            ]
+          }
+        ]}
+      />
+    ))}
   </View>;
 }
 
@@ -969,9 +1034,7 @@ function assetForBuilding(building: VillageBuilding, fallback: GameAssetKey): Ga
     return "buildingPlayerCamp";
   }
   if (building.type === "royalPalace") {
-    if (building.level >= 5) return "buildingPlayerCampL3";
-    if (building.level >= 2) return "buildingPlayerCampL2";
-    return "buildingHut";
+    return royalPalaceAsset(building.level);
   }
   return fallback;
 }
@@ -998,8 +1061,32 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(12, 25, 14, 0.035)"
   },
-  palaceResident: { position: "absolute", width: "25%", height: "25%", zIndex: 30 },
-  palaceKing: { width: "30%", height: "30%", zIndex: 31 },
+  palaceResident: { position: "absolute", zIndex: 30 },
+  palaceKing: { zIndex: 31 },
+  palaceKingGlow: {
+    position: "absolute",
+    left: "12%",
+    top: "18%",
+    width: "76%",
+    height: "66%",
+    borderRadius: 999,
+    backgroundColor: "#ffd75c",
+    shadowColor: "#ffd75c",
+    shadowOpacity: 0.55,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 }
+  },
+  royalSparkle: {
+    position: "absolute",
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#ffe073",
+    shadowColor: "#ffd04a",
+    shadowOpacity: 0.85,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 }
+  },
   groundLayer: {
     ...StyleSheet.absoluteFillObject,
     opacity: 0.98

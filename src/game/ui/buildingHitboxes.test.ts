@@ -5,6 +5,14 @@ import type { VillageBuildingType } from "../types/game";
 const TYPES = Object.keys(BUILDING_GEOMETRY) as VillageBuildingType[];
 
 describe("Royal Palace hitbox", () => {
+  it("keeps the palace at the top-center prestige point", () => {
+    const palace = BUILDING_GEOMETRY.royalPalace;
+    expect(palace.point.x).toBe(50);
+    for (const type of TYPES.filter((entry) => entry !== "royalPalace")) {
+      expect(palace.point.y, `palace should sit above ${type}`).toBeLessThan(BUILDING_GEOMETRY[type].point.y);
+    }
+  });
+
   it.each([260, 430])("stays selectable without overlapping another building at %ipx", (width) => {
     const height = width * (1450 / 941);
     const targets = createBuildingHitTargets(TYPES, width, height);

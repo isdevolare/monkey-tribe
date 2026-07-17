@@ -24,44 +24,44 @@ export const MIN_BUILDING_HITBOX_PT = 48;
 /** Fixed art geometry plus independently tunable touch geometry, in scene percentages. */
 export const BUILDING_GEOMETRY: Record<VillageBuildingType, BuildingGeometry> = {
   clanHall: {
-    point: { x: 50, y: 39 },
-    size: 30,
-    hitbox: { width: 28, height: 28, offsetY: -5.4 }
+    point: { x: 50, y: 48 },
+    size: 27,
+    hitbox: { width: 25, height: 22, offsetY: -4 }
   },
   bananaGrove: {
-    point: { x: 25, y: 22 },
+    point: { x: 19, y: 38 },
     size: 17,
-    hitbox: { width: 16.5, height: 22, offsetY: -3.1 }
+    hitbox: { width: 16.5, height: 20, offsetY: -3 }
   },
   lumberCamp: {
-    point: { x: 28, y: 69 },
-    size: 21,
-    hitbox: { width: 20, height: 24, offsetY: -3.8 }
+    point: { x: 28, y: 73 },
+    size: 22,
+    hitbox: { width: 20, height: 22, offsetY: -3.5 }
   },
   stoneQuarry: {
-    point: { x: 79, y: 49 },
-    size: 15,
-    hitbox: { width: 20, height: 18, offsetY: -2.7 }
+    point: { x: 82, y: 55 },
+    size: 17,
+    hitbox: { width: 18, height: 18, offsetY: -2.7 }
   },
   watchTower: {
-    point: { x: 74, y: 22 },
-    size: 20,
-    hitbox: { width: 22, height: 22, offsetY: -3.6 }
+    point: { x: 81, y: 38 },
+    size: 19,
+    hitbox: { width: 20, height: 20, offsetY: -3.2 }
   },
   workerShelter: {
-    point: { x: 21, y: 49 },
-    size: 22,
-    hitbox: { width: 24, height: 23, offsetY: -4 }
+    point: { x: 18, y: 55 },
+    size: 21,
+    hitbox: { width: 20, height: 21, offsetY: -3.5 }
   },
   trainingNest: {
-    point: { x: 69, y: 69 },
-    size: 21,
-    hitbox: { width: 20, height: 23, offsetY: -3.8 }
+    point: { x: 72, y: 73 },
+    size: 22,
+    hitbox: { width: 20, height: 22, offsetY: -3.5 }
   },
   royalPalace: {
-    point: { x: 49, y: 74 },
-    size: 25,
-    hitbox: { width: 18, height: 15, offsetY: -4 }
+    point: { x: 50, y: 20 },
+    size: 31,
+    hitbox: { width: 26, height: 15, offsetY: 0 }
   }
 };
 

@@ -8,6 +8,7 @@ import {
   palaceMonkeysForClass,
   royalPrestige
 } from "../../game/config/royalPalace";
+import { ROYAL_PALACE_RESIDENT_SPOTS, royalPalaceAsset } from "../../game/config/royalPalaceVisuals";
 import {
   getCosmeticAppearance,
   getDefaultSkinId,
@@ -200,15 +201,22 @@ function SkinChoice({ label, asset, disabled, lockedLabel, onPress }: { label: s
 }
 
 function PalacePreview({ level, assignments }: { level: number; assignments: ReturnType<typeof useGameStore.getState>["royalPalaceSlots"] }) {
-  const asset = level >= 5 ? "buildingPlayerCampL3" : level >= 2 ? "buildingPlayerCampL2" : "buildingHut";
+  const asset = royalPalaceAsset(level);
   return <View style={styles.preview}>
     <View style={styles.previewGlow} />
     <AssetImage assetKey={asset} style={styles.previewBuilding} fallback={<View />} />
-    {assignments.map((assignment) => {
+    {assignments.filter((assignment) => {
+      const definition = ROYAL_PALACE_SLOTS.find((slot) => slot.slotId === assignment.slotId);
+      return definition != null && definition.requiredPalaceLevel <= level;
+    }).map((assignment) => {
       const appearance = getCosmeticAppearance(assignment.equippedMonkeyId, assignment.equippedSkinId ?? getDefaultSkinId(assignment.equippedMonkeyId));
-      const spots = [{ left: "5%", bottom: 8 }, { right: "5%", bottom: 8 }, { left: "18%", top: 28 }, { right: "18%", top: 28 }, { left: "34%", top: 12 }, { left: "44%", top: 28 }] as const;
-      const slotIndex = ROYAL_PALACE_SLOTS.findIndex((slot) => slot.slotId === assignment.slotId);
-      return <View key={assignment.slotId} style={[styles.previewResident, spots[slotIndex] ?? spots[0], assignment.slotId === "goldenThrone" ? styles.previewKing : null]}>
+      const spot = ROYAL_PALACE_RESIDENT_SPOTS[assignment.slotId];
+      return <View key={assignment.slotId} style={[
+        styles.previewResident,
+        assignment.slotId === "goldenThrone" ? styles.previewKing : null,
+        { left: `${spot.left}%`, top: `${spot.top}%`, width: `${spot.size}%`, height: `${spot.size}%` }
+      ]}>
+        {assignment.slotId === "goldenThrone" ? <View style={styles.previewKingGlow} /> : null}
         <AssetImage assetKey={appearance.villageAsset} style={styles.full} fallback={<View />} />
       </View>;
     })}
@@ -275,7 +283,7 @@ const styles = StyleSheet.create({
   headerCopy: { flex: 1, minWidth: 0 }, title: { color: "#fff0bd", fontSize: 21, fontFamily: theme.fonts.heavy }, levelName: { color: "#d2c293", fontSize: 12, fontFamily: theme.fonts.bold },
   close: { width: 44, height: 44, alignItems: "center", justifyContent: "center" }, closeText: { color: "#fff0bd", fontSize: 28, fontFamily: theme.fonts.heavy },
   content: { padding: 14, paddingBottom: 28 }, description: { color: "#d8ccb0", fontSize: 12, lineHeight: 17, fontFamily: theme.fonts.bold, textAlign: "center" },
-  preview: { height: 178, alignItems: "center", justifyContent: "center", overflow: "hidden", marginTop: 10, borderRadius: 16, backgroundColor: "#294a2b" }, previewGlow: { position: "absolute", width: 190, height: 90, borderRadius: 80, backgroundColor: "rgba(255,210,84,0.14)" }, previewBuilding: { width: 174, height: 174 }, previewResident: { position: "absolute", width: 54, height: 54, zIndex: 4 }, previewKing: { width: 62, height: 62, zIndex: 5 }, full: { width: "100%", height: "100%" },
+  preview: { height: 196, alignItems: "center", justifyContent: "center", overflow: "hidden", marginTop: 10, borderRadius: 16, backgroundColor: "#294a2b" }, previewGlow: { position: "absolute", width: 210, height: 105, borderRadius: 90, backgroundColor: "rgba(255,210,84,0.14)" }, previewBuilding: { width: "96%", height: "96%" }, previewResident: { position: "absolute", zIndex: 4 }, previewKing: { zIndex: 5 }, previewKingGlow: { position: "absolute", left: "10%", top: "17%", width: "80%", height: "68%", borderRadius: 999, backgroundColor: "rgba(255,215,92,0.24)" }, full: { width: "100%", height: "100%" },
   prestigeCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 9, borderRadius: 12, borderWidth: 1, borderColor: "rgba(255,218,109,0.36)", backgroundColor: "rgba(93,67,22,0.45)", paddingHorizontal: 13, paddingVertical: 9 }, prestigeLabel: { color: "#f5dda0", fontSize: 13, fontFamily: theme.fonts.heavy }, prestigeValue: { color: "#ffe16f", fontSize: 20, fontFamily: theme.fonts.heavy },
   sectionTitle: { marginTop: 14, marginBottom: 7, color: "#f2dfaa", fontSize: 15, fontFamily: theme.fonts.heavy }, slotList: { gap: 7 }, slotCard: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: 9, borderRadius: 13, borderWidth: 1, borderColor: "rgba(226,177,90,0.28)", backgroundColor: "rgba(34,50,31,0.92)", padding: 8 }, slotLocked: { opacity: 0.65 }, slotArt: { width: 54, height: 54, overflow: "hidden", borderRadius: 11, backgroundColor: "rgba(10,16,10,0.55)" }, emptyArt: { flex: 1, margin: 12, borderRadius: 20, borderWidth: 1, borderStyle: "dashed", borderColor: "rgba(226,177,90,0.35)" }, slotCopy: { flex: 1, minWidth: 0 }, slotName: { color: "#f5e6bb", fontSize: 12, fontFamily: theme.fonts.heavy }, slotClass: { color: "#c7b884", fontSize: 10, fontFamily: theme.fonts.bold, textTransform: "uppercase" }, slotMeta: { color: "#aeb99c", fontSize: 10, fontFamily: theme.fonts.bold }, lockedText: { color: "#e0a38a", fontSize: 10, fontFamily: theme.fonts.bold }, slotActions: { width: 92, alignItems: "stretch", gap: 6 }, smallButton: { minHeight: 36, alignItems: "center", justifyContent: "center", borderRadius: 9, backgroundColor: "#557d3e", paddingHorizontal: 5 }, smallButtonText: { color: "white", fontSize: 9, fontFamily: theme.fonts.heavy, textAlign: "center" }, removeText: { color: "#e4a18c", fontSize: 9, fontFamily: theme.fonts.bold, textAlign: "center" },
   selector: { marginTop: 11, borderRadius: 15, borderWidth: 1.5, borderColor: "rgba(120,180,97,0.42)", backgroundColor: "rgba(27,42,26,0.96)", padding: 10 }, monkeyChoice: { gap: 8 }, monkeyHeading: { flexDirection: "row", alignItems: "center", gap: 9 }, choicePortrait: { width: 56, height: 56 }, choiceCopy: { flex: 1 }, choiceName: { color: "#f4e2b3", fontSize: 13, fontFamily: theme.fonts.heavy }, skinGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7 }, skinChoice: { width: "31%", minHeight: 112, alignItems: "center", borderRadius: 11, borderWidth: 1, borderColor: "rgba(226,177,90,0.28)", backgroundColor: "rgba(12,19,12,0.62)", padding: 6 }, choiceDisabled: { opacity: 0.45 }, skinArt: { width: 55, height: 55 }, skinName: { color: "#e9d8ad", fontSize: 9, lineHeight: 11, fontFamily: theme.fonts.heavy, textAlign: "center" }, skinLocked: { marginTop: 2, color: "#df9987", fontSize: 7.5, lineHeight: 9, fontFamily: theme.fonts.bold, textAlign: "center" },

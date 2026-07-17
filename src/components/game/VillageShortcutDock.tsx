@@ -24,7 +24,7 @@ const SHORTCUTS: ShortcutDefinition[] = [
   { type: "stoneQuarry", asset: "terrainRock", labelKey: "shortcut.stone" },
   { type: "trainingNest", asset: "buildingWarriorBarracks", labelKey: "shortcut.training" },
   { type: "watchTower", asset: "buildingArcherTower", labelKey: "shortcut.tower" },
-  { type: "royalPalace", asset: "buildingPlayerCampL3", labelKey: "shortcut.palace" }
+  { type: "royalPalace", asset: "royalPalaceLevel6", labelKey: "shortcut.palace" }
 ];
 
 export type VillageShortcutBadges = Partial<Record<VillageBuildingType, number>>;
