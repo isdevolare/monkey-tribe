@@ -56,6 +56,19 @@ export function productionLevelMultiplier(buildingLevel: number) {
   return 1 + 0.1 * (level - 1);
 }
 
+/** Existing v1 worker-yield bonuses. Banana and wood/stone intentionally differ. */
+export function resourceBuildingProductionBonus(
+  type: VillageBuildingType,
+  buildingLevel: number
+) {
+  const level = Number.isFinite(buildingLevel)
+    ? Math.max(1, Math.floor(buildingLevel))
+    : 1;
+  if (type === "bananaGrove") return productionLevelMultiplier(level) - 1;
+  if (type === "lumberCamp" || type === "stoneQuarry") return level * 0.03;
+  return 0;
+}
+
 // Clan Hall level caps how much of each resource the village can stockpile.
 export function storageCap(hallLevel: number) {
   return STORAGE_PER_HALL_LEVEL * Math.max(1, hallLevel);
@@ -67,9 +80,17 @@ export const DEFAULT_BUILDINGS: VillageBuilding[] = BUILDING_ORDER.map((type) =>
   level: type === "royalPalace" ? 0 : 1
 }));
 
-// Worker shelter level drives population capacity.
-export function populationCap(shelterLevel: number) {
-  return 2 + shelterLevel * 2;
+// Single v1 source of truth for all Worker Lodge capacity UI and validation.
+export function workerCapacity(lodgeLevel: number) {
+  const level = Number.isFinite(lodgeLevel)
+    ? Math.max(1, Math.floor(lodgeLevel))
+    : 1;
+  if (level === 1) return 3;
+  if (level === 2) return 5;
+  if (level === 3) return 8;
+  if (level === 4) return 12;
+  if (level === 5) return 15;
+  return 20;
 }
 
 const UPGRADE_BASE: Record<VillageBuildingType, Resources> = {
@@ -124,10 +145,19 @@ export function upgradeCost(type: VillageBuildingType, level: number): Resources
   }
   const base = UPGRADE_BASE[type];
   const factor = Math.pow(1.6, level - 1);
-  return {
+  const rawCost = {
     bananas: Math.round(base.bananas * factor),
     stones: Math.round(base.stones * factor),
     wood: Math.round(base.wood * factor)
+  };
+  if (type !== "clanHall") return rawCost;
+
+  // Hall upgrades must be purchasable without relying on legacy overflow.
+  const currentCapacity = storageCap(level);
+  return {
+    bananas: Math.min(rawCost.bananas, currentCapacity),
+    stones: Math.min(rawCost.stones, currentCapacity),
+    wood: Math.min(rawCost.wood, currentCapacity)
   };
 }
 
@@ -141,7 +171,7 @@ const RESOURCE_KEY: Record<ResourceKind, string> = {
 export function buildingEffect(type: VillageBuildingType, level: number, lang: Lang): string {
   const production = BUILDING_PRODUCTION[type];
   if (production) {
-    const pct = Math.round((productionLevelMultiplier(level) - 1) * 100);
+    const pct = Math.round(resourceBuildingProductionBonus(type, level) * 100);
     return t("fx.expeditionYield", lang, {
       pct,
       res: t(RESOURCE_KEY[production.resource], lang)
@@ -149,7 +179,7 @@ export function buildingEffect(type: VillageBuildingType, level: number, lang: L
   }
 
   if (type === "workerShelter") {
-    return `${t("fx.capacity", lang)} ${populationCap(level)}`;
+    return `${t("fx.capacity", lang)} ${workerCapacity(level)}`;
   }
 
   if (type === "royalPalace") {

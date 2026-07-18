@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { playSound } from "../../game/audio/soundManager";
-import { buildingName, upgradeCost } from "../../game/config/buildings";
+import { buildingName, resourceBuildingProductionBonus, upgradeCost } from "../../game/config/buildings";
 import { t, type Lang } from "../../game/i18n";
 import {
   LUMBER_MISSIONS,
@@ -14,6 +14,7 @@ import {
   expeditionStatus,
   isLumberWorkerClass,
   isStoneWorkerClass,
+  isWorkerRewardFullyStored,
   lumberCampCapacity,
   selectedWorkersFromCounts,
   stoneQuarryCapacity,
@@ -101,12 +102,12 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
   const selectedWorkers = selectedWorkersFromCounts(readyWorkers, selection);
   const storage = kind === "lumber" ? state.lumberCampStorage : state.stoneQuarryStorage;
   const full = storage >= capacity;
-  const completed = mission?.storedReward !== undefined;
+  const completed = mission ? isWorkerRewardFullyStored(mission) : false;
   const selectedMission = LUMBER_MISSIONS[missionTier];
   const potential = calculateWorkerGroupExpectedReward(
     selectedWorkers,
     selectedMission.multiplier,
-    level * 0.03
+    resourceBuildingProductionBonus(config.building, level)
   );
   const workerOrder = kind === "lumber" ? LUMBER_WORKER_ORDER : STONE_WORKER_ORDER;
   const missionExpected = missionWorkers.reduce((sum, worker) => sum + worker.expectedReward, 0);
@@ -137,7 +138,12 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
             <View style={[styles.storageCard, full && styles.storageFull, (completed || storage > 0) && !full && styles.storageReady]}>
               <View style={styles.rowBetween}><View style={styles.row}><AssetImage assetKey={config.resourceAsset} style={styles.resourceIcon} fallback={<View />} /><Text style={styles.storageTitle}>{t(`${config.prefix}.storage`, lang)}</Text></View><Text style={styles.storageAmount}>{Math.floor(storage)} / {capacity}</Text></View>
               <View style={styles.track}><View style={[styles.fill, { width: `${Math.min(100, storage / capacity * 100)}%` }]} /></View>
-              <Text style={styles.bonus}>{t(`${config.prefix}.levelBonus`, lang, { amount: level * 3 })}</Text>
+              <Text style={styles.bonus}>
+                {t("resourceBuilding.bonusProgress", lang, {
+                  current: Math.round(resourceBuildingProductionBonus(config.building, level) * 100),
+                  next: Math.round(resourceBuildingProductionBonus(config.building, level + 1) * 100)
+                })}
+              </Text>
               {(completed || (!mission && storage > 0)) ? <SpringPressable accessibilityRole="button" onPress={collect} style={styles.collectButton}><AssetImage assetKey={config.resourceAsset} style={styles.buttonIcon} fallback={<View />} /><Text style={styles.buttonText}>{t("workerLodge.collect", lang)}</Text></SpringPressable> : null}
             </View>
 
@@ -172,6 +178,7 @@ function ResourceWorkplaceModal({ visible, lang, onClose, onOpenWorkerLodge, kin
                       maxWorkers={RESOURCE_WORKPLACE_MAX_WORKERS}
                       expectedReward={potential}
                       durationLabel={clock(selectedMission.durationMs)}
+                      risk={missionTier}
                       resourceName={t(`res.${config.resource}`, lang)}
                       lang={lang}
                       onChange={setSelection}

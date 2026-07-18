@@ -4,7 +4,8 @@ import { t, type Lang } from "../../game/i18n";
 import type {
   IdleWorker,
   WorkerClass,
-  WorkerCountSelection
+  WorkerCountSelection,
+  WorkerMissionTier
 } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 import { AssetImage } from "./AssetImage";
@@ -17,6 +18,7 @@ export function WorkerDispatchSelector({
   maxWorkers,
   expectedReward,
   durationLabel,
+  risk,
   resourceName,
   lang,
   onChange
@@ -27,6 +29,7 @@ export function WorkerDispatchSelector({
   maxWorkers: number;
   expectedReward: number;
   durationLabel: string;
+  risk: WorkerMissionTier;
   resourceName: string;
   lang: Lang;
   onChange: (selection: WorkerCountSelection) => void;
@@ -91,11 +94,15 @@ export function WorkerDispatchSelector({
       })}
       <View style={styles.summary}>
         <Summary label={t("workerDispatch.total", lang)} value={`${selectedTotal}/${maxWorkers}`} />
-        <Summary label={t("workerDispatch.duration", lang)} value={durationLabel} />
         <Summary
           label={t("workerDispatch.expected", lang)}
           value={`${expectedReward} ${resourceName}`}
-          wide
+        />
+        <Summary label={t("workerDispatch.duration", lang)} value={durationLabel} />
+        <Summary
+          label={t("workerDispatch.risk", lang)}
+          value={t(`workerDispatch.risk.${risk}`, lang)}
+          danger={risk === "dangerous"}
         />
       </View>
       <Text style={styles.warning}>{t("workerDispatch.consumedWarning", lang)}</Text>
@@ -126,11 +133,11 @@ function CountButton({
   );
 }
 
-function Summary({ label, value, wide }: { label: string; value: string; wide?: boolean }) {
+function Summary({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
   return (
-    <View style={[styles.summaryCell, wide && styles.summaryWide]}>
+    <View style={styles.summaryCell}>
       <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue} numberOfLines={1} adjustsFontSizeToFit>
+      <Text style={[styles.summaryValue, danger && styles.summaryDanger]} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
     </View>
@@ -169,9 +176,9 @@ const styles = StyleSheet.create({
   countButtonText: { color: "#fff3c9", fontSize: 22, lineHeight: 24, fontFamily: theme.fonts.heavy },
   count: { width: 28, color: "#ffe5a0", fontSize: 17, textAlign: "center", fontFamily: theme.fonts.heavy },
   summary: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 },
-  summaryCell: { flex: 1, minWidth: "30%", borderRadius: 10, backgroundColor: "rgba(71,52,25,0.55)", padding: 8 },
-  summaryWide: { minWidth: "45%" },
+  summaryCell: { width: "48%", flexGrow: 1, borderRadius: 10, backgroundColor: "rgba(71,52,25,0.55)", padding: 8 },
   summaryLabel: { color: "#b9ad88", fontSize: 8.5, fontFamily: theme.fonts.bold },
   summaryValue: { color: "#ffe3a0", fontSize: 12, fontFamily: theme.fonts.heavy },
+  summaryDanger: { color: "#f1a18e" },
   warning: { color: "#e7a18e", fontSize: 10, textAlign: "center", fontFamily: theme.fonts.bold }
 });

@@ -102,7 +102,11 @@ export type RaidPenalty = {
   amounts: Resources;
 };
 
-export type RaidGemRewardReason = "first-victory" | "first-repeat" | "none";
+export type RaidGemRewardReason =
+  | "first-victory"
+  | "first-repeat"
+  | "stronghold-milestone"
+  | "none";
 
 export type RaidRewardSummary = {
   /** Resources actually added to main storage. */
@@ -323,8 +327,7 @@ export type WorkerProductionStartResult =
   | "invalid"
   | "locked"
   | "capacity-full"
-  | "insufficient-resources"
-  | "already-producing";
+  | "insufficient-resources";
 
 export type WorkerDispatchResult =
   | "sent"
@@ -477,7 +480,7 @@ export type GameState = {
   startGame: () => void;
   hydrate: (save: VillageSave) => void;
   setLanguage: (lang: Lang) => void;
-  queueWorker: (workerClass: WorkerClass) => WorkerProductionStartResult;
+  queueWorker: (workerClass: WorkerClass, count?: number) => WorkerProductionStartResult;
   sendWorkerExpedition: (workerId: string, resource: ResourceKind, missionTier?: WorkerMissionTier) => void;
   sendWorkerExpeditionBatch: (workerIds: string[], resource: ResourceKind, missionTier?: WorkerMissionTier) => WorkerDispatchResult;
   collectWorkerExpedition: (expeditionId: string) => WorkerCollectionSummary | null;

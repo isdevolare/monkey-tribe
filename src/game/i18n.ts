@@ -395,6 +395,10 @@ const dict: Record<string, Entry> = {
   "raid.firstVictoryBadge": { tr: "İlk Zafer Bonusu", en: "First Victory Bonus" },
   "raid.gemReason.firstVictory": { tr: "İlk zafer: {stars} yıldız = {gems} Gem", en: "First victory: {stars} stars = {gems} Gems" },
   "raid.gemReason.firstRepeat": { tr: "İlk tekrar zaferi bonusu: 1 Gem", en: "First repeat victory bonus: 1 Gem" },
+  "raid.gemReason.strongholdMilestone": {
+    tr: "Korsan Kalesi 5 seviye dönüm noktası: 1 Gem",
+    en: "Pirate Stronghold five-level milestone: 1 Gem"
+  },
   "raid.victory": { tr: "Zafer!", en: "Victory!" },
   "raid.defeat": { tr: "Baskın Başarısız", en: "Raid Failed" },
   "raid.retreatResult": { tr: "Geri Çekildin", en: "Retreated" },
@@ -857,6 +861,13 @@ const dict: Record<string, Entry> = {
     tr: "Loca kapasitesi · {used}/{max}",
     en: "Lodge capacity · {used}/{max}"
   },
+  "workerLodge.howItWorksTitle": { tr: "Nasıl Çalışır?", en: "How It Works" },
+  "workerLodge.howItWorksProduce": { tr: "İşçiler burada üretilir.", en: "Workers are produced here." },
+  "workerLodge.howItWorksSend": { tr: "Onları kaynak binalarına gönder.", en: "Send them to resource buildings." },
+  "workerLodge.howItWorksConsumed": {
+    tr: "İşçiler görevlerini tamamladıktan sonra tüketilir.",
+    en: "Workers are consumed after completing jobs."
+  },
   "workerLodge.idle": { tr: "Boşta", en: "Idle" },
   "workerLodge.producing": { tr: "Üretiliyor", en: "Producing" },
   "workerLodge.away": { tr: "Seferde", en: "Away" },
@@ -867,8 +878,13 @@ const dict: Record<string, Entry> = {
     en: "Workers are single-use and leave after their reward is collected."
   },
   "workerLodge.produce": { tr: "Üret", en: "Produce" },
-  "workerLodge.produceWithCost": { tr: "Üret · {amount} {resource}", en: "Produce · {amount} {resource}" },
-  "workerLodge.producingCountdown": { tr: "Üretiliyor · {time}", en: "Producing · {time}" },
+  "workerLodge.batchSize": { tr: "Üretim Adedi", en: "Production Batch" },
+  "workerLodge.batchHint": { tr: "Seçim tüm işçi kartlarına uygulanır.", en: "Applies to every worker card." },
+  "workerLodge.batchProduce": { tr: "×{n} Üret", en: "Produce ×{n}" },
+  "workerLodge.batchCost": { tr: "Toplam maliyet", en: "Total cost" },
+  "workerLodge.batchTime": { tr: "Toplam süre: {time}", en: "Total time: {time}" },
+  "workerLodge.batchNoCapacity": { tr: "Kapasitede {n} yer gerekli", en: "Requires {n} free capacity" },
+  "workerLodge.batchNoResources": { tr: "Kaynak yetersiz", en: "Not enough resources" },
   "workerLodge.productionValue": { tr: "Üretim: {amount}", en: "Production: {amount}" },
   "workerLodge.unlockLevelRequired": { tr: "Loca Sv. {level} gerekli", en: "Lodge Lv. {level} required" },
   "workerLodge.returns": { tr: "Getiri", en: "Returns" },
@@ -882,8 +898,8 @@ const dict: Record<string, Entry> = {
   "workerLodge.queuedStatus": { tr: "Kuyruk · {n}. sıra", en: "Queue · position {n}" },
   "workerLodge.idleTitle": { tr: "Boştaki İşçiler", en: "Idle Workers" },
   "workerLodge.idleSubtitle": {
-    tr: "Hazır işçiyi doğrudan Muz Bahçesi'ne gönder.",
-    en: "Send a ready worker directly to the Banana Grove."
+    tr: "Hazır işçileri ilgili kaynak binasından göreve gönder.",
+    en: "Dispatch ready workers from their resource building."
   },
   "workerLodge.idleEmpty": { tr: "Gönderilmeye hazır işçi yok.", en: "No worker is ready to depart." },
   "workerLodge.expeditionsTitle": { tr: "Aktif Seferler", en: "Active Expeditions" },
@@ -927,10 +943,6 @@ const dict: Record<string, Entry> = {
   },
   "workerLodge.complete": { tr: "Sefer Tamamlandı", en: "Expedition Complete" },
   "workerLodge.returned": { tr: "{name} geri döndü.", en: "{name} returned." },
-  "workerLodge.workerLeaves": {
-    tr: "Ödül toplandıktan sonra işçi locadan kalıcı olarak ayrıldı.",
-    en: "After collection, the worker permanently left the lodge."
-  },
   "workerLodge.continue": { tr: "Harika!", en: "Great!" },
   "worker.gatherer.name": { tr: "Genç Muz Toplayıcısı", en: "Young Banana Gatherer" },
   "worker.skilled.name": { tr: "Deneyimli Muz Toplayıcısı", en: "Experienced Banana Gatherer" },
@@ -952,7 +964,10 @@ const dict: Record<string, Entry> = {
   "lumberCamp.empty": { tr: "Boş", en: "Empty" },
   "lumberCamp.full": { tr: "Depo Dolu", en: "Storage Full" },
   "lumberCamp.ready": { tr: "Toplanmaya Hazır", en: "Ready to Collect" },
-  "lumberCamp.levelBonus": { tr: "Oduncu Kampı Seviye Bonusu: +%{amount}", en: "Lumber Camp Level Bonus: +{amount}%" },
+  "resourceBuilding.bonusProgress": {
+    tr: "Üretim bonusu +%{current} → +%{next}",
+    en: "Production bonus +{current}% → +{next}%"
+  },
   "lumberCamp.activeMission": { tr: "Aktif Kereste Seferi", en: "Active Lumber Mission" },
   "lumberCamp.assignTitle": { tr: "Odun İşçisi Ata", en: "Assign Lumber Worker" },
   "lumberCamp.noWorkers": { tr: "Atanacak hazır Odun İşçisi yok.", en: "No Lumber Worker is ready to assign." },
@@ -988,7 +1003,6 @@ const dict: Record<string, Entry> = {
   "stoneQuarry.empty": { tr: "Boş", en: "Empty" },
   "stoneQuarry.full": { tr: "Depo Dolu", en: "Storage Full" },
   "stoneQuarry.ready": { tr: "Toplanmaya Hazır", en: "Ready to Collect" },
-  "stoneQuarry.levelBonus": { tr: "Taş Ocağı Seviye Bonusu: +%{amount}", en: "Stone Quarry Level Bonus: +{amount}%" },
   "stoneQuarry.activeMission": { tr: "Aktif Taş Seferi", en: "Active Stone Mission" },
   "stoneQuarry.assignTitle": { tr: "Taş İşçisi Ata", en: "Assign Stone Worker" },
   "stoneQuarry.noWorkers": { tr: "Atanacak hazır Taş İşçisi yok.", en: "No Stone Worker is ready to assign." },
@@ -1035,27 +1049,41 @@ const dict: Record<string, Entry> = {
     en: "The worker got lost and returned empty-handed."
   },
   "worker.capacityFull": {
-    tr: "İşçi Locası kapasitesi dolu.",
-    en: "The Worker Lodge is at capacity."
+    tr: "İşçi Locası kapasitesi dolu ({n}/{n}).",
+    en: "The Worker Lodge is at capacity ({n}/{n})."
   },
-  "worker.alreadyProducing": { tr: "{name} zaten üretiliyor.", en: "{name} is already in production." },
-  "worker.productionStarted": { tr: "{name} üretime alındı", en: "{name} entered production" },
+  "worker.productionBatchStarted": {
+    tr: "{n}× {name} üretime alındı",
+    en: "{n}× {name} entered production"
+  },
   "worker.productionReadyIn": { tr: "{seconds} saniye sonra hazır", en: "Ready in {seconds} seconds" },
   "worker.invalidSelection": { tr: "Geçerli bir işçi seçimi yap.", en: "Choose a valid worker selection." },
   "worker.workplaceCapacityFull": { tr: "Kaynak binası en fazla {n} işçi kabul ediyor.", en: "This workplace accepts at most {n} workers." },
   "worker.batchSent": { tr: "{n} işçi {resource} görevine gönderildi.", en: "{n} workers were sent on a {resource} mission." },
   "workerDispatch.tierAvailable": { tr: "Tier {tier} mevcut: {n}", en: "Tier {tier} available: {n}" },
   "workerDispatch.remaining": { tr: "Boşta kalacak: {n}", en: "Remaining idle: {n}" },
-  "workerDispatch.total": { tr: "Gönderilecek", en: "Sending" },
-  "workerDispatch.duration": { tr: "Görev süresi", en: "Duration" },
-  "workerDispatch.expected": { tr: "Beklenen ödül", en: "Expected reward" },
+  "workerDispatch.total": { tr: "Toplam Worker", en: "Total Workers" },
+  "workerDispatch.duration": { tr: "Tahmini Süre", en: "Estimated Duration" },
+  "workerDispatch.expected": { tr: "Tahmini Reward", en: "Estimated Reward" },
+  "workerDispatch.risk": { tr: "Risk", en: "Risk" },
+  "workerDispatch.risk.safe": { tr: "Güvenli", en: "Safe" },
+  "workerDispatch.risk.risky": { tr: "Riskli", en: "Risky" },
+  "workerDispatch.risk.dangerous": { tr: "Çok Riskli", en: "Very Risky" },
   "workerDispatch.consumedWarning": { tr: "Gönderilen işçi sözleşmeleri görev sonunda sona erer.", en: "Dispatched worker contracts end when the mission finishes." },
   "workerDispatch.workerCount": { tr: "{n} İşçi", en: "{n} Workers" },
   "workerDispatch.send": { tr: "Göreve Gönder", en: "Send on Mission" },
   "workerHarvest.completedBody": { tr: "{resource} görevi tamamlandı ve ödül ana depoya taşındı.", en: "The {resource} mission is complete and its reward was moved to main storage." },
+  "workerHarvest.storageTransferredBody": {
+    tr: "Yerel depodaki {resource} ana depoya taşındı. Bekleyen görev ödülü sonraki boş alana aktarılacak.",
+    en: "Stored {resource} moved to main storage. Any pending mission reward will use the next available space."
+  },
   "workerHarvest.oneContractEnded": { tr: "Tamamlanan işçi sözleşmesi sona erdi.", en: "The completed worker contract has ended." },
   "workerHarvest.contractsEnded": { tr: "{n} işçi sözleşmesi sona erdi.", en: "{n} worker contracts have ended." },
   "worker.queued": { tr: "{name} üretim kuyruğuna alındı.", en: "{name} entered production." },
+  "worker.batchQueued": {
+    tr: "{n}× {name} üretim kuyruğuna alındı.",
+    en: "{n}× {name} entered production."
+  },
   "worker.productionReady": { tr: "Yeni işçi sefere hazır!", en: "A new worker is ready!" },
   "worker.expeditionSent": {
     tr: "{name}, {resource} seferine çıktı.",

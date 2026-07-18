@@ -12,9 +12,10 @@ import type {
   WorkerExpeditionOutcome,
   WorkerExpeditionStatus,
   WorkerProductionItem,
-  WorkerProductionStartResult
+  WorkerProductionStartResult,
+  WorkerDispatchResult
 } from "../types/game";
-import { productionLevelMultiplier } from "../config/buildings";
+import { resourceBuildingProductionBonus } from "../config/buildings";
 
 export type WorkerClassDefinition = {
   id: WorkerClass;
@@ -191,18 +192,6 @@ export function sanitizeBananaGroveStorage(value: unknown, capacity: number) {
   );
 }
 
-export function workerCapacity(lodgeLevel: number) {
-  const level = Number.isFinite(lodgeLevel)
-    ? Math.max(1, Math.floor(lodgeLevel))
-    : 1;
-  if (level === 1) return 3;
-  if (level === 2) return 5;
-  if (level === 3) return 8;
-  if (level === 4) return 12;
-  if (level === 5) return 15;
-  return 20;
-}
-
 export function isWorkerClass(value: unknown): value is WorkerClass {
   return typeof value === "string" && value in WORKER_CLASSES;
 }
@@ -314,7 +303,7 @@ export function sanitizeWorkerExpeditions(
         typeof expedition.storedReward === "number" &&
         Number.isFinite(expedition.storedReward) &&
         expedition.storedReward >= 0
-          ? Math.round(expedition.storedReward)
+          ? Math.min(Math.round(expedition.reward), Math.round(expedition.storedReward))
           : undefined,
       missionTier:
         isWorkerResource(expedition.resource) &&
@@ -346,14 +335,23 @@ export function reconcileResourceWorkplace(
   let changed = nextStorage !== storage;
   let completed = 0;
   const nextExpeditions = expeditions.map((expedition) => {
-    if (expedition.resource !== resource || expedition.returnsAt > now || expedition.storedReward !== undefined) {
+    if (expedition.resource !== resource || expedition.returnsAt > now) {
       return expedition;
     }
-    const credited = Math.min(Math.max(0, capacity - nextStorage), expedition.reward);
+    const alreadyStored = Math.max(0, expedition.storedReward ?? 0);
+    const remainingReward = Math.max(0, expedition.reward - alreadyStored);
+    if (remainingReward <= 0) {
+      if (expedition.storedReward !== undefined) return expedition;
+      completed += 1;
+      changed = true;
+      return { ...expedition, storedReward: 0 };
+    }
+    const credited = Math.min(Math.max(0, capacity - nextStorage), remainingReward);
+    if (credited <= 0) return expedition;
     nextStorage += credited;
     completed += 1;
     changed = true;
-    return { ...expedition, storedReward: credited };
+    return { ...expedition, storedReward: alreadyStored + credited };
   });
   return { expeditions: changed ? nextExpeditions : expeditions, storage: nextStorage, completed };
 }
@@ -432,6 +430,13 @@ export function expeditionStatus(
   const duration = Math.max(1, expedition.returnsAt - expedition.startedAt);
   const returnPhaseAt = expedition.startedAt + duration * 0.8;
   return now >= returnPhaseAt ? "returning" : "active";
+}
+
+export function isWorkerRewardFullyStored(expedition: WorkerExpedition) {
+  return (
+    expedition.storedReward !== undefined &&
+    expedition.storedReward >= expedition.reward
+  );
 }
 
 function stableRoll(seed: string) {
@@ -515,28 +520,43 @@ export function evaluateWorkerProductionStart({
   managedWorkers,
   capacity,
   resources,
-  queue
+  count = 1
 }: {
   workerClass: WorkerClass;
   lodgeLevel: number;
   managedWorkers: number;
   capacity: number;
   resources: Resources;
-  queue: readonly WorkerProductionItem[];
+  count?: number;
 }): WorkerProductionStartResult {
   const definition = WORKER_CLASSES[workerClass];
-  if (!definition) return "invalid";
-  if (managedWorkers >= capacity) return "capacity-full";
+  const safeCount = Number.isFinite(count) ? Math.floor(count) : 0;
+  if (!definition || safeCount <= 0) return "invalid";
+  if (managedWorkers + safeCount > capacity) return "capacity-full";
   if (lodgeLevel < (definition.unlockLodgeLevel ?? 1)) return "locked";
-  if (queue.some((item) => item.workerClass === workerClass)) return "already-producing";
   if (
-    resources.bananas < definition.cost.bananas ||
-    resources.stones < definition.cost.stones ||
-    resources.wood < definition.cost.wood
+    resources.bananas < definition.cost.bananas * safeCount ||
+    resources.stones < definition.cost.stones * safeCount ||
+    resources.wood < definition.cost.wood * safeCount
   ) {
     return "insufficient-resources";
   }
   return "queued";
+}
+
+/** Quest credit is tied to an accepted queue action, never reconciliation/reload. */
+export function workerProductionQuestCredit(
+  result: WorkerProductionStartResult,
+  count: number
+) {
+  return result === "queued" && Number.isFinite(count)
+    ? Math.max(0, Math.floor(count))
+    : 0;
+}
+
+/** A multi-worker dispatch is one workShift action by the existing product rule. */
+export function workerDispatchQuestCredit(result: WorkerDispatchResult) {
+  return result === "sent" ? 1 : 0;
 }
 
 export function workerDispatchId(expedition: WorkerExpedition) {
@@ -596,7 +616,10 @@ export function createResourceWorkerExpedition(
   }
   const definition = WORKER_CLASSES[worker.workerClass];
   const mission = WORKER_MISSIONS[missionTier];
-  const buildingBonus = Math.max(0, Math.floor(buildingLevel)) * 0.03;
+  const buildingBonus = resourceBuildingProductionBonus(
+    resource === "wood" ? "lumberCamp" : "stoneQuarry",
+    buildingLevel
+  );
   const expectedReward = calculateWorkerExpectedReward(
     definition.baseYield,
     mission.multiplier,
@@ -703,7 +726,7 @@ export function createWorkerExpeditionBatch(
               resource,
               now,
               WORKER_MISSIONS[missionTier].multiplier,
-              productionLevelMultiplier(buildingLevel) - 1,
+              resourceBuildingProductionBonus("bananaGrove", buildingLevel),
               missionTier
             );
     return { ...expedition, dispatchId };

@@ -10,7 +10,7 @@ import {
   View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { buildingName, storageCap } from "../../game/config/buildings";
+import { buildingName, storageCap, workerCapacity } from "../../game/config/buildings";
 import {
   BANANA_WORKER_ASSETS,
   LUMBER_WORKER_ASSETS,
@@ -26,16 +26,9 @@ import {
   LUMBER_WORKER_ORDER,
   STONE_WORKER_ORDER,
   WORKER_RESOURCE_ORDER,
-  BANANA_GROVE_MAX_WORKERS,
-  bananaGroveCapacity,
   expeditionStatus,
   groupWorkerExpeditions,
-  managedWorkerCount,
-  isLumberWorkerClass,
-  isStoneWorkerClass,
-  lumberCampCapacity,
-  stoneQuarryCapacity,
-  workerCapacity
+  managedWorkerCount
 } from "../../game/state/workerExpeditions";
 import {
   evaluateWorkerLodgeUpgrade,
@@ -46,8 +39,6 @@ import type {
   ResourceKind,
   Resources,
   WorkerClass,
-  WorkerCollectionSummary,
-  WorkerProductionItem,
   WorkerProductionStartResult,
   WorkerExpeditionStatus
 } from "../../game/types/game";
@@ -61,6 +52,9 @@ type WorkerLodgeModalProps = {
   lang: Lang;
   onClose: () => void;
 };
+
+const BATCH_SIZES = [1, 5, 10] as const;
+type WorkerBatchSize = (typeof BATCH_SIZES)[number];
 
 const RESOURCE_ASSETS: Record<
   ResourceKind,
@@ -117,6 +111,11 @@ function workerName(workerClass: WorkerClass, lang: Lang) {
   return t(`worker.${workerClass}.name`, lang);
 }
 
+function workerTier(workerClass: WorkerClass) {
+  const classes = [...WORKER_CLASS_ORDER, ...LUMBER_WORKER_ORDER, ...STONE_WORKER_ORDER];
+  return (classes.indexOf(workerClass) % 3) + 1;
+}
+
 function resourceName(resource: ResourceKind, lang: Lang) {
   return t(`res.${resource}`, lang);
 }
@@ -145,9 +144,10 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
   const state = useGameStore();
   const insets = useSafeAreaInsets();
   const [now, setNow] = useState(Date.now());
-  const [collection, setCollection] = useState<WorkerCollectionSummary | null>(null);
+  const [batchSize, setBatchSize] = useState<WorkerBatchSize>(1);
   const [productionToast, setProductionToast] = useState<{
     workerClass: WorkerClass;
+    count: number;
     readyInMs: number;
   } | null>(null);
   const [productionError, setProductionError] = useState<string | null>(null);
@@ -201,31 +201,20 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
       })),
     [state.idleWorkers]
   );
-  const bananaAssignments = state.workerExpeditions.filter(
-    (expedition) => expedition.resource === "bananas"
-  ).length;
-  const groveLevel = state.buildings.find((building) => building.type === "bananaGrove")?.level ?? 1;
-  const groveFull = state.bananaGroveStorage >= bananaGroveCapacity(groveLevel);
-  const lumberLevel = state.buildings.find((building) => building.type === "lumberCamp")?.level ?? 1;
-  const lumberFull = state.lumberCampStorage >= lumberCampCapacity(lumberLevel);
-  const lumberBusy = state.workerExpeditions.some((expedition) => expedition.resource === "wood");
-  const stoneLevel = state.buildings.find((building) => building.type === "stoneQuarry")?.level ?? 1;
-  const stoneFull = state.stoneQuarryStorage >= stoneQuarryCapacity(stoneLevel);
-  const stoneBusy = state.workerExpeditions.some((expedition) => expedition.resource === "stones");
   const expeditionGroups = useMemo(
     () => groupWorkerExpeditions(state.workerExpeditions),
     [state.workerExpeditions]
   );
 
-  function queueWorker(workerClass: WorkerClass): WorkerProductionStartResult {
-    const result = state.queueWorker(workerClass);
+  function queueWorker(workerClass: WorkerClass, count: WorkerBatchSize): WorkerProductionStartResult {
+    const result = state.queueWorker(workerClass, count);
     if (result === "queued") {
       setProductionError(null);
-      const item = useGameStore
-        .getState()
-        .workerProductionQueue.find((entry) => entry.workerClass === workerClass);
+      const queue = useGameStore.getState().workerProductionQueue;
+      const item = queue[queue.length - 1];
       setProductionToast({
         workerClass,
+        count,
         readyInMs: Math.max(0, (item?.finishesAt ?? Date.now()) - Date.now())
       });
     } else {
@@ -233,14 +222,6 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
       setProductionError(useGameStore.getState().feedback?.text ?? t("worker.invalidSelection", lang));
     }
     return result;
-  }
-
-  function collect(expeditionId: string) {
-    const result = state.collectWorkerExpedition(expeditionId);
-    if (result) {
-      playSound("reward");
-      setCollection(result);
-    }
   }
 
   return (
@@ -290,7 +271,8 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
           {productionToast ? (
             <View style={styles.productionToast} pointerEvents="none">
               <Text style={styles.productionToastTitle}>
-                {t("worker.productionStarted", lang, {
+                {t("worker.productionBatchStarted", lang, {
+                  n: productionToast.count,
                   name: workerName(productionToast.workerClass, lang)
                 })}
               </Text>
@@ -335,6 +317,15 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
               />
             </View>
 
+            <View style={styles.explanationCard}>
+              <Text style={styles.explanationTitle}>{t("workerLodge.howItWorksTitle", lang)}</Text>
+              <ExplanationLine index={1} text={t("workerLodge.howItWorksProduce", lang)} />
+              <ExplanationLine index={2} text={t("workerLodge.howItWorksSend", lang)} />
+              <ExplanationLine index={3} text={t("workerLodge.howItWorksConsumed", lang)} />
+            </View>
+
+            <BatchSelector value={batchSize} lang={lang} onChange={setBatchSize} />
+
             <SectionTitle
               title={t("workerLodge.produceTitle", lang)}
               subtitle={t("workerLodge.produceSubtitle", lang)}
@@ -348,8 +339,9 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                   target={buildingName("bananaGrove", lang)}
                   artwork={BANANA_WORKER_ASSETS[workerClass]}
                   lodgeLevel={lodgeLevel}
-                  queueItem={state.workerProductionQueue.find((item) => item.workerClass === workerClass)}
-                  now={now}
+                  batchSize={batchSize}
+                  freeCapacity={Math.max(0, capacity - managed)}
+                  resources={state.resources}
                   lang={lang}
                   onQueue={queueWorker}
                 />
@@ -369,8 +361,9 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                   target={buildingName("lumberCamp", lang)}
                   artwork={LUMBER_WORKER_ASSETS[workerClass]}
                   lodgeLevel={lodgeLevel}
-                  queueItem={state.workerProductionQueue.find((item) => item.workerClass === workerClass)}
-                  now={now}
+                  batchSize={batchSize}
+                  freeCapacity={Math.max(0, capacity - managed)}
+                  resources={state.resources}
                   lang={lang}
                   onQueue={queueWorker}
                 />
@@ -390,8 +383,9 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                   target={buildingName("stoneQuarry", lang)}
                   artwork={STONE_WORKER_ASSETS[workerClass]}
                   lodgeLevel={lodgeLevel}
-                  queueItem={state.workerProductionQueue.find((item) => item.workerClass === workerClass)}
-                  now={now}
+                  batchSize={batchSize}
+                  freeCapacity={Math.max(0, capacity - managed)}
+                  resources={state.resources}
                   lang={lang}
                   onQueue={queueWorker}
                 />
@@ -410,7 +404,14 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                   <View key={item.id} style={styles.queueRow}>
                     <WorkerMotion workerClass={item.workerClass} status={index === 0 ? "producing" : "queued"} />
                     <View style={styles.flexCopy}>
-                      <Text style={styles.rowTitle}>{workerName(item.workerClass, lang)}</Text>
+                      <View style={styles.queueTitleRow}>
+                        <View style={styles.queueTierBadge}>
+                          <Text style={styles.queueTierText}>T{workerTier(item.workerClass)}</Text>
+                        </View>
+                        <Text style={styles.rowTitle} numberOfLines={1}>
+                          {workerName(item.workerClass, lang)}
+                        </Text>
+                      </View>
                       <Text style={styles.rowMeta}>
                         {index === 0
                           ? t("workerLodge.producingStatus", lang)
@@ -434,8 +435,6 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                 idleByClass
                   .filter((group) => group.workers.length > 0)
                   .map((group) => {
-                    const firstWorker = group.workers[0];
-                    if (!firstWorker) return null;
                     return (
                       <View key={group.workerClass} style={styles.idleGroup}>
                         <View style={styles.idleHeader}>
@@ -449,49 +448,6 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                           <Text style={styles.rowTitle}>
                             {workerName(group.workerClass, lang)} ×{group.workers.length}
                           </Text>
-                        </View>
-                        <View style={styles.destinationRow}>
-                          {isLumberWorkerClass(group.workerClass) || isStoneWorkerClass(group.workerClass) ? (() => {
-                            const stoneWorker = isStoneWorkerClass(group.workerClass);
-                            const blocked = stoneWorker ? stoneBusy || stoneFull : lumberBusy || lumberFull;
-                            return (
-                              <SpringPressable
-                                accessibilityRole="button"
-                                accessibilityState={{ disabled: blocked }}
-                                disabled={blocked}
-                                onPress={() => state.sendWorkerExpedition(
-                                  firstWorker.id,
-                                  stoneWorker ? "stones" : "wood",
-                                  "safe"
-                                )}
-                                style={[styles.destinationButton, blocked ? styles.disabledButton : null]}
-                              >
-                                <AssetImage assetKey={stoneWorker ? "resourceStone" : "resourceWood"} style={styles.destinationIcon} fallback={<View />} />
-                                <Text style={styles.destinationText} numberOfLines={2}>
-                                  {t(stoneWorker ? "stoneQuarry.assignThere" : "lumberCamp.assignThere", lang)}
-                                </Text>
-                              </SpringPressable>
-                            );
-                          })() : <SpringPressable
-                            accessibilityRole="button"
-                            accessibilityState={{
-                              disabled:
-                                bananaAssignments >= BANANA_GROVE_MAX_WORKERS || groveFull
-                            }}
-                            disabled={bananaAssignments >= BANANA_GROVE_MAX_WORKERS || groveFull}
-                            onPress={() => state.sendWorkerExpedition(firstWorker.id, "bananas")}
-                            style={[
-                              styles.destinationButton,
-                              bananaAssignments >= BANANA_GROVE_MAX_WORKERS || groveFull
-                                ? styles.disabledButton
-                                : null
-                            ]}
-                          >
-                            <AssetImage assetKey="resourceBanana" style={styles.destinationIcon} fallback={<View />} />
-                            <Text style={styles.destinationText} numberOfLines={1}>
-                              {t("bananaGrove.send", lang)}
-                            </Text>
-                          </SpringPressable>}
                         </View>
                       </View>
                     );
@@ -551,15 +507,7 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
                           {t("workerLodge.expected", lang, { amount: expectedReward })}
                         </Text>
                       </View>
-                      {status === "completed" && expedition.resource !== "bananas" && expedition.resource !== "wood" && expedition.resource !== "stones" ? (
-                        <SpringPressable
-                          accessibilityRole="button"
-                          onPress={() => collect(expedition.id)}
-                          style={styles.collectButton}
-                        >
-                          <Text style={styles.collectButtonText}>{t("workerLodge.collect", lang)}</Text>
-                        </SpringPressable>
-                      ) : status === "completed" ? (
+                      {status === "completed" ? (
                         <Text style={styles.groveCollectHint}>{t(expedition.resource === "wood" ? "lumberCamp.collectThere" : expedition.resource === "stones" ? "stoneQuarry.collectThere" : "bananaGrove.collectThere", lang)}</Text>
                       ) : (
                         <Text style={styles.timer}>{formatTime(returnsAt - now)}</Text>
@@ -652,13 +600,6 @@ export function WorkerLodgeModal({ visible, lang, onClose }: WorkerLodgeModalPro
             </Text>
           </ScrollView>
 
-          {collection ? (
-            <CollectionPopup
-              summary={collection}
-              lang={lang}
-              onClose={() => setCollection(null)}
-            />
-          ) : null}
         </View>
       </View>
     </Modal>
@@ -671,8 +612,9 @@ function WorkerProductionCard({
   target,
   artwork,
   lodgeLevel,
-  queueItem,
-  now,
+  batchSize,
+  freeCapacity,
+  resources,
   lang,
   onQueue
 }: {
@@ -681,22 +623,32 @@ function WorkerProductionCard({
   target: string;
   artwork: GameAssetKey;
   lodgeLevel: number;
-  queueItem?: WorkerProductionItem;
-  now: number;
+  batchSize: WorkerBatchSize;
+  freeCapacity: number;
+  resources: Resources;
   lang: Lang;
-  onQueue: (workerClass: WorkerClass) => WorkerProductionStartResult;
+  onQueue: (workerClass: WorkerClass, count: WorkerBatchSize) => WorkerProductionStartResult;
 }) {
   const definition = WORKER_CLASSES[workerClass];
   const requiredLevel = definition.unlockLodgeLevel ?? 1;
   const locked = lodgeLevel < requiredLevel;
-  const disabled = locked || queueItem != null;
   const glow = useRef(new Animated.Value(0)).current;
   const costResource = WORKER_RESOURCE_ORDER.find(
     (resource) => definition.cost[resource] > 0
   ) ?? "bananas";
+  const totalCost: Resources = {
+    bananas: definition.cost.bananas * batchSize,
+    stones: definition.cost.stones * batchSize,
+    wood: definition.cost.wood * batchSize
+  };
+  const insufficientCapacity = freeCapacity < batchSize;
+  const insufficientResources = WORKER_RESOURCE_ORDER.some(
+    (resource) => resources[resource] < totalCost[resource]
+  );
+  const disabled = locked || insufficientCapacity || insufficientResources;
 
   function produce() {
-    const result = onQueue(workerClass);
+    const result = onQueue(workerClass, batchSize);
     if (result !== "queued") return;
     glow.setValue(0);
     Animated.sequence([
@@ -707,14 +659,11 @@ function WorkerProductionCard({
 
   const buttonLabel = locked
     ? t("workerLodge.unlockLevelRequired", lang, { level: requiredLevel })
-    : queueItem
-      ? t("workerLodge.producingCountdown", lang, {
-          time: formatTime(queueItem.finishesAt - now)
-        })
-      : t("workerLodge.produceWithCost", lang, {
-          amount: definition.cost[costResource],
-          resource: resourceName(costResource, lang)
-        });
+    : insufficientCapacity
+      ? t("workerLodge.batchNoCapacity", lang, { n: batchSize })
+      : insufficientResources
+        ? t("workerLodge.batchNoResources", lang)
+        : t("workerLodge.batchProduce", lang, { n: batchSize });
 
   return (
     <View
@@ -750,6 +699,21 @@ function WorkerProductionCard({
       <Text style={styles.productionValue}>
         {t("workerLodge.productionValue", lang, { amount: definition.baseYield })}
       </Text>
+      <Text style={styles.batchMetaLabel}>{t("workerLodge.batchCost", lang)}</Text>
+      <View style={styles.batchCostLine}>
+        <AssetImage
+          assetKey={RESOURCE_ASSETS[costResource]}
+          style={styles.batchCostIcon}
+          fallback={<View />}
+          hideFallbackOnLoad
+        />
+        <Text style={styles.batchCostValue}>{totalCost[costResource]}</Text>
+      </View>
+      <Text style={styles.batchTime} numberOfLines={1} adjustsFontSizeToFit>
+        {t("workerLodge.batchTime", lang, {
+          time: formatTime(definition.productionMs * batchSize)
+        })}
+      </Text>
       <SpringPressable
         accessibilityRole="button"
         accessibilityState={{ disabled }}
@@ -761,6 +725,51 @@ function WorkerProductionCard({
           {buttonLabel}
         </Text>
       </SpringPressable>
+    </View>
+  );
+}
+
+function BatchSelector({
+  value,
+  lang,
+  onChange
+}: {
+  value: WorkerBatchSize;
+  lang: Lang;
+  onChange: (value: WorkerBatchSize) => void;
+}) {
+  return (
+    <View style={styles.batchPanel}>
+      <View style={styles.batchCopy}>
+        <Text style={styles.batchTitle}>{t("workerLodge.batchSize", lang)}</Text>
+        <Text style={styles.batchHint}>{t("workerLodge.batchHint", lang)}</Text>
+      </View>
+      <View style={styles.batchButtons}>
+        {BATCH_SIZES.map((count) => (
+          <SpringPressable
+            key={count}
+            accessibilityRole="button"
+            accessibilityState={{ selected: value === count }}
+            onPress={() => onChange(count)}
+            style={[styles.batchButton, value === count && styles.batchButtonSelected]}
+          >
+            <Text style={[styles.batchButtonText, value === count && styles.batchButtonTextSelected]}>
+              ×{count}
+            </Text>
+          </SpringPressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ExplanationLine({ index, text }: { index: number; text: string }) {
+  return (
+    <View style={styles.explanationLine}>
+      <View style={styles.explanationIndex}>
+        <Text style={styles.explanationIndexText}>{index}</Text>
+      </View>
+      <Text style={styles.explanationText}>{text}</Text>
     </View>
   );
 }
@@ -874,62 +883,6 @@ function WorkerMotion({
   );
 }
 
-function CollectionPopup({
-  summary,
-  lang,
-  onClose
-}: {
-  summary: WorkerCollectionSummary;
-  lang: Lang;
-  onClose: () => void;
-}) {
-  const scale = useRef(new Animated.Value(0.82)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: 1, friction: 7, tension: 90, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true })
-    ]).start();
-  }, [opacity, scale]);
-  return (
-    <View style={styles.resultScrim}>
-      <Animated.View style={[styles.resultCard, { opacity, transform: [{ scale }] }]}>
-        <NineSliceFrame preset="card" cornerSize={26} style={StyleSheet.absoluteFill} />
-        <Text style={styles.resultKicker}>{t("workerLodge.complete", lang)}</Text>
-        <View style={styles.resultWorker}>
-          <AssetImage
-            assetKey={WORKER_ASSETS[summary.workerClass]}
-            style={styles.resultWorkerArt}
-            resizeMode="contain"
-            fallback={<View />}
-            hideFallbackOnLoad
-          />
-          <View pointerEvents="none" style={styles.resultBackpack}>
-            <AssetImage assetKey="propBananaBasket" style={styles.basketArt} fallback={<View />} hideFallbackOnLoad />
-          </View>
-        </View>
-        <Text style={styles.resultTitle}>
-          {t("workerLodge.returned", lang, { name: workerName(summary.workerClass, lang) })}
-        </Text>
-        <Text style={styles.outcomeText}>{t(`worker.outcome.${summary.outcome}`, lang)}</Text>
-        <View style={styles.resultReward}>
-          <AssetImage
-            assetKey={RESOURCE_ASSETS[summary.resource]}
-            style={styles.resultResource}
-            fallback={<View />}
-          />
-          <Text style={styles.resultAmount}>+{Math.floor(summary.collected)}</Text>
-          <Text style={styles.resultResourceName}>{resourceName(summary.resource, lang)}</Text>
-        </View>
-        <Text style={styles.workerLeaves}>{t("workerLodge.workerLeaves", lang)}</Text>
-        <SpringPressable accessibilityRole="button" onPress={onClose} style={styles.resultButton}>
-          <Text style={styles.resultButtonText}>{t("workerLodge.continue", lang)}</Text>
-        </SpringPressable>
-      </Animated.View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   scrim: {
     flex: 1,
@@ -1023,6 +976,61 @@ const styles = StyleSheet.create({
   summaryPillReady: { borderColor: "#80d160", backgroundColor: "rgba(51, 100, 36, 0.65)" },
   summaryValue: { color: "#ffe39a", fontSize: 18, fontWeight: "900", fontFamily: theme.fonts.heavy },
   summaryLabel: { color: "#cfc29b", fontSize: 9, fontWeight: "800", fontFamily: theme.fonts.bold },
+  explanationCard: {
+    gap: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(146, 197, 105, 0.36)",
+    backgroundColor: "rgba(28, 54, 24, 0.72)"
+  },
+  explanationTitle: {
+    marginBottom: 1,
+    color: "#f4dfa0",
+    fontSize: 13,
+    fontWeight: "900",
+    fontFamily: theme.fonts.heavy
+  },
+  explanationLine: { flexDirection: "row", alignItems: "center", gap: 8 },
+  explanationIndex: {
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    backgroundColor: "#5e9e45"
+  },
+  explanationIndexText: { color: "white", fontSize: 10, fontWeight: "900" },
+  explanationText: { flex: 1, color: "#d9dfc5", fontSize: 10.5, fontFamily: theme.fonts.bold },
+  batchPanel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(226, 185, 99, 0.35)",
+    backgroundColor: "rgba(48, 34, 16, 0.74)"
+  },
+  batchCopy: { flex: 1, minWidth: 0 },
+  batchTitle: { color: "#ffe39a", fontSize: 13, fontWeight: "900", fontFamily: theme.fonts.heavy },
+  batchHint: { color: "#b7ad91", fontSize: 9.5, fontFamily: theme.fonts.bold },
+  batchButtons: { flexDirection: "row", gap: 5 },
+  batchButton: {
+    minWidth: 44,
+    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: "rgba(225, 189, 106, 0.35)",
+    backgroundColor: "rgba(16, 25, 13, 0.78)"
+  },
+  batchButtonSelected: { borderColor: "#d9bb62", backgroundColor: "#6e4d20" },
+  batchButtonText: { color: "#bfb698", fontSize: 13, fontWeight: "900", fontFamily: theme.fonts.heavy },
+  batchButtonTextSelected: { color: "#fff1b8" },
   sectionHeader: { marginTop: 8, gap: 2 },
   sectionTitle: { color: "#fff0bd", fontSize: 17, fontWeight: "900", fontFamily: theme.fonts.heavy },
   sectionSubtitle: { color: "#aeb995", fontSize: 11, fontFamily: theme.fonts.regular },
@@ -1030,7 +1038,7 @@ const styles = StyleSheet.create({
   workerCard: {
     flex: 1,
     minWidth: 0,
-    minHeight: 215,
+    minHeight: 265,
     alignItems: "center",
     overflow: "hidden",
     padding: 7,
@@ -1064,9 +1072,11 @@ const styles = StyleSheet.create({
   },
   workerMeta: { width: "100%", color: "#c4cbaa", fontSize: 8.5, textAlign: "center", fontFamily: theme.fonts.bold },
   productionValue: { marginTop: 4, color: "#9be67b", fontSize: 10.5, textAlign: "center", fontFamily: theme.fonts.heavy },
-  rewardLine: { flexDirection: "row", alignItems: "baseline", gap: 3, marginTop: 3 },
-  rewardLabel: { color: "#aeb995", fontSize: 9 },
-  rewardValue: { color: "#8fe26f", fontSize: 12, fontWeight: "900" },
+  batchMetaLabel: { marginTop: 5, color: "#9d9f86", fontSize: 8.5, fontFamily: theme.fonts.bold },
+  batchCostLine: { minHeight: 21, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3 },
+  batchCostIcon: { width: 19, height: 19 },
+  batchCostValue: { color: "#f4dd9b", fontSize: 12, fontWeight: "900", fontFamily: theme.fonts.heavy },
+  batchTime: { width: "100%", color: "#c4cbaa", fontSize: 9, textAlign: "center", fontFamily: theme.fonts.bold },
   costRow: { minHeight: 24, flexDirection: "row", justifyContent: "center", gap: 3, marginTop: 4 },
   costRowCompact: { justifyContent: "flex-end", marginTop: 0 },
   costChip: { flexDirection: "row", alignItems: "center", gap: 1 },
@@ -1111,30 +1121,24 @@ const styles = StyleSheet.create({
   backpackBadge: { position: "absolute", right: -4, bottom: -3, width: 24, height: 24 },
   basketArt: { width: "100%", height: "100%" },
   flexCopy: { flex: 1, minWidth: 0 },
+  queueTitleRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  queueTierBadge: {
+    minWidth: 25,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: "rgba(213, 170, 79, 0.85)"
+  },
+  queueTierText: { color: "#292013", fontSize: 9, fontWeight: "900", fontFamily: theme.fonts.heavy },
   rowTitle: { color: "#fff0bd", fontSize: 13, fontWeight: "900", fontFamily: theme.fonts.heavy },
   rowMeta: { color: "#b4bea0", fontSize: 10.5, fontFamily: theme.fonts.bold },
   timer: { color: "#9be77b", fontSize: 14, fontWeight: "900", fontVariant: ["tabular-nums"] },
   emptyText: { color: "#87947b", fontSize: 12, textAlign: "center", paddingVertical: 18, paddingHorizontal: 10 },
   idleGroup: { padding: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(226, 185, 99, 0.2)" },
-  idleHeader: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 7 },
+  idleHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
   smallPortrait: { width: 34, height: 34 },
-  destinationRow: { flexDirection: "row", gap: 6 },
-  destinationButton: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 43,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 3,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(139, 205, 99, 0.55)",
-    backgroundColor: "rgba(55, 102, 42, 0.72)"
-  },
-  destinationIcon: { width: 22, height: 22 },
-  destinationText: { flexShrink: 1, color: "#f7edc8", fontSize: 10, fontWeight: "900", fontFamily: theme.fonts.bold },
   expeditionRow: {
     minHeight: 80,
     flexDirection: "row",
@@ -1149,18 +1153,6 @@ const styles = StyleSheet.create({
   expeditionDestination: { flexDirection: "row", alignItems: "center", gap: 3 },
   tinyResource: { width: 16, height: 16 },
   expectedText: { color: "#d8c58d", fontSize: 10, fontFamily: theme.fonts.bold },
-  collectButton: {
-    minWidth: 70,
-    minHeight: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: "#d9bb62",
-    backgroundColor: "#579f3e"
-  },
-  collectButtonText: { color: "white", fontSize: 11, fontWeight: "900", fontFamily: theme.fonts.heavy },
   groveCollectHint: { width: 82, color: "#9be77b", fontSize: 10, textAlign: "right", fontWeight: "900" },
   upgradePanel: {
     flexDirection: "row",
@@ -1198,47 +1190,5 @@ const styles = StyleSheet.create({
   },
   upgradeButtonText: { color: "white", fontSize: 10, fontWeight: "900", fontFamily: theme.fonts.heavy },
   riskNote: { color: "#b6aa87", fontSize: 10, textAlign: "center", marginTop: 2 },
-  storageNote: { color: "#7e8c76", fontSize: 9.5, textAlign: "center" },
-  resultScrim: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    backgroundColor: "rgba(2, 7, 3, 0.82)"
-  },
-  resultCard: {
-    width: "100%",
-    maxWidth: 340,
-    alignItems: "center",
-    overflow: "hidden",
-    padding: 20,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: "#e0bb5c",
-    backgroundColor: "#20331c"
-  },
-  resultKicker: { color: "#8fe76c", fontSize: 13, fontWeight: "900", letterSpacing: 0.6 },
-  resultWorker: { width: 120, height: 112, alignItems: "center", justifyContent: "center" },
-  resultWorkerArt: { width: 122, height: 122 },
-  resultBackpack: { position: "absolute", right: 3, bottom: 4, width: 52, height: 52 },
-  resultTitle: { color: "#fff0bd", fontSize: 19, textAlign: "center", fontWeight: "900", fontFamily: theme.fonts.heavy },
-  outcomeText: { color: "#c9bc91", fontSize: 12, textAlign: "center", marginTop: 3 },
-  resultReward: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12 },
-  resultResource: { width: 39, height: 39 },
-  resultAmount: { color: "#9aeb75", fontSize: 29, fontWeight: "900", fontFamily: theme.fonts.heavy },
-  resultResourceName: { color: "#e6d7a5", fontSize: 13, fontWeight: "800" },
-  workerLeaves: { color: "#988d70", fontSize: 10.5, textAlign: "center", marginTop: 8 },
-  resultButton: {
-    minWidth: 170,
-    minHeight: 47,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#b9e18e",
-    backgroundColor: "#579f3e"
-  },
-  resultButtonText: { color: "white", fontSize: 15, fontWeight: "900", fontFamily: theme.fonts.heavy }
+  storageNote: { color: "#7e8c76", fontSize: 9.5, textAlign: "center" }
 });

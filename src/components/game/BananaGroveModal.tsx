@@ -9,12 +9,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { playSound } from "../../game/audio/soundManager";
-import { buildingName, productionLevelMultiplier, upgradeCost } from "../../game/config/buildings";
+import { buildingName, resourceBuildingProductionBonus, upgradeCost } from "../../game/config/buildings";
 import { t, type Lang } from "../../game/i18n";
 import {
   bananaGroveCapacity,
   calculateWorkerGroupExpectedReward,
   expeditionStatus,
+  isWorkerRewardFullyStored,
   selectedWorkersFromCounts,
   WORKER_CLASSES,
   WORKER_CLASS_ORDER,
@@ -76,12 +77,12 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
   const selectedExpected = calculateWorkerGroupExpectedReward(
     selectedWorkers,
     WORKER_MISSIONS.safe.multiplier,
-    productionLevelMultiplier(level) - 1
+    resourceBuildingProductionBonus("bananaGrove", level)
   );
   const selectedDuration = Math.max(0, ...selectedWorkers.map((worker) => WORKER_CLASSES[worker.workerClass].expeditionMs));
   const availableSlots = Math.max(0, 3 - bananaWorkers.length);
-  const completed = bananaWorkers.filter((entry) => entry.storedReward !== undefined);
-  const active = bananaWorkers.filter((entry) => entry.storedReward === undefined);
+  const completed = bananaWorkers.filter(isWorkerRewardFullyStored);
+  const active = bananaWorkers.filter((entry) => !isWorkerRewardFullyStored(entry));
   const full = state.bananaGroveStorage >= capacity;
   const ready = completed.length > 0 || state.bananaGroveStorage > 0;
   const statusKey = full
@@ -164,6 +165,7 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
                     maxWorkers={availableSlots}
                     expectedReward={selectedExpected}
                     durationLabel={formatTime(selectedDuration)}
+                    risk="safe"
                     resourceName={t("res.bananas", lang)}
                     lang={lang}
                     onChange={setSelection}
@@ -200,16 +202,16 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
                 bananaWorkers.map((worker) => {
                   const status = expeditionStatus(worker, now);
                   return (
-                    <View key={worker.id} style={[styles.workerRow, worker.storedReward !== undefined && styles.workerReady]}>
+                    <View key={worker.id} style={[styles.workerRow, isWorkerRewardFullyStored(worker) && styles.workerReady]}>
                       <AssetImage assetKey={BANANA_WORKER_ASSETS[worker.workerClass as BananaWorkerClass]} style={styles.workerArt} fallback={<View />} hideFallbackOnLoad />
                       <View style={styles.workerCopy}>
                         <Text style={styles.workerName}>{t(`worker.${worker.workerClass}.name`, lang)}</Text>
                         <Text style={styles.workerMeta}>
-                          {worker.storedReward !== undefined ? t("bananaGrove.ready", lang) : t(`worker.status.${status}`, lang)}
+                          {isWorkerRewardFullyStored(worker) ? t("bananaGrove.ready", lang) : t(`worker.status.${status}`, lang)}
                         </Text>
                         <Text style={styles.expected}>{t("workerLodge.expected", lang, { amount: worker.expectedReward })}</Text>
                       </View>
-                      {worker.storedReward !== undefined ? (
+                      {isWorkerRewardFullyStored(worker) ? (
                         <View style={styles.readyMark} />
                       ) : (
                         <Text style={styles.timer}>{formatTime(worker.returnsAt - now)}</Text>
@@ -224,6 +226,12 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
               <View style={styles.upgradeCopy}>
                 <Text style={styles.upgradeTitle}>{buildingName("bananaGrove", lang)} · Sv. {level}</Text>
                 <Text style={styles.upgradeMeta}>{t("bananaGrove.storage", lang)} {capacity} → {bananaGroveCapacity(level + 1)}</Text>
+                <Text style={styles.upgradeMeta}>
+                  {t("resourceBuilding.bonusProgress", lang, {
+                    current: Math.round(resourceBuildingProductionBonus("bananaGrove", level) * 100),
+                    next: Math.round(resourceBuildingProductionBonus("bananaGrove", level + 1) * 100)
+                  })}
+                </Text>
                 <CostRow cost={cost} />
               </View>
               <SpringPressable
@@ -240,7 +248,13 @@ export function BananaGroveModal({ visible, lang, onClose }: Props) {
           {summary ? (
             <WorkerHarvestPopup
               title={t("bananaGrove.harvestComplete", lang)}
-              body={t("workerHarvest.completedBody", lang, { resource: t("res.bananas", lang) })}
+              body={t(
+                summary.workerClasses.length > 0
+                  ? "workerHarvest.completedBody"
+                  : "workerHarvest.storageTransferredBody",
+                lang,
+                { resource: t("res.bananas", lang) }
+              )}
               resourceAsset="resourceBanana"
               resourceName={t("res.bananas", lang)}
               collected={summary.collected}

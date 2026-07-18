@@ -406,7 +406,9 @@ export function RaidBoard({
                     <Text style={styles.gemReason}>
                       {gemRewardReason === "first-repeat"
                         ? t("raid.gemReason.firstRepeat", lang)
-                        : t("raid.gemReason.firstVictory", lang, { stars, gems: gemReward })}
+                        : gemRewardReason === "stronghold-milestone"
+                          ? t("raid.gemReason.strongholdMilestone", lang)
+                          : t("raid.gemReason.firstVictory", lang, { stars, gems: gemReward })}
                     </Text>
                   ) : null}
                   <Text style={styles.rewardSectionLabel}>{t("raid.lootReceived", lang)}</Text>

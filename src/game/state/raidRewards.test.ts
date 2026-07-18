@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   RAID_REWARD_VERSION,
   migrateRaidVictoryCounts,
+  resolveCampRaidGemReward,
   resolveRaidGemReward,
   resolveRaidVictoryReward
 } from "./raidRewards";
@@ -20,6 +21,29 @@ describe("raid Gem rewards", () => {
     expect(resolveRaidGemReward(3, 12)).toEqual({ gems: 0, reason: "none" });
   });
 
+  it("preserves handcrafted first-clear and bounded repeat rewards", () => {
+    expect(resolveCampRaidGemReward("camp-handcrafted", 1, 0)).toEqual({ gems: 1, reason: "first-victory" });
+    expect(resolveCampRaidGemReward("camp-handcrafted", 2, 0)).toEqual({ gems: 2, reason: "first-victory" });
+    expect(resolveCampRaidGemReward("camp-handcrafted", 3, 0)).toEqual({ gems: 3, reason: "first-victory" });
+    expect(resolveCampRaidGemReward("camp-handcrafted", 3, 1)).toEqual({ gems: 1, reason: "first-repeat" });
+    expect(resolveCampRaidGemReward("camp-handcrafted", 3, 2)).toEqual({ gems: 0, reason: "none" });
+  });
+
+  it("pays one procedural Gem only at a new five-level milestone", () => {
+    for (let level = 1; level <= 4; level += 1) {
+      expect(resolveCampRaidGemReward(`stronghold-${level}`, 3, 0)).toEqual({ gems: 0, reason: "none" });
+    }
+    expect(resolveCampRaidGemReward("stronghold-5", 3, 0)).toEqual({
+      gems: 1,
+      reason: "stronghold-milestone"
+    });
+    expect(resolveCampRaidGemReward("stronghold-5", 3, 1)).toEqual({ gems: 0, reason: "none" });
+    expect(resolveCampRaidGemReward("stronghold-10", 1, 0)).toEqual({
+      gems: 1,
+      reason: "stronghold-milestone"
+    });
+  });
+
   it("preserves valid per-camp victory counters during migration", () => {
     expect(
       migrateRaidVictoryCounts(
@@ -34,6 +58,25 @@ describe("raid Gem rewards", () => {
     expect(migrateRaidVictoryCounts(undefined, 17, undefined)).toMatchObject({
       "stronghold-15": 1,
       "stronghold-16": 1
+    });
+  });
+
+  it("does not replay a milestone after save/reload or a v1 migration", () => {
+    const reloaded = migrateRaidVictoryCounts(
+      { "stronghold-5": 1 },
+      6,
+      RAID_REWARD_VERSION
+    );
+    expect(resolveCampRaidGemReward("stronghold-5", 3, reloaded["stronghold-5"] ?? 0)).toEqual({
+      gems: 0,
+      reason: "none"
+    });
+
+    const migratedV1 = migrateRaidVictoryCounts({ handcrafted: 2 }, 16, 1);
+    expect(migratedV1["stronghold-15"]).toBe(1);
+    expect(resolveCampRaidGemReward("stronghold-15", 3, migratedV1["stronghold-15"] ?? 0)).toEqual({
+      gems: 0,
+      reason: "none"
     });
   });
 });

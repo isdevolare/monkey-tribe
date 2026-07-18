@@ -6,7 +6,7 @@ export type RaidVictoryCounts = Record<string, number>;
 
 const REPEAT_REWARD_MULTIPLIERS = [1, 0.6, 0.35] as const;
 const REPEAT_REWARD_FLOOR = 0.2;
-export const RAID_REWARD_VERSION = 1;
+export const RAID_REWARD_VERSION = 2;
 
 /** First clear pays its stars, the first repeat pays 1 Gem, later farming pays none. */
 export function resolveRaidGemReward(stars: number, previousVictories: number): {
@@ -25,6 +25,29 @@ export function resolveRaidGemReward(stars: number, previousVictories: number): 
 
 export function raidGemReward(stars: number, previousVictories: number) {
   return resolveRaidGemReward(stars, previousVictories).gems;
+}
+
+/** Procedural strongholds pay one Gem only on each new five-level milestone. */
+export function resolveCampRaidGemReward(
+  campId: string,
+  stars: number,
+  previousVictories: number
+): { gems: number; reason: RaidGemRewardReason } {
+  if (!campId.startsWith("stronghold-")) {
+    return resolveRaidGemReward(stars, previousVictories);
+  }
+  const level = Number(campId.slice("stronghold-".length));
+  const safeStars = Math.max(0, Math.min(3, Math.floor(stars)));
+  if (
+    Number.isInteger(level) &&
+    level > 0 &&
+    level % 5 === 0 &&
+    previousVictories <= 0 &&
+    safeStars > 0
+  ) {
+    return { gems: 1, reason: "stronghold-milestone" };
+  }
+  return { gems: 0, reason: "none" };
 }
 
 /** Reward multiplier for a camp based on its completed victories before this win. */
@@ -84,7 +107,7 @@ export function migrateRaidVictoryCounts(
   rewardVersion: unknown
 ): RaidVictoryCounts {
   const counts = sanitizeRaidVictoryCounts(value);
-  if (rewardVersion === RAID_REWARD_VERSION || Object.keys(counts).length > 0) {
+  if (rewardVersion === RAID_REWARD_VERSION) {
     return counts;
   }
 
