@@ -2,10 +2,6 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
 
-export const SUPPORT_EMAIL = "quickmoodigital@gmail.com";
-export const PRIVACY_URL = "https://quickmoodigital.com/privacy-policy";
-export const TERMS_URL = "https://quickmoodigital.com/terms-of-use";
-
 export function appVersion() {
   return Constants.expoConfig?.version ?? "1.0.0";
 }

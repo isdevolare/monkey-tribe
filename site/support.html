@@ -3,148 +3,112 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
   <title>Support — Monkey Tribe</title>
-  <meta name="description" content="Get help with Monkey Tribe by Quick Moo Digital — bug reports, purchase issues and frequently asked questions." />
+  <meta name="description" content="Purchase, save, sound, and technical support for Monkey Tribe." />
   <link rel="icon" type="image/png" href="/assets/icon.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-
   <header class="subheader">
     <div class="wrap">
-      <a class="brand" href="/">
-        <img src="/assets/icon.png" alt="" />
-        Monkey Tribe
-      </a>
-      <nav>
-        <a href="/privacy">Privacy</a>
-        <a href="/support">Support</a>
-        <a href="/terms">Terms</a>
-      </nav>
+      <a class="brand" href="/"><img src="/assets/icon.png" alt="" />Monkey Tribe</a>
+      <nav aria-label="Legal pages"><a href="/privacy">Privacy</a><a aria-current="page" href="/support">Support</a><a href="/terms">Terms</a></nav>
     </div>
   </header>
 
   <main class="page">
     <div class="wrap">
-      <h1>Support</h1>
-      <p class="updated">Monkey Tribe · Quick Moo Digital</p>
-
-      <p>
-        Found a bug, hit a problem with a purchase, or just want to share
-        feedback? We read every message.
-      </p>
+      <h1>Monkey Tribe Support</h1>
+      <p class="updated">Help from Quick Moo Digital</p>
+      <p>For purchase, save, launch, sound, or privacy help, contact us at:</p>
+      <p><a class="email-btn" href="mailto:quickmoodigital@gmail.com?subject=Monkey%20Tribe%20Support">quickmoodigital@gmail.com</a></p>
 
       <div class="callout">
-        <p><strong>Contact us by email:</strong></p>
-        <p>
-          <a class="email-btn" href="mailto:quickmoodigital@gmail.com?subject=Monkey%20Tribe%20Support">
-            quickmoodigital@gmail.com
-          </a>
-        </p>
-        <p>We aim to reply within two business days.</p>
+        <p><strong>Include these details:</strong></p>
+        <ul>
+          <li>your device model;</li>
+          <li>your iOS version;</li>
+          <li>the Monkey Tribe app version and build shown in Settings;</li>
+          <li>what happened and the steps immediately before it;</li>
+          <li>a screenshot, if it does not expose sensitive information.</li>
+        </ul>
+        <p>Never send card details, your Apple Account password, or payment credentials.</p>
       </div>
 
-      <h2>Reporting a bug</h2>
-      <p>The fastest route is the in-game <strong>Help &amp; Support</strong> screen
-        (Settings → Help &amp; Support): it opens a pre-filled email that you can
-        review and edit before sending. If you'd rather write to us directly,
-        please describe what happened and, if possible, the steps that trigger
-        it. Screenshots help a lot.</p>
+      <h2>Purchase completed but Gems are missing</h2>
+      <ol>
+        <li>Confirm that Apple shows the purchase as completed rather than pending.</li>
+        <li>Keep the device online and restart Monkey Tribe.</li>
+        <li>Open the Gem Store and allow a moment for StoreKit to reconnect.</li>
+        <li>If the Gems still do not appear, email us with the purchase date, Gem pack name, device model, iOS version, and app version.</li>
+      </ol>
+      <p>Do not email a full receipt containing personal information unless support specifically asks for a redacted copy.</p>
 
-      <h2>Device information</h2>
-      <p>When writing to us directly, include:</p>
-      <ul>
-        <li><strong>Device</strong> — e.g. iPhone 15, Samsung Galaxy S24</li>
-        <li><strong>Operating system</strong> — e.g. iOS 19.2, Android 15</li>
-        <li><strong>Game version</strong> — shown on the store page for Monkey Tribe</li>
-      </ul>
+      <h2>Restore Purchases</h2>
       <p>
-        Emails started from the in-game Help &amp; Support screen automatically
-        include your app version and build number, platform, device model and
-        the issue category you selected — nothing more — and you can review the
-        full message before it is sent.
+        Monkey Tribe currently sells only consumable Gem packs. Apple does not
+        restore consumables through a standard Restore Purchases button, so the
+        game intentionally does not show one. If payment completed but delivery
+        was interrupted, the app automatically checks for unfinished StoreKit
+        transactions and safely retries the Gem delivery after launch or reconnection.
+      </p>
+      <p>If a purchase remains pending, Apple has not finalized it and Monkey Tribe
+        will not grant Gems early.</p>
+
+      <h2>Refunds</h2>
+      <p>Payments and refund decisions are handled by Apple. Request a refund at
+        <a href="https://reportaproblem.apple.com" rel="noopener noreferrer">reportaproblem.apple.com</a>.</p>
+
+      <h2>The app will not open or freezes</h2>
+      <ol>
+        <li>Force-close Monkey Tribe and open it again.</li>
+        <li>Restart the iPhone.</li>
+        <li>Confirm that iOS and Monkey Tribe are up to date and that the device has free storage.</li>
+        <li>Do not delete the app as a first troubleshooting step, because the village save is stored locally.</li>
+      </ol>
+      <p>If the problem continues, send the device, iOS, app-version, and reproduction details listed above.</p>
+
+      <h2>Save or progress problem</h2>
+      <p>
+        Village progress is stored locally on the device and is not synchronized
+        to a Monkey Tribe account or cloud server. Deleting the app, resetting the
+        device, or moving to another device can remove or leave the save behind.
+        If progress disappears without one of those actions, stop playing to avoid
+        overwriting useful state and contact support with the exact timing and steps.
       </p>
 
-      <h2>Purchases and billing</h2>
+      <h2>Sound problem</h2>
+      <p>Check Music and Sound in Monkey Tribe Settings, the device volume, Silent
+        Mode, and any connected Bluetooth output. Restart the app after changing audio output.</p>
+
+      <h2>Advertising problem</h2>
       <p>
-        All purchases are billed by the Apple App Store through your Apple
-        account; we never handle your payment details. Refund requests are also
-        handled by Apple — you can submit one at
-        <a href="https://reportaproblem.apple.com" rel="noopener">reportaproblem.apple.com</a>.
-      </p>
-      <p>
-        Gem packs are <strong>consumable</strong> purchases: the Gems are added
-        to your balance as soon as the purchase completes. Consumables are not
-        covered by a standard "Restore Purchases" option, and Gem balances
-        currently cannot be transferred to another device or a new save.
+        The current Monkey Tribe build contains no advertising SDK and should not
+        display ads. If you see advertising presented as part of Monkey Tribe,
+        send a screenshot, app version, and where the app was installed so we can investigate.
       </p>
 
-      <h3>Payment completed but no Gems</h3>
+      <h2>Data deletion request</h2>
       <p>
-        Restart the game first. If your balance is still missing the Gems,
-        email us with the purchase date, the product name (the Gem pack you
-        bought), your game version and your device model, and we'll look into
-        it.
+        Deleting the app deletes its local village data from that device. To ask
+        Quick Moo Digital to delete support emails associated with you, email
+        <a href="mailto:quickmoodigital@gmail.com?subject=Monkey%20Tribe%20Data%20Deletion">quickmoodigital@gmail.com</a>
+        from the same address. Apple purchase records and your mail provider's data
+        are controlled by those providers.
       </p>
 
-      <h3>Purchase pending</h3>
-      <p>
-        If the App Store shows your purchase as pending, the Gems are delivered
-        once Apple finishes processing the payment. If it stays pending for
-        more than a day, check your payment method in your Apple account, or
-        contact us with the details above.
-      </p>
-
-      <p>
-        When helping with a purchase we only ever ask for the purchase date,
-        product name, game version and device model —
-        <strong>never your card number or any other payment credentials</strong>.
-      </p>
-
-      <h2>Frequently asked questions</h2>
-
-      <h3>My progress disappeared</h3>
-      <p>
-        Progress is stored on your device, so deleting the app also deletes
-        your village and reinstalling starts a fresh game. If your progress
-        vanished without deleting the app, email us with your device details.
-      </p>
-
-      <h3>Do I need an account?</h3>
-      <p>
-        No. Monkey Tribe doesn't use accounts or sign-ins — your village is
-        saved directly on your device.
-      </p>
-
-      <h3>There's no sound</h3>
-      <p>
-        Check the in-game sound toggle (Settings → Sound) and make sure your
-        device isn't in silent mode.
-      </p>
-
-      <h2>Legal</h2>
-      <p>
-        <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Use</a>
-      </p>
+      <h2>Legal information</h2>
+      <p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Use</a></p>
     </div>
   </main>
 
   <footer>
     <div class="wrap">
-      <nav>
-        <a href="/">Home</a>
-        <a href="/privacy">Privacy Policy</a>
-        <a href="/support">Support</a>
-        <a href="/terms">Terms of Use</a>
-      </nav>
-      <p class="studio-line">
-        Copyright © 2026 Quick Moo Digital. All rights reserved.
-      </p>
+      <nav><a href="/">Home</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a><a href="/terms">Terms of Use</a></nav>
+      <p class="studio-line">Last updated: July 18, 2026</p>
+      <p class="studio-line">Copyright © 2026 Quick Moo Digital. All rights reserved.</p>
     </div>
   </footer>
-
 </body>
 </html>

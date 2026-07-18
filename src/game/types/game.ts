@@ -1,3 +1,7 @@
+import type { Lang } from "../localization/locales";
+
+export type { Lang } from "../localization/locales";
+
 export type ScreenId = "menu" | "game" | "result";
 export type GameStatus = "menu" | "playing" | "victory" | "defeat";
 export type GameMode = "village" | "raidMap" | "raid";
@@ -117,8 +121,6 @@ export type RaidRewardSummary = {
   gems: number;
   gemReason: RaidGemRewardReason;
 };
-
-export type Lang = "tr" | "en";
 
 // Catalog-backed string ids keep save data stable while allowing hundreds of
 // future cosmetics without expanding a compile-time union on every release.

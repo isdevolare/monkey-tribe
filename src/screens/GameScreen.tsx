@@ -514,9 +514,9 @@ function GameScreenContent() {
         </View>
 
         <View style={styles.resourceBar}>
-          <ResourceChip label="Muz" value={Math.floor(state.resources.bananas)} capacity={clanStorageCapacity} assetKey="resourceBanana" compact={compactHud} />
-          <ResourceChip label="Taş" value={Math.floor(state.resources.stones)} capacity={clanStorageCapacity} assetKey="resourceStone" compact={compactHud} />
-          <ResourceChip label="Odun" value={Math.floor(state.resources.wood)} capacity={clanStorageCapacity} assetKey="resourceWood" compact={compactHud} />
+          <ResourceChip label={t("res.bananas", lang)} value={Math.floor(state.resources.bananas)} capacity={clanStorageCapacity} assetKey="resourceBanana" compact={compactHud} />
+          <ResourceChip label={t("res.stones", lang)} value={Math.floor(state.resources.stones)} capacity={clanStorageCapacity} assetKey="resourceStone" compact={compactHud} />
+          <ResourceChip label={t("res.wood", lang)} value={Math.floor(state.resources.wood)} capacity={clanStorageCapacity} assetKey="resourceWood" compact={compactHud} />
           <ResourceChip
             label={t("res.population", lang)}
             value={`${housingUsed}/${armyCapacity(nestLevel)}`}

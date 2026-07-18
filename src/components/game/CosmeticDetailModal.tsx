@@ -130,7 +130,7 @@ export const CosmeticDetailModal = memo(function CosmeticDetailModal({
                 <Text style={[styles.rarityText, { color: colors.text }]}>{RARITY_ICON[rarity]} {t(`collection.rarity.${rarity}`, lang)}</Text>
               </View>
               {skin?.badgeKey ? <View style={styles.festivalBadge}><Text style={styles.festivalBadgeText}>{t(skin.badgeKey, lang)}</Text></View> : null}
-              {selection.wasNew ? <View style={styles.newBadge}><Text style={styles.newBadgeText}>NEW</Text></View> : null}
+              {selection.wasNew ? <View style={styles.newBadge}><Text style={styles.newBadgeText}>{t("common.new", lang)}</Text></View> : null}
               <SpringPressable accessibilityRole="button" onPress={onClose} style={styles.closeButton}><Text style={styles.closeText}>×</Text></SpringPressable>
             </View>
 

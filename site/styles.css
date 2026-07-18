@@ -2,6 +2,7 @@
    visual language (dark glass panels, rgba(226,177,90,*) gold trim). */
 
 :root {
+  color-scheme: dark light;
   --jungle-deep: #0c2013;
   --jungle: #14301d;
   --jungle-mid: #1d4227;
@@ -28,7 +29,7 @@ html {
 }
 
 body {
-  font-family: "Baloo 2", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
   background: var(--jungle-deep);
   color: var(--paper);
   line-height: 1.6;
@@ -275,6 +276,13 @@ a:hover {
   font-weight: 700;
 }
 
+.subheader nav a[aria-current="page"] {
+  color: var(--paper);
+  text-decoration: underline;
+  text-decoration-color: var(--gold-bright);
+  text-underline-offset: 5px;
+}
+
 .page {
   flex: 1;
   padding: 48px 0 64px;
@@ -389,6 +397,10 @@ footer .studio-line {
   font-size: 0.88rem;
 }
 
+footer .studio-line + .studio-line {
+  margin-top: 5px;
+}
+
 footer .studio-line a {
   color: var(--muted);
   text-decoration: underline;
@@ -404,9 +416,82 @@ footer .studio-line a {
     font-size: 0.85rem;
   }
 
+  .subheader .wrap {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .store-badge {
     width: 100%;
     max-width: 320px;
     justify-content: center;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  body {
+    background: #f7f3e8;
+    color: #182318;
+  }
+
+  .subheader {
+    background: linear-gradient(180deg, #e5eee0, #d5e5d2);
+    border-bottom-color: rgba(94, 63, 20, 0.24);
+  }
+
+  .subheader .brand,
+  .subheader nav a[aria-current="page"],
+  .page h3,
+  .page strong {
+    color: #182318;
+  }
+
+  .subheader a,
+  .page a,
+  footer a {
+    color: #6d4715;
+  }
+
+  .page h1 {
+    color: #754b13;
+  }
+
+  .page h2 {
+    color: #285f37;
+  }
+
+  .page p,
+  .page li,
+  .page .updated,
+  footer .studio-line {
+    color: #4c574a;
+  }
+
+  .callout {
+    background: rgba(255, 255, 255, 0.82);
+    border-color: rgba(117, 75, 19, 0.27);
+    box-shadow: 0 12px 30px rgba(35, 50, 32, 0.1);
+  }
+
+  .email-btn {
+    background: linear-gradient(180deg, #fff6dd, #ebd5a6);
+    border-color: rgba(117, 75, 19, 0.5);
+    color: #5c390d;
+    box-shadow: 0 8px 20px rgba(35, 50, 32, 0.14);
+  }
+
+  footer {
+    background: #e1eadc;
+    border-top-color: rgba(94, 63, 20, 0.22);
+  }
+
+  /* Keep the illustrated marketing home cinematic in light device mode. */
+  .hero,
+  .features {
+    color: var(--paper);
+  }
+
+  .features {
+    background: var(--jungle-deep);
   }
 }

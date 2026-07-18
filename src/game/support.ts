@@ -1,12 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Linking } from "react-native";
 import {
-  SUPPORT_EMAIL,
   appBuildNumber,
   appVersion,
   safeDeviceModel,
   safePlatformLabel
 } from "./appInfo";
+import { SUPPORT_EMAIL } from "./config/legal";
+import { tryOpenExternalUrl } from "./externalLinks";
 
 // Where player reports land. Swap `deliverReport` for an HTTP endpoint
 // once a backend exists — everything else stays the same.
@@ -54,7 +55,9 @@ async function appendLocalLog(entry: object) {
 
 async function deliverReport(subject: string, body: string) {
   const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  await Linking.openURL(url);
+  if (!(await tryOpenExternalUrl(Linking, url))) {
+    throw new Error("No mail client is available.");
+  }
 }
 
 /**

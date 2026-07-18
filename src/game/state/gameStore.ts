@@ -79,6 +79,7 @@ import {
   startRoyalPalaceUpgrade
 } from "../config/royalPalace";
 import { t } from "../i18n";
+import { resolveLocale } from "../localization/locales";
 import { createInitialMap, createInitialUnits, createUnit } from "../config/map";
 import { applyRaidPenalty } from "./raidPenalty";
 import {
@@ -361,7 +362,7 @@ function createFreshState(now: number) {
     dailyStreak: 0,
     dailyLastClaim: null as string | null,
     lastProductionAt: now,
-    language: "tr" as Lang,
+    language: "en" as Lang,
     feedback: null
   };
 }
@@ -1386,7 +1387,7 @@ export const useGameStore = create<GameState>((set) => ({
         stoneQuarryStorage: reconciledStone.storage,
         activeWorkerLodgeUpgrade: reconciledWorkerLodgeUpgrade.activeUpgrade,
         royalCharacterDisplays,
-        language: save.language ?? state.language,
+        language: resolveLocale(save.language ?? state.language),
         // Migration: older saves tracked the stronghold from Sv4; the ladder
         // now has handcrafted camps through Sv7, so lift stale levels to the
         // new base (higher progress is kept as-is).
@@ -1412,9 +1413,10 @@ export const useGameStore = create<GameState>((set) => ({
     set((state) => state.feedback?.id === id ? { ...state, feedback: null } : state),
   setLanguage: (lang) =>
     set((state) => {
-      const next = { ...state, language: lang };
+      const language = resolveLocale(lang);
+      const next = { ...state, language };
       persistVillage(next);
-      return { language: lang };
+      return { language };
     }),
   upgradeBuilding: (type) => set((state) => {
     const next = upgradeVillageBuilding(state, type);

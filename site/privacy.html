@@ -3,24 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
   <title>Privacy Policy — Monkey Tribe</title>
   <meta name="description" content="Privacy Policy for Monkey Tribe by Quick Moo Digital." />
   <link rel="icon" type="image/png" href="/assets/icon.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-
   <header class="subheader">
     <div class="wrap">
-      <a class="brand" href="/">
-        <img src="/assets/icon.png" alt="" />
-        Monkey Tribe
-      </a>
-      <nav>
-        <a href="/privacy">Privacy</a>
+      <a class="brand" href="/"><img src="/assets/icon.png" alt="" />Monkey Tribe</a>
+      <nav aria-label="Legal pages">
+        <a aria-current="page" href="/privacy">Privacy</a>
         <a href="/support">Support</a>
         <a href="/terms">Terms</a>
       </nav>
@@ -30,100 +24,138 @@
   <main class="page">
     <div class="wrap">
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated: July 16, 2026</p>
+      <p class="updated">Effective and last updated: July 18, 2026</p>
 
       <p>
         This Privacy Policy explains how Quick Moo Digital ("we", "us") handles
-        information when you play <strong>Monkey Tribe</strong>.
+        information when you use the mobile game <strong>Monkey Tribe</strong>
+        and this website.
       </p>
 
       <div class="callout">
-        <p>
-          <strong>In short:</strong> Monkey Tribe has no accounts and no game
-          servers. Your village is saved on your device, and the only data that
-          leaves it comes from third-party advertising and the support emails
-          you choose to send us.
-        </p>
+        <p><strong>In short:</strong> Monkey Tribe has no player accounts or game backend.</p>
+        <p>Your village is stored locally. The current app has no advertising,
+          analytics, tracking, or crash-reporting SDK.</p>
       </div>
 
-      <h2>Game Data</h2>
+      <h2>1. Local game data</h2>
       <p>
-        Your village, resources and progress are stored
-        <strong>only on your device</strong>. No game data is sent to our
-        servers, and no account is created.
+        Village progress, resources, settings, purchase-delivery markers, and a
+        short local support-report history are stored on your device using local
+        app storage, including React Native AsyncStorage. This data is used to
+        run the game, restore your save after an app restart, prevent duplicate
+        purchase delivery, and help prepare support messages. We do not operate
+        a server that receives or synchronizes your village save.
       </p>
 
-      <h2>Support Emails</h2>
+      <h2>2. Apple StoreKit purchases</h2>
       <p>
-        When you contact us through the in-game <strong>Help &amp; Support</strong>
-        screen, your own mail app opens with a pre-filled message that includes
-        your app version and build number, platform, device model and the issue
-        category you selected — nothing else. You can review and edit the
-        entire message before sending it. We use these details only to resolve
-        your issue and never share them with third parties.
+        In-app Gem purchases are processed by Apple through StoreKit. Apple may
+        process your Apple Account, payment, storefront, device, and transaction
+        information under <a href="https://www.apple.com/legal/privacy/" rel="noopener noreferrer">Apple's Privacy Policy</a>.
+        We do not receive or store your card number or Apple Account password.
+      </p>
+      <p>
+        The app receives product and completed-transaction information needed to
+        verify and deliver a purchase. A processed transaction identifier is
+        stored inside your local save to prevent the same purchase from granting
+        Gems twice.
       </p>
 
-      <h2>Advertising</h2>
+      <h3>Restore Purchases and unfinished transactions</h3>
       <p>
-        The game may show ads served by third-party ad networks (e.g. Google
-        AdMob). These networks may collect device identifiers (IDFA/GAID), IP
-        address, coarse location (country/city level) and ad-interaction data
-        to serve and measure ads. On iOS, cross-app tracking happens only if
-        you accept Apple's App Tracking Transparency (ATT) prompt; if you
-        decline, you see non-personalized ads instead. For details, see the ad
-        partners' own privacy policies (e.g. Google:
-        <a href="https://policies.google.com/privacy" rel="noopener">policies.google.com/privacy</a>).
+        Gem packs are consumable purchases, so they are not restored by a manual
+        Restore Purchases button. Monkey Tribe automatically asks StoreKit for
+        unfinished transactions and safely retries delivery when the app starts
+        or reconnects. Apple's own purchase records remain under Apple's control.
       </p>
 
-      <h2>In-App Purchases</h2>
+      <h2>3. Support and technical information</h2>
       <p>
-        Purchases are processed by the Apple App Store or Google Play. We never
-        access or store your payment details. Purchase state (for example,
-        whether a pack was bought) is kept on your device solely to deliver
-        the content.
+        If you choose to contact support from inside the app, your mail app opens
+        a message you can review before sending. The draft includes the selected
+        issue category, app version and build, operating-system version, and
+        device model, plus any note you enter. It does not attach your village,
+        balances, payment credentials, or StoreKit receipt.
+      </p>
+      <p>
+        Information you email is processed by the email providers used to send
+        and receive the message. We use it only to answer and troubleshoot your
+        request.
       </p>
 
-      <h2>Children's Privacy</h2>
+      <h2>4. Advertising, analytics, and crash reporting</h2>
       <p>
-        Monkey Tribe is intended for a general audience. We do not knowingly
-        collect personal data from children under 13, and ad networks are
-        configured to serve age-appropriate ads.
+        The current Monkey Tribe repository and production configuration do not
+        include an advertising SDK, analytics SDK, cross-app tracking SDK, or
+        third-party crash-reporting service. The app does not request App Tracking
+        Transparency permission. If these practices change, this policy and the
+        relevant app disclosures will be updated before those services are used.
       </p>
 
-      <h2>Data Deletion</h2>
+      <h2>5. Website hosting and third-party services</h2>
       <p>
-        Because game data lives on your device, deleting the app permanently
-        deletes all of it. You can manage ad personalization in your device
-        settings (iOS: Settings → Privacy → Tracking / Apple Advertising).
+        These public pages are hosted by Vercel. When you visit them, Vercel may
+        process ordinary hosting data such as your IP address, browser details,
+        request time, and requested URL for delivery, security, and reliability.
+        See <a href="https://vercel.com/legal/privacy-notice" rel="noopener noreferrer">Vercel's Privacy Notice</a>.
+      </p>
+      <p>The app's relevant third-party service is Apple StoreKit. Your chosen
+        email provider is also involved only when you send a support email.</p>
+
+      <h2>6. Data retention</h2>
+      <ul>
+        <li>Local game and purchase-delivery data remains until you reset or delete it, or remove the app.</li>
+        <li>The app keeps at most 20 recent support-report drafts in local storage.</li>
+        <li>Support emails are retained only as reasonably needed to handle the request, maintain support records, and meet legal obligations.</li>
+        <li>Apple, Vercel, and email providers apply their own retention policies.</li>
+      </ul>
+
+      <h2>7. Deletion requests</h2>
+      <p>
+        Deleting Monkey Tribe removes its locally stored save from that device.
+        This cannot delete transaction records controlled by Apple or messages
+        held by your email provider. To request deletion of support correspondence
+        held by Quick Moo Digital, email
+        <a href="mailto:quickmoodigital@gmail.com?subject=Monkey%20Tribe%20Data%20Deletion">quickmoodigital@gmail.com</a>
+        from the address used for the support request. We may need limited details
+        to locate the message and verify the request.
       </p>
 
-      <h2>Changes to This Policy</h2>
+      <h2>8. Children's privacy</h2>
       <p>
-        If we change this policy, we will post the updated version here and
-        revise the "Last updated" date above.
+        Monkey Tribe is a general-audience game. We do not knowingly collect
+        personal information from children under 13. Because the game has no
+        accounts, advertising, analytics, or behavioral tracking, it does not ask
+        a child to create a profile or provide personal details. If you believe a
+        child sent personal information in a support email, contact us so we can
+        delete it.
       </p>
 
-      <h2>Contact</h2>
+      <h2>9. International users</h2>
       <p>
-        Questions about this policy?
-        <a href="mailto:quickmoodigital@gmail.com">quickmoodigital@gmail.com</a>
+        Quick Moo Digital, Apple, Vercel, and email providers may process support
+        or technical information in countries other than your own. Privacy and
+        data-protection laws may differ between countries. We handle information
+        as described in this policy and subject to applicable law.
       </p>
+
+      <h2>10. Policy updates</h2>
+      <p>We may update this policy when the app or legal requirements change.
+        The date shown on this page identifies the latest version.</p>
+
+      <h2>11. Contact</h2>
+      <p>Privacy questions and requests:</p>
+      <p><a class="email-btn" href="mailto:quickmoodigital@gmail.com?subject=Monkey%20Tribe%20Privacy">quickmoodigital@gmail.com</a></p>
     </div>
   </main>
 
   <footer>
     <div class="wrap">
-      <nav>
-        <a href="/">Home</a>
-        <a href="/privacy">Privacy Policy</a>
-        <a href="/support">Support</a>
-        <a href="/terms">Terms of Use</a>
-      </nav>
-      <p class="studio-line">
-        Copyright © 2026 Quick Moo Digital. All rights reserved.
-      </p>
+      <nav><a href="/">Home</a><a href="/privacy">Privacy Policy</a><a href="/support">Support</a><a href="/terms">Terms of Use</a></nav>
+      <p class="studio-line">Last updated: July 18, 2026</p>
+      <p class="studio-line">Copyright © 2026 Quick Moo Digital. All rights reserved.</p>
     </div>
   </footer>
-
 </body>
 </html>

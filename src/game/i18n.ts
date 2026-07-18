@@ -1,4 +1,7 @@
-export type Lang = "tr" | "en";
+import { resolveCatalogLocale, type Lang } from "./localization/locales";
+import { releaseTranslation } from "./localization/releaseTranslations";
+
+export type { Lang } from "./localization/locales";
 
 type Entry = { tr: string; en: string };
 
@@ -27,6 +30,7 @@ const dict: Record<string, Entry> = {
   "res.stones": { tr: "Taş", en: "Stone" },
   "res.wood": { tr: "Odun", en: "Wood" },
   "res.population": { tr: "Ordu", en: "Army" },
+  "res.gems": { tr: "Gem", en: "Gems" },
 
   // Units / dock
   "unit.worker": { tr: "İşçi", en: "Worker" },
@@ -66,6 +70,7 @@ const dict: Record<string, Entry> = {
   "upgrade.needClanHall": { tr: "Klan Salonu gerek", en: "Need Clan Hall" },
   "common.level": { tr: "Seviye", en: "Level" },
   "common.levelBadge": { tr: "Sv. {n}", en: "Lv. {n}" },
+  "common.new": { tr: "YENİ", en: "NEW" },
 
   // Settings
   "settings.title": { tr: "Ayarlar", en: "Settings" },
@@ -90,8 +95,15 @@ const dict: Record<string, Entry> = {
   "settings.reset": { tr: "Köyü Sıfırla", en: "Reset Village" },
   "settings.version": { tr: "Sürüm", en: "Version" },
   "settings.privacy": { tr: "Gizlilik Politikası", en: "Privacy Policy" },
-  "settings.terms": { tr: "Kullanım Şartları", en: "Terms" },
+  "settings.terms": { tr: "Kullanım Şartları", en: "Terms of Use" },
+  "settings.restorePurchases": { tr: "Satın Alımları Geri Yükle", en: "Restore Purchases" },
   "settings.supportShort": { tr: "Destek", en: "Support" },
+  "settings.opensBrowser": { tr: "Web tarayıcısında açar", en: "Opens in your web browser" },
+  "settings.linkErrorTitle": { tr: "Bağlantı açılamadı", en: "Unable to Open Link" },
+  "settings.linkErrorBody": {
+    tr: "{page} şu anda açılamıyor. İnternet bağlantını kontrol edip tekrar dene.",
+    en: "{page} cannot be opened right now. Check your internet connection and try again."
+  },
   "settings.credits": { tr: "Krediler", en: "Credits" },
   "settings.creditsBody": {
     tr: "Monkey Tribe — Quick Moo Digital. Ses efektleri: Kenney (CC0).",
@@ -1158,13 +1170,53 @@ const dict: Record<string, Entry> = {
   "fb.hitCamp": { tr: "Savaşçı düşman kampına vurdu", en: "Fighter hit the enemy camp" }
 };
 
-export function t(key: string, lang: Lang, params?: Record<string, string | number>): string {
+export function t(key: string, lang: Lang | string, params?: Record<string, string | number>): string {
   const entry = dict[key];
-  let value = entry ? entry[lang] : key;
+  const resolved = resolveCatalogLocale(lang);
+  let value = entry
+    ? resolved === "tr"
+      ? entry.tr
+      : releaseTranslation(key, resolved) ?? entry.en
+    : key;
+  if (entry && value !== entry.en && resolved !== "tr") {
+    value = normalizeGeneratedTranslation(value, entry.en);
+  }
   if (params) {
     for (const name of Object.keys(params)) {
-      value = value.replace(`{${name}}`, String(params[name]));
+      const param = params[name];
+      value = value
+        .split(`{${name}}`)
+        .join(typeof param === "number" ? formatLocalizedNumber(param, resolved) : String(param));
     }
   }
   return value;
+}
+
+function normalizeGeneratedTranslation(value: string, english: string): string {
+  if (value.trim().length === 0) return english;
+  const expected = english.match(/\{[a-zA-Z0-9_]+\}/g) ?? [];
+  const actual = value.match(/\{[a-zA-Z0-9_]+\}/g) ?? [];
+  if (expected.length !== actual.length) return english;
+  let normalized = value;
+  actual.forEach((placeholder, index) => {
+    const replacement = expected[index];
+    if (replacement) normalized = normalized.replace(placeholder, replacement);
+  });
+  return normalized;
+}
+
+export function formatLocalizedNumber(value: number, lang: Lang | string): string {
+  try {
+    return new Intl.NumberFormat(resolveCatalogLocale(lang), { maximumFractionDigits: 2 }).format(value);
+  } catch {
+    return String(value);
+  }
+}
+
+export function translationKeys() {
+  return Object.keys(dict);
+}
+
+export function translationsFor(lang: Lang | string): Record<string, string> {
+  return Object.fromEntries(translationKeys().map((key) => [key, t(key, lang)]));
 }

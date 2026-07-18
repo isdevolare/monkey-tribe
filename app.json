@@ -25,7 +25,16 @@
       "expo-font",
       "expo-audio",
       "expo-asset",
-      "expo-iap"
+      "expo-iap",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": ["en", "tr", "es", "pt-BR"],
+            "android": ["en", "tr", "es", "pt-BR"]
+          }
+        }
+      ]
     ],
     "icon": "./assets/icon.png",
     "splash": {

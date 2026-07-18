@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  Alert,
   Linking,
   Modal,
   Pressable,
@@ -11,9 +12,12 @@ import {
   useWindowDimensions
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { appBuildNumber, appVersion, PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from "../../game/appInfo";
+import { appBuildNumber, appVersion } from "../../game/appInfo";
 import { playSound, useSoundStore } from "../../game/audio/soundManager";
+import { PRIVACY_URL, SUPPORT_URL, TERMS_URL } from "../../game/config/legal";
+import { tryOpenExternalUrl } from "../../game/externalLinks";
 import { t } from "../../game/i18n";
+import { LANGUAGE_OPTIONS, usesSystemCjkFont } from "../../game/localization/locales";
 import { QA_CODES_ENABLED, redeemQaGemCode, type QaRedemptionResult } from "../../game/internal/qaCodes";
 import { useAppSettingsStore, type PerformanceMode } from "../../game/settings/appSettings";
 import type { Lang } from "../../game/types/game";
@@ -105,6 +109,16 @@ export function SettingsModal({
     }
   }
 
+  async function openExternalPage(url: string, label: string) {
+    playSound("tap");
+    if (await tryOpenExternalUrl(Linking, url)) return;
+    playSound("error");
+    Alert.alert(
+      t("settings.linkErrorTitle", lang),
+      t("settings.linkErrorBody", lang, { page: label })
+    );
+  }
+
   const verticalInset = Math.max(12, insets.top) + Math.max(12, insets.bottom);
 
   return (
@@ -146,10 +160,8 @@ export function SettingsModal({
                 <Section title={t("settings.sectionGame", lang)}>
                   <Text style={styles.controlLabel}>{t("settings.language", lang)}</Text>
                   <SegmentedControl
-                    options={[
-                      { id: "tr", label: "Türkçe" },
-                      { id: "en", label: "English" }
-                    ]}
+                    compactGrid
+                    options={LANGUAGE_OPTIONS}
                     value={lang}
                     onChange={(value) => onPickLanguage(value as Lang)}
                   />
@@ -224,15 +236,18 @@ export function SettingsModal({
                   />
                   <ActionRow
                     label={t("settings.privacy", lang)}
-                    onPress={() => void Linking.openURL(PRIVACY_URL)}
+                    accessibilityHint={t("settings.opensBrowser", lang)}
+                    onPress={() => void openExternalPage(PRIVACY_URL, t("settings.privacy", lang))}
                   />
                   <ActionRow
                     label={t("settings.terms", lang)}
-                    onPress={() => void Linking.openURL(TERMS_URL)}
+                    accessibilityHint={t("settings.opensBrowser", lang)}
+                    onPress={() => void openExternalPage(TERMS_URL, t("settings.terms", lang))}
                   />
                   <ActionRow
                     label={t("settings.supportShort", lang)}
-                    onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
+                    accessibilityHint={t("settings.opensBrowser", lang)}
+                    onPress={() => void openExternalPage(SUPPORT_URL, t("settings.supportShort", lang))}
                   />
                   <ActionRow
                     label={t("settings.credits", lang)}
@@ -347,14 +362,16 @@ function SettingToggle({
 function SegmentedControl({
   options,
   value,
-  onChange
+  onChange,
+  compactGrid = false
 }: {
-  options: Array<{ id: string; label: string }>;
+  options: ReadonlyArray<{ id: string; label: string }>;
   value: string;
   onChange: (value: string) => void;
+  compactGrid?: boolean;
 }) {
   return (
-    <View style={styles.segmented}>
+    <View style={[styles.segmented, compactGrid ? styles.segmentedGrid : null]}>
       {options.map((option) => (
         <Pressable
           key={option.id}
@@ -364,9 +381,22 @@ function SegmentedControl({
             playSound("tap");
             onChange(option.id);
           }}
-          style={[styles.segment, value === option.id ? styles.segmentActive : null]}
+          style={[
+            styles.segment,
+            compactGrid ? styles.segmentGridItem : null,
+            value === option.id ? styles.segmentActive : null
+          ]}
         >
-          <Text style={[styles.segmentText, value === option.id ? styles.segmentTextActive : null]}>
+          <Text
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.82}
+            style={[
+              styles.segmentText,
+              compactGrid && usesSystemCjkFont(option.id as Lang) ? styles.systemFontText : null,
+              value === option.id ? styles.segmentTextActive : null
+            ]}
+          >
             {option.label}
           </Text>
         </Pressable>
@@ -405,15 +435,23 @@ function ActionRow({
   label,
   detail,
   onPress,
+  accessibilityHint,
   danger = false
 }: {
   label: string;
   detail?: string;
   onPress: () => void;
+  accessibilityHint?: string;
   danger?: boolean;
 }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.actionRow}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={detail ? `${label}. ${detail}` : label}
+      accessibilityHint={accessibilityHint}
+      onPress={onPress}
+      style={styles.actionRow}
+    >
       <View style={styles.actionCopy}>
         <Text style={[styles.rowLabel, danger ? styles.dangerText : null]}>{label}</Text>
         {detail ? <Text style={styles.rowDetail}>{detail}</Text> : null}
@@ -508,10 +546,13 @@ const styles = StyleSheet.create({
     padding: 3,
     gap: 3
   },
+  segmentedGrid: { minHeight: 0, flexWrap: "wrap" },
   segment: { flex: 1, minHeight: 36, alignItems: "center", justifyContent: "center", borderRadius: 8 },
+  segmentGridItem: { flexBasis: "24%", minWidth: "24%", paddingHorizontal: 3 },
   segmentActive: { backgroundColor: "#536f36", borderWidth: 1, borderColor: "rgba(218,185,102,0.48)" },
   segmentText: { color: "#9e9278", fontSize: 12, fontFamily: theme.fonts.heavy, textAlign: "center" },
   segmentTextActive: { color: theme.colors.paper },
+  systemFontText: { fontFamily: undefined, fontWeight: "700" },
   settingRow: {
     minHeight: 46,
     flexDirection: "row",

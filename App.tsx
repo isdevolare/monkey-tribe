@@ -21,6 +21,7 @@ import { GameScreen } from "./src/screens/GameScreen";
 import { ResultScreen } from "./src/screens/ResultScreen";
 import type { VillageSave } from "./src/game/types/game";
 import { theme } from "./src/theme/theme";
+import { detectDeviceLocale } from "./src/game/localization/deviceLocale";
 
 // Hold the native splash up until hydration + fonts finish, so the default
 // (empty) village never flashes before the saved state is restored.
@@ -60,9 +61,12 @@ export default function App() {
           if (Array.isArray(save.buildings) && save.resources) {
             useGameStore.getState().hydrate(save);
           }
+        } else {
+          useGameStore.getState().setLanguage(detectDeviceLocale());
         }
       } catch {
         // A corrupt save must never block launch; fall back to a fresh village.
+        useGameStore.getState().setLanguage(detectDeviceLocale());
       }
       if (__DEV__) {
         console.log("[startup] hydration complete");

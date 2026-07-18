@@ -415,7 +415,7 @@ export function MonkeyCollectionModal({
                 </Text>
                 <View style={styles.confirmPrice}>
                   <AssetImage assetKey="resourceJungleGem" style={styles.confirmGem} fallback={<View />} hideFallbackOnLoad />
-                  <Text style={styles.confirmPriceText}>{pending.price} Gem</Text>
+                  <Text style={styles.confirmPriceText}>{pending.price} {t("res.gems", lang)}</Text>
                 </View>
                 <View style={styles.dialogActions}>
                   <SpringPressable accessibilityRole="button" onPress={() => setPending(null)} style={[styles.dialogButton, styles.cancelButton]}>
@@ -553,7 +553,7 @@ const CollectionCard = memo(function CollectionCard({
         },
       ]}
     >
-      {isNew ? <View pointerEvents="none" style={styles.newCorner}><Text style={styles.newCornerText}>NEW</Text></View> : null}
+      {isNew ? <View pointerEvents="none" style={styles.newCorner}><Text style={styles.newCornerText}>{t("common.new", lang)}</Text></View> : null}
       <AnimatedRarityFx rarity={monkey.rarity} color={rarity.glow} />
       <Animated.View style={[styles.cardContent, { transform: [{ rotateY: cardFlip }] }]}>
       <View
@@ -845,7 +845,7 @@ const SkinCard = memo(function SkinCard({
       pressedScale={0.975}
       style={[styles.skinCard, compact ? styles.skinCardCompact : null, { borderColor: rarity.border, backgroundColor: rarity.surface, shadowColor: presentationGlow }]}
     >
-      {isNew ? <View pointerEvents="none" style={styles.newCorner}><Text style={styles.newCornerText}>NEW</Text></View> : null}
+      {isNew ? <View pointerEvents="none" style={styles.newCorner}><Text style={styles.newCornerText}>{t("common.new", lang)}</Text></View> : null}
       {skin.badgeKey ? <View pointerEvents="none" style={styles.festivalCorner}><Text style={styles.festivalCornerText}>{t(skin.badgeKey, lang)}</Text></View> : null}
       <AnimatedRarityFx rarity={skin.rarity} color={presentationGlow} />
       <Animated.View style={[styles.skinArtFrame, { borderColor: rarity.border, transform: [{ rotateY: cardFlip }] }]}>
