@@ -125,7 +125,7 @@ export function FestivalChestPanel({
 
 /**
  * Profile-side Festival skin collection grid: fragment progress, rarity and
- * owned/equipped states only — no purchase actions live here anymore.
+ * ownership only. Selection and visibility live exclusively in the Palace.
  */
 export function FestivalCollectionPanel({
   lang,
@@ -137,7 +137,6 @@ export function FestivalCollectionPanel({
   const fragments = useGameStore((state) => state.festivalFragments);
   const owned = useGameStore((state) => state.ownedProfileSkins);
   const unlockedMonkeys = useGameStore((state) => state.unlockedProfileMonkeys);
-  const equippedSkin = useGameStore((state) => state.equippedProfileSkin);
   const unfinished = unfinishedFestivalSkins(fragments, owned);
 
   return (
@@ -151,7 +150,6 @@ export function FestivalCollectionPanel({
           const required = festivalFragmentRequirement(skin.id);
           const current = Math.min(required, fragments[skin.id] ?? 0);
           const isOwned = owned.includes(skin.id);
-          const isEquipped = equippedSkin === skin.id;
           const monkey = getProfileMonkey(skin.monkeyId);
           const parentOwned = unlockedMonkeys.includes(skin.monkeyId);
           const appearance = getCosmeticAppearance(skin.monkeyId, skin.id);
@@ -171,14 +169,12 @@ export function FestivalCollectionPanel({
                 <FestivalFragmentIcon size={15} tint={RARITY_COLORS[skin.rarity]} />
                 <Text style={styles.progressText}>{t("festival.progress", lang, { current, required })}</Text>
               </View>
-              <Text style={[styles.status, isEquipped ? styles.equipped : null]}>
+              <Text style={styles.status}>
                 {!parentOwned
                   ? t("collection.requiresNamedMonkey", lang, {
                       name: monkey ? t(monkey.nameKey, lang) : ""
                     })
-                  : isEquipped
-                    ? t("collection.equipped", lang)
-                    : isOwned
+                  : isOwned
                       ? t("collection.owned", lang)
                       : t("collection.locked", lang)}
               </Text>
@@ -235,5 +231,4 @@ const styles = StyleSheet.create({
   fragmentProgressRow: { minHeight: 18, flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
   progressText: { color: "#e3d7c7", fontSize: 8.5, fontFamily: theme.fonts.bold },
   status: { marginTop: 5, color: "#c7b9c5", fontSize: 8.5, fontFamily: theme.fonts.heavy },
-  equipped: { color: "#85f2aa" }
 });

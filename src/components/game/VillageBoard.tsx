@@ -19,8 +19,9 @@ import {
   STONE_WORKER_ASSETS
 } from "../../game/assets/workerAssets";
 import { buildingName } from "../../game/config/buildings";
+import { clanHallAsset } from "../../game/config/clanHallVisuals";
 import { getCosmeticAppearance, getDefaultSkinId } from "../../game/config/profileMonkeys";
-import { ROYAL_PALACE_SLOTS } from "../../game/config/royalPalace";
+import { ROYAL_PALACE_CHARACTERS } from "../../game/config/royalPalace";
 import {
   ROYAL_PALACE_RESIDENT_SPOTS,
   royalPalaceAsset,
@@ -33,7 +34,7 @@ import {
   createBuildingHitTargets,
   selectBuildingAtPoint
 } from "../../game/ui/buildingHitboxes";
-import type { BananaWorkerClass, Lang, LumberWorkerClass, RoyalPalaceSlotAssignment, StoneWorkerClass, Tile, VillageBuilding, VillageBuildingType, WorkerExpedition } from "../../game/types/game";
+import type { BananaWorkerClass, Lang, LumberWorkerClass, RoyalCharacterDisplay, StoneWorkerClass, Tile, VillageBuilding, VillageBuildingType, WorkerExpedition } from "../../game/types/game";
 import { theme } from "../../theme/theme";
 
 type VillageBoardProps = {
@@ -53,7 +54,7 @@ type VillageBoardProps = {
   stoneWorkers?: WorkerExpedition[];
   stoneQuarryStorage?: number;
   stoneQuarryCapacity?: number;
-  royalPalaceSlots?: RoyalPalaceSlotAssignment[];
+  royalCharacterDisplays?: RoyalCharacterDisplay[];
   onBuildingPress: (type: VillageBuildingType) => void;
   onCollectBananas: () => void;
   onCollectWood: () => void;
@@ -85,7 +86,7 @@ const BUILDING_LAYOUT: Record<
   VillageBuildingType,
   { point: Point; size: number; asset: GameAssetKey }
 > = {
-  clanHall: buildingLayout("clanHall", "buildingPlayerCamp"),
+  clanHall: buildingLayout("clanHall", "clanHallStage1"),
   bananaGrove: buildingLayout("bananaGrove", "terrainBananaTree"),
   lumberCamp: buildingLayout("lumberCamp", "buildingLumberCampReference"),
   stoneQuarry: buildingLayout("stoneQuarry", "terrainRock"),
@@ -112,7 +113,7 @@ export function VillageBoard({
   stoneWorkers = [],
   stoneQuarryStorage = 0,
   stoneQuarryCapacity = 100,
-  royalPalaceSlots = [],
+  royalCharacterDisplays = [],
   onBuildingPress,
   onCollectBananas,
   onCollectWood,
@@ -200,7 +201,7 @@ export function VillageBoard({
             bananaWorkers={building.type === "bananaGrove" ? bananaWorkers : []}
             lumberWorkers={building.type === "lumberCamp" ? lumberWorkers : []}
             stoneWorkers={building.type === "stoneQuarry" ? stoneWorkers : []}
-            royalPalaceSlots={building.type === "royalPalace" ? royalPalaceSlots : []}
+            royalCharacterDisplays={building.type === "royalPalace" ? royalCharacterDisplays : []}
             animatePalaceResidents={!reduceAmbientEffects}
             onAccessibilityPress={() => onBuildingPress(building.type)}
           />
@@ -540,7 +541,7 @@ const MemoBuildingSprite = memo(
     a.bananaWorkers === b.bananaWorkers &&
     a.lumberWorkers === b.lumberWorkers &&
     a.stoneWorkers === b.stoneWorkers &&
-    a.royalPalaceSlots === b.royalPalaceSlots &&
+    a.royalCharacterDisplays === b.royalCharacterDisplays &&
     a.animatePalaceResidents === b.animatePalaceResidents &&
     a.lang === b.lang
 );
@@ -588,31 +589,7 @@ const TIER_PROPS: Record<VillageBuildingType, TierProp[]> = {
   royalPalace: []
 };
 
-const PENNANT_LEVEL = 4;
 const GLOW_LEVEL = 6;
-
-// Small clan pennant planted once a building reaches tier 3.
-function Pennant() {
-  const wave = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(wave, { toValue: 1, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(wave, { toValue: 0, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
-    ]));
-    loop.start();
-    return () => loop.stop();
-  }, [wave]);
-  return (
-    <View style={styles.pennant} pointerEvents="none">
-      <Animated.View style={[styles.full, { transform: [{ rotate: wave.interpolate({ inputRange: [0, 1], outputRange: ["-1.5deg", "1.5deg"] }) }, { scaleX: wave.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1.04] }) }] }]}>
-        <Svg width="100%" height="100%" viewBox="0 0 20 34">
-          <Line x1="4" y1="2" x2="4" y2="32" stroke="#6a4121" strokeWidth="2.6" />
-          <Path d="M5 3 L18 7.5 L5 12 Z" fill="#4f8f3a" stroke="#2e5220" strokeWidth="1" />
-        </Svg>
-      </Animated.View>
-    </View>
-  );
-}
 
 const BuildingIdleDetails = memo(function BuildingIdleDetails({ type }: { type: VillageBuildingType }) {
   const idle = useRef(new Animated.Value(0)).current;
@@ -628,12 +605,6 @@ const BuildingIdleDetails = memo(function BuildingIdleDetails({ type }: { type: 
   const sway = idle.interpolate({ inputRange: [0, 1], outputRange: ["-2deg", "2deg"] });
   const flicker = idle.interpolate({ inputRange: [0, 1], outputRange: [0.52, 0.88] });
 
-  if (type === "clanHall") {
-    return <>
-      <WavingFlag idle={idle} style={styles.clanFlagLeft} color="#2268ad" />
-      <WavingFlag idle={idle} style={styles.clanFlagRight} color="#2268ad" mirrored />
-    </>;
-  }
   if (type === "workerShelter") {
     return <Animated.View style={[styles.lodgeLantern, { opacity: flicker, transform: [{ rotate: sway }] }]}><View style={styles.lanternGlow} /></Animated.View>;
   }
@@ -673,7 +644,7 @@ function BuildingSprite({
   bananaWorkers,
   lumberWorkers,
   stoneWorkers,
-  royalPalaceSlots,
+  royalCharacterDisplays,
   animatePalaceResidents
 }: {
   building: VillageBuilding;
@@ -684,7 +655,7 @@ function BuildingSprite({
   bananaWorkers: WorkerExpedition[];
   lumberWorkers: WorkerExpedition[];
   stoneWorkers: WorkerExpedition[];
-  royalPalaceSlots: RoyalPalaceSlotAssignment[];
+  royalCharacterDisplays: RoyalCharacterDisplay[];
   animatePalaceResidents: boolean;
 }) {
   const { point, asset } = layout;
@@ -715,7 +686,7 @@ function BuildingSprite({
       ) : null}
       {selected ? <View style={styles.buildingSelected} pointerEvents="none" /> : null}
       <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
-      {building.type !== "royalPalace" ? <BuildingIdleDetails type={building.type} /> : null}
+      {building.type !== "royalPalace" && building.type !== "clanHall" ? <BuildingIdleDetails type={building.type} /> : null}
       {building.type === "bananaGrove" ? (
         <BananaGroveActivity workers={bananaWorkers} />
       ) : null}
@@ -726,7 +697,7 @@ function BuildingSprite({
         <ResourceWorkplaceActivity kind="stone" workers={stoneWorkers} />
       ) : null}
       {building.type === "royalPalace" ? (
-        <RoyalPalaceResidents assignments={royalPalaceSlots} palaceLevel={building.level} animate={animatePalaceResidents} />
+        <RoyalPalaceResidents displays={royalCharacterDisplays} palaceLevel={building.level} animate={animatePalaceResidents} />
       ) : null}
       {props.map((prop) => (
         <View
@@ -745,9 +716,12 @@ function BuildingSprite({
           </PopIn>
         </View>
       ))}
-      {building.type !== "royalPalace" && building.level >= PENNANT_LEVEL ? <Pennant /> : null}
-
-      <View style={styles.nameTagWrap} pointerEvents="none">
+      <View style={styles.buildingLabelStack} pointerEvents="none">
+        <View style={styles.levelBadge}>
+          <Text style={styles.levelBadgeText} maxFontSizeMultiplier={theme.maxFontScale}>
+            {t("common.levelBadge", lang, { n: building.level })}
+          </Text>
+        </View>
         <View style={styles.nameTag}>
           <Text
             style={[styles.nameTagText, selected ? styles.nameTagTextSelected : null]}
@@ -756,14 +730,6 @@ function BuildingSprite({
             maxFontSizeMultiplier={theme.maxFontScale}
           >
             {buildingName(building.type, lang)}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.levelBadgeWrap} pointerEvents="none">
-        <View style={styles.levelBadge}>
-          <Text style={styles.levelBadgeText} maxFontSizeMultiplier={theme.maxFontScale}>
-            {t("common.levelBadge", lang, { n: building.level })}
           </Text>
         </View>
       </View>
@@ -798,8 +764,8 @@ function ResourceWorkplaceActivity({ kind, workers }: { kind: "lumber" | "stone"
   </View>;
 }
 
-function RoyalPalaceResidents({ assignments, palaceLevel, animate }: {
-  assignments: RoyalPalaceSlotAssignment[];
+function RoyalPalaceResidents({ displays, palaceLevel, animate }: {
+  displays: RoyalCharacterDisplay[];
   palaceLevel: number;
   animate: boolean;
 }) {
@@ -819,18 +785,18 @@ function RoyalPalaceResidents({ assignments, palaceLevel, animate }: {
   }, [animate, idle]);
 
   return <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-    {assignments.filter((assignment) => {
-      const definition = ROYAL_PALACE_SLOTS.find((slot) => slot.slotId === assignment.slotId);
-      return definition != null && definition.requiredPalaceLevel <= palaceLevel;
-    }).map((assignment) => {
+    {displays.filter((display) => {
+      const definition = ROYAL_PALACE_CHARACTERS.find((entry) => entry.characterId === display.characterId);
+      return display.isVisible && definition != null && definition.palaceUnlockLevel <= palaceLevel;
+    }).map((display) => {
       const appearance = getCosmeticAppearance(
-        assignment.equippedMonkeyId,
-        assignment.equippedSkinId ?? getDefaultSkinId(assignment.equippedMonkeyId)
+        display.characterId,
+        display.selectedSkinId ?? getDefaultSkinId(display.characterId)
       );
-      const spot = ROYAL_PALACE_RESIDENT_SPOTS[assignment.slotId];
-      const king = assignment.slotId === "goldenThrone";
+      const spot = ROYAL_PALACE_RESIDENT_SPOTS[display.displayPosition];
+      const king = display.displayPosition === "goldenThrone";
       return <Animated.View
-        key={assignment.slotId}
+        key={display.characterId}
         style={[
           styles.palaceResident,
           king ? styles.palaceKing : null,
@@ -1022,16 +988,10 @@ function SceneSprite({ item }: { item: SceneItem }) {
   );
 }
 
-// Newer generated art for some buildings; the Clan Hall changes with level.
+// Generated art changes visually without touching the persisted building level.
 function assetForBuilding(building: VillageBuilding, fallback: GameAssetKey): GameAssetKey {
   if (building.type === "clanHall") {
-    if (building.level >= 3) {
-      return "buildingPlayerCampL3";
-    }
-    if (building.level >= 2) {
-      return "buildingPlayerCampL2";
-    }
-    return "buildingPlayerCamp";
+    return clanHallAsset(building.level);
   }
   if (building.type === "royalPalace") {
     return royalPalaceAsset(building.level);
@@ -1212,8 +1172,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end"
   },
   idleFlag: { position: "absolute", width: "17%", height: "33%", zIndex: 7 },
-  clanFlagLeft: { left: "11%", top: "18%" },
-  clanFlagRight: { right: "11%", top: "18%" },
   lodgeLantern: { position: "absolute", right: "22%", top: "49%", width: "6%", height: "12%", transformOrigin: "top" },
   lanternGlow: { flex: 1, borderRadius: 999, backgroundColor: "#f4a52c", shadowColor: "#ffb43f", shadowOpacity: 0.95, shadowRadius: 7, shadowOffset: { width: 0, height: 0 } },
   trainingTargetIdle: { position: "absolute", right: "-8%", top: "45%", width: "34%", height: "34%" },
@@ -1301,13 +1259,6 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 0 }
   },
-  pennant: {
-    position: "absolute",
-    top: "-14%",
-    right: "2%",
-    width: "26%",
-    height: "44%"
-  },
   buildingSelected: {
     position: "absolute",
     left: "-2%",
@@ -1323,16 +1274,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 0 }
   },
-  // Wider than the sprite so long names don't get squeezed into ellipsis.
-  nameTagWrap: {
+  // Level, then name, then building. The stack ends at the top edge of the art.
+  buildingLabelStack: {
     position: "absolute",
-    bottom: "-24%",
-    left: "-70%",
-    right: "-70%",
-    alignItems: "center"
+    bottom: "97%",
+    left: "-55%",
+    right: "-55%",
+    alignItems: "center",
+    gap: 1,
+    zIndex: 60,
+    elevation: 20
   },
   nameTag: {
-    width: "78%",
+    width: "100%",
     paddingHorizontal: 5,
     paddingVertical: 1,
     shadowColor: "#000",
@@ -1348,13 +1302,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.heavy
   },
   nameTagTextSelected: { color: "#ffe07d" },
-  levelBadgeWrap: {
-    position: "absolute",
-    bottom: "-5%",
-    left: 0,
-    right: 0,
-    alignItems: "center"
-  },
   levelBadge: {
     minWidth: 35,
     height: 18,

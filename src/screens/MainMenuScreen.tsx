@@ -8,7 +8,7 @@ import { WoodButton } from "../components/game/WoodButton";
 import { playSound } from "../game/audio/soundManager";
 import { t } from "../game/i18n";
 import { markTutorialForReplay } from "../game/settings/tutorial";
-import { getCosmeticAppearance } from "../game/config/profileMonkeys";
+import { getPrimaryRoyalAppearance } from "../game/config/profileMonkeys";
 import { useGameStore } from "../game/state/gameStore";
 import { theme } from "../theme/theme";
 
@@ -16,9 +16,8 @@ export function MainMenuScreen() {
   const startGame = useGameStore((state) => state.startGame);
   const setLanguage = useGameStore((state) => state.setLanguage);
   const lang = useGameStore((state) => state.language);
-  const equippedMonkey = useGameStore((state) => state.equippedProfileMonkey);
-  const equippedSkin = useGameStore((state) => state.equippedProfileSkin);
-  const appearance = getCosmeticAppearance(equippedMonkey, equippedSkin);
+  const displays = useGameStore((state) => state.royalCharacterDisplays);
+  const appearance = getPrimaryRoyalAppearance(displays);
   const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
 

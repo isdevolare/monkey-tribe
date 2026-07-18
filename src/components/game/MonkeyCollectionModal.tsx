@@ -127,15 +127,11 @@ export function MonkeyCollectionModal({
   const insets = useSafeAreaInsets();
   const gems = useGameStore((state) => state.gems);
   const unlocked = useGameStore((state) => state.unlockedProfileMonkeys);
-  const equipped = useGameStore((state) => state.equippedProfileMonkey);
   const ownedSkins = useGameStore((state) => state.ownedProfileSkins);
-  const equippedSkin = useGameStore((state) => state.equippedProfileSkin);
   const newMonkeys = useGameStore((state) => state.newProfileMonkeys);
   const newSkins = useGameStore((state) => state.newProfileSkins);
   const festivalFragments = useGameStore((state) => state.festivalFragments);
   const unlock = useGameStore((state) => state.unlockProfileMonkey);
-  const equip = useGameStore((state) => state.equipProfileMonkey);
-  const equipSkin = useGameStore((state) => state.equipProfileSkin);
   const markMonkeySeen = useGameStore((state) => state.markProfileMonkeySeen);
   const markSkinSeen = useGameStore((state) => state.markProfileSkinSeen);
   const shopMode = mode === "shop";
@@ -145,7 +141,7 @@ export function MonkeyCollectionModal({
   const [detailSelection, setDetailSelection] = useState<CosmeticDetailSelection | null>(null);
   const [unlockFeedback, setUnlockFeedback] = useState<CosmeticDetailSelection | null>(null);
   const [activeTab, setActiveTab] = useState<"monkeys" | "skins" | "festival">("monkeys");
-  const [selectedSkinMonkey, setSelectedSkinMonkey] = useState(equipped);
+  const [selectedSkinMonkey, setSelectedSkinMonkey] = useState(PROFILE_MONKEYS[0]?.id ?? "profile_monkey_worker");
   const [ownershipFilter, setOwnershipFilter] = useState<CosmeticOwnershipFilter>("all");
   const [rarityFilter, setRarityFilter] = useState<CosmeticRarityFilter>("all");
   const [visibleSkinCount, setVisibleSkinCount] = useState(12);
@@ -216,33 +212,14 @@ export function MonkeyCollectionModal({
     : detailSelection?.kind === "skin"
       ? ownedSkins.includes(detailSelection.item.id)
       : false;
-  const detailEquipped = detailSelection?.kind === "monkey"
-    ? equipped === detailSelection.item.id && equippedSkin === detailSelection.item.availableSkinIds[0]
-    : detailSelection?.kind === "skin"
-      ? equippedSkin === detailSelection.item.id
-      : false;
-
   const requestDetailUnlock = useCallback(() => {
     if (!detailSelection) return;
     if (detailSelection.kind === "monkey") setPending(detailSelection.item);
   }, [detailSelection]);
 
-  const equipDetail = useCallback(() => {
-    if (!detailSelection) return;
-    if (detailSelection.kind === "monkey") equip(detailSelection.item.id);
-    else equipSkin(detailSelection.item.id);
-  }, [detailSelection, equip, equipSkin]);
-
   const closeDetail = useCallback(() => setDetailSelection(null), []);
   const dismissUnlockFeedback = useCallback(() => setUnlockFeedback(null), []);
   const selectSkinMonkey = useCallback((id: ProfileMonkey["id"]) => setSelectedSkinMonkey(id), []);
-
-  function equipUnlockedNow() {
-    if (!unlockFeedback) return;
-    if (unlockFeedback.kind === "monkey") equip(unlockFeedback.item.id);
-    else equipSkin(unlockFeedback.item.id);
-    setUnlockFeedback(null);
-  }
 
   if (!visible) return null;
 
@@ -361,7 +338,6 @@ export function MonkeyCollectionModal({
                       lang={lang}
                       compact={compact}
                       owned={unlocked.includes(monkey.id)}
-                      equipped={equipped === monkey.id}
                       isNew={newMonkeys.includes(monkey.id)}
                       unlockCelebrating={celebratingId === monkey.id}
                       showPrice={shopMode}
@@ -385,7 +361,7 @@ export function MonkeyCollectionModal({
                     </ScrollView>
                     <View style={styles.skinGrid}>
                       {selectedMonkeySkins.slice(0, visibleSkinCount).map((skin) => (
-                        <SkinCard key={skin.id} skin={skin} lang={lang} compact={compact} owned={ownedSkins.includes(skin.id)} equipped={equippedSkin === skin.id} monkeyOwned={unlocked.includes(skin.monkeyId)} fragmentCount={festivalFragments[skin.id] ?? 0} isNew={newSkins.includes(skin.id)} celebrating={celebratingId === skin.id} onSelect={selectSkin} />
+                        <SkinCard key={skin.id} skin={skin} lang={lang} compact={compact} owned={ownedSkins.includes(skin.id)} monkeyOwned={unlocked.includes(skin.monkeyId)} fragmentCount={festivalFragments[skin.id] ?? 0} isNew={newSkins.includes(skin.id)} celebrating={celebratingId === skin.id} onSelect={selectSkin} />
                       ))}
                     </View>
                     {selectedMonkeySkins.length === 0 ? <Text style={styles.emptyText}>{t("collection.filter.empty", lang)}</Text> : null}
@@ -405,21 +381,20 @@ export function MonkeyCollectionModal({
             lang={lang}
             gems={gems}
             owned={detailOwned}
-            equipped={detailEquipped}
+            equipped={false}
             ownedSkinIds={ownedSkins}
             unlockedMonkeyIds={unlocked}
             festivalFragments={festivalFragments}
             purchaseEnabled={shopMode}
+            managementEnabled={false}
             onClose={closeDetail}
             onUnlock={requestDetailUnlock}
-            onEquip={equipDetail}
             onOpenSkin={selectSkin}
           />
           <CosmeticUnlockFeedback
             selection={unlockFeedback}
             lang={lang}
             onDismiss={dismissUnlockFeedback}
-            onEquipNow={equipUnlockedNow}
           />
           {pending ? (
             <View style={styles.dialogScrim}>
@@ -514,7 +489,6 @@ const CollectionCard = memo(function CollectionCard({
   lang,
   compact,
   owned,
-  equipped,
   isNew,
   unlockCelebrating,
   showPrice,
@@ -524,7 +498,6 @@ const CollectionCard = memo(function CollectionCard({
   lang: Lang;
   compact: boolean;
   owned: boolean;
-  equipped: boolean;
   isNew: boolean;
   unlockCelebrating: boolean;
   /** Shop mode shows Gem prices; Profile mode points at the Shop instead. */
@@ -533,13 +506,7 @@ const CollectionCard = memo(function CollectionCard({
 }) {
   const rarity = RARITY_THEME[monkey.rarity];
   const unlockAnim = useRef(new Animated.Value(1)).current;
-  const equipAnim = useRef(new Animated.Value(equipped ? 1 : 0)).current;
-  const [displayEquipped, setDisplayEquipped] = useState(equipped);
-  const status = equipped
-    ? t("collection.equipped", lang)
-    : owned
-      ? t("collection.owned", lang)
-      : t("collection.locked", lang);
+  const status = owned ? t("collection.owned", lang) : t("collection.locked", lang);
 
   useEffect(() => {
     if (!unlockCelebrating) {
@@ -564,28 +531,6 @@ const CollectionCard = memo(function CollectionCard({
     return () => animation.stop();
   }, [unlockAnim, unlockCelebrating]);
 
-  useEffect(() => {
-    if (equipped) {
-      setDisplayEquipped(true);
-      equipAnim.setValue(0);
-      Animated.spring(equipAnim, {
-        toValue: 1,
-        speed: 15,
-        bounciness: 9,
-        useNativeDriver: true
-      }).start();
-      return;
-    }
-    if (displayEquipped) {
-      Animated.timing(equipAnim, {
-        toValue: 0,
-        duration: 180,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true
-      }).start(() => setDisplayEquipped(false));
-    }
-  }, [displayEquipped, equipAnim, equipped]);
-
   const cardFlip = unlockAnim.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: ["0deg", "88deg", "0deg"]
@@ -596,7 +541,6 @@ const CollectionCard = memo(function CollectionCard({
     <SpringPressable
       accessibilityRole="button"
       accessibilityLabel={`${t(monkey.nameKey, lang)}. ${status}`}
-      accessibilityState={{ selected: equipped }}
       onPress={handlePress}
       pressedScale={0.975}
       style={[
@@ -607,7 +551,6 @@ const CollectionCard = memo(function CollectionCard({
           backgroundColor: rarity.surface,
           shadowColor: rarity.glow
         },
-        equipped ? styles.monkeyCardEquipped : null
       ]}
     >
       {isNew ? <View pointerEvents="none" style={styles.newCorner}><Text style={styles.newCornerText}>NEW</Text></View> : null}
@@ -645,26 +588,9 @@ const CollectionCard = memo(function CollectionCard({
       </Text>
 
       <View style={styles.statusRow}>
-        {displayEquipped ? (
-          <Animated.View
-            style={{
-              opacity: equipAnim,
-              transform: [
-                {
-                  scale: equipAnim.interpolate({ inputRange: [0, 1], outputRange: [0.72, 1] })
-                }
-              ]
-            }}
-          >
-            <Text style={[styles.statusText, styles.equippedText]} maxFontSizeMultiplier={theme.maxFontScale}>
-              {t("collection.equipped", lang)}
-            </Text>
-          </Animated.View>
-        ) : (
-          <Text style={styles.statusText} maxFontSizeMultiplier={theme.maxFontScale}>
-            {owned ? t("collection.owned", lang) : t("collection.locked", lang)}
-          </Text>
-        )}
+        <Text style={styles.statusText} maxFontSizeMultiplier={theme.maxFontScale}>
+          {owned ? t("collection.owned", lang) : t("collection.locked", lang)}
+        </Text>
       </View>
 
       {!owned ? (
@@ -694,16 +620,10 @@ const CollectionCard = memo(function CollectionCard({
             </Text>
           </View>
         )
-      ) : !equipped ? (
-        <View style={styles.equipButton}>
-          <Text style={styles.equipText} maxFontSizeMultiplier={theme.maxFontScale}>
-            {t("collection.equip", lang)}
-          </Text>
-        </View>
       ) : (
         <View style={[styles.equipButton, styles.equippedButton]}>
           <Text style={styles.equipText} maxFontSizeMultiplier={theme.maxFontScale}>
-            {t("collection.equipped", lang)}
+            {t("collection.owned", lang)}
           </Text>
         </View>
       )}
@@ -882,7 +802,6 @@ const SkinCard = memo(function SkinCard({
   lang,
   compact,
   owned,
-  equipped,
   monkeyOwned,
   fragmentCount,
   isNew,
@@ -893,7 +812,6 @@ const SkinCard = memo(function SkinCard({
   lang: Lang;
   compact: boolean;
   owned: boolean;
-  equipped: boolean;
   monkeyOwned: boolean;
   fragmentCount: number;
   isNew: boolean;
@@ -922,10 +840,10 @@ const SkinCard = memo(function SkinCard({
   return (
     <SpringPressable
       accessibilityRole="button"
-      accessibilityState={{ selected: equipped, disabled: !monkeyOwned }}
+      accessibilityState={{ disabled: !monkeyOwned }}
       onPress={handlePress}
       pressedScale={0.975}
-      style={[styles.skinCard, compact ? styles.skinCardCompact : null, { borderColor: rarity.border, backgroundColor: rarity.surface, shadowColor: presentationGlow }, equipped ? styles.monkeyCardEquipped : null]}
+      style={[styles.skinCard, compact ? styles.skinCardCompact : null, { borderColor: rarity.border, backgroundColor: rarity.surface, shadowColor: presentationGlow }]}
     >
       {isNew ? <View pointerEvents="none" style={styles.newCorner}><Text style={styles.newCornerText}>NEW</Text></View> : null}
       {skin.badgeKey ? <View pointerEvents="none" style={styles.festivalCorner}><Text style={styles.festivalCornerText}>{t(skin.badgeKey, lang)}</Text></View> : null}
@@ -942,8 +860,8 @@ const SkinCard = memo(function SkinCard({
       <Text style={styles.skinName} numberOfLines={2}>{t(skin.nameKey, lang)}</Text>
       <Text style={styles.skinMonkeyName} numberOfLines={1}>{monkey ? t(monkey.nameKey, lang) : ""}</Text>
       <Text style={styles.skinDescription} numberOfLines={3}>{t(skin.descriptionKey, lang)}</Text>
-      <Text style={[styles.statusText, equipped ? styles.equippedText : null]}>
-        {!monkeyOwned ? t("collection.requiresNamedMonkey", lang, { name: monkey ? t(monkey.nameKey, lang) : "" }) : equipped ? t("collection.equipped", lang) : owned ? t("collection.owned", lang) : t("collection.locked", lang)}
+      <Text style={styles.statusText}>
+        {!monkeyOwned ? t("collection.requiresNamedMonkey", lang, { name: monkey ? t(monkey.nameKey, lang) : "" }) : owned ? t("collection.owned", lang) : t("collection.locked", lang)}
       </Text>
       {!owned ? (
         <View style={[styles.equipButton, styles.comingSoonButton]}>
@@ -953,10 +871,8 @@ const SkinCard = memo(function SkinCard({
               : t("collection.requiresNamedMonkey", lang, { name: monkey ? t(monkey.nameKey, lang) : "" })}
           </Text>
         </View>
-      ) : !equipped ? (
-        <View style={styles.equipButton}><Text style={styles.equipText}>{t("collection.equip", lang)}</Text></View>
       ) : (
-        <View style={[styles.equipButton, styles.equippedButton]}><Text style={styles.equipText}>{t("collection.equipped", lang)}</Text></View>
+        <View style={[styles.equipButton, styles.equippedButton]}><Text style={styles.equipText}>{t("collection.owned", lang)}</Text></View>
       )}
       {celebrating ? <UnlockCelebration progress={unlockAnim} lang={lang} /> : null}
     </SpringPressable>

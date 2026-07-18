@@ -10,12 +10,34 @@ import type {
   ProfileMonkeyId,
   ProfileSkinId,
   Resources,
+  RoyalCharacterDisplay,
   RoyalPalaceClass,
   RoyalPalacePlacementResult,
   RoyalPalaceSlotAssignment,
   RoyalPalaceSlotId,
   WorkerLodgeUpgrade
 } from "../types/game";
+
+export const ROYAL_PALACE_SAVE_VERSION = 2;
+export const ROYAL_PALACE_MAX_LEVEL = 3;
+
+export type RoyalPalaceCharacterDefinition = {
+  characterId: ProfileMonkeyId;
+  palaceClass: RoyalPalaceClass;
+  palaceUnlockLevel: number;
+  displayPosition: RoyalPalaceSlotId;
+  areaKey: string;
+};
+
+/** Character identity, unlock level and fixed display position live in one config. */
+export const ROYAL_PALACE_CHARACTERS: readonly RoyalPalaceCharacterDefinition[] = [
+  { characterId: "profile_monkey_worker", palaceClass: "worker", palaceUnlockLevel: 1, displayPosition: "palaceGarden", areaKey: "royalPalace.area.palaceGarden" },
+  { characterId: "profile_monkey_scout", palaceClass: "scout", palaceUnlockLevel: 1, displayPosition: "scoutPath", areaKey: "royalPalace.area.scoutPath" },
+  { characterId: "profile_monkey_warrior", palaceClass: "warrior", palaceUnlockLevel: 1, displayPosition: "guardGate", areaKey: "royalPalace.area.guardGate" },
+  { characterId: "profile_monkey_hunter", palaceClass: "hunter", palaceUnlockLevel: 2, displayPosition: "hunterTerrace", areaKey: "royalPalace.area.hunterTerrace" },
+  { characterId: "profile_monkey_chief", palaceClass: "chief", palaceUnlockLevel: 2, displayPosition: "royalCourt", areaKey: "royalPalace.area.royalCourt" },
+  { characterId: "profile_monkey_king", palaceClass: "king", palaceUnlockLevel: 3, displayPosition: "goldenThrone", areaKey: "royalPalace.area.goldenThrone" }
+];
 
 export type RoyalPalaceSlotDefinition = {
   slotId: RoyalPalaceSlotId;
@@ -24,37 +46,29 @@ export type RoyalPalaceSlotDefinition = {
   areaKey: string;
 };
 
-export const ROYAL_PALACE_SLOTS: readonly RoyalPalaceSlotDefinition[] = [
-  { slotId: "palaceGarden", requiredPalaceLevel: 1, allowedClass: "worker", areaKey: "royalPalace.area.palaceGarden" },
-  { slotId: "scoutPath", requiredPalaceLevel: 2, allowedClass: "scout", areaKey: "royalPalace.area.scoutPath" },
-  { slotId: "guardGate", requiredPalaceLevel: 3, allowedClass: "warrior", areaKey: "royalPalace.area.guardGate" },
-  { slotId: "hunterTerrace", requiredPalaceLevel: 4, allowedClass: "hunter", areaKey: "royalPalace.area.hunterTerrace" },
-  { slotId: "royalCourt", requiredPalaceLevel: 5, allowedClass: "chief", areaKey: "royalPalace.area.royalCourt" },
-  { slotId: "goldenThrone", requiredPalaceLevel: 6, allowedClass: "king", areaKey: "royalPalace.area.goldenThrone" }
-];
+/** Compatibility view for village positioning and legacy save migration. */
+export const ROYAL_PALACE_SLOTS: readonly RoyalPalaceSlotDefinition[] =
+  ROYAL_PALACE_CHARACTERS.map((entry) => ({
+    slotId: entry.displayPosition,
+    requiredPalaceLevel: entry.palaceUnlockLevel,
+    allowedClass: entry.palaceClass,
+    areaKey: entry.areaKey
+  }));
 
-export const ROYAL_PALACE_MONKEY_CLASSES: Readonly<Record<ProfileMonkeyId, RoyalPalaceClass>> = {
-  profile_monkey_worker: "worker",
-  profile_monkey_scout: "scout",
-  profile_monkey_warrior: "warrior",
-  profile_monkey_hunter: "hunter",
-  profile_monkey_chief: "chief",
-  profile_monkey_king: "king"
-};
+export const ROYAL_PALACE_MONKEY_CLASSES: Readonly<Record<ProfileMonkeyId, RoyalPalaceClass>> =
+  Object.fromEntries(ROYAL_PALACE_CHARACTERS.map((entry) => [entry.characterId, entry.palaceClass]));
 
 export const ROYAL_PALACE_LEVEL_NAME_KEYS = [
   "royalPalace.level.unbuilt",
   "royalPalace.level.1",
   "royalPalace.level.2",
-  "royalPalace.level.3",
-  "royalPalace.level.4",
-  "royalPalace.level.5",
-  "royalPalace.level.6"
+  "royalPalace.level.3"
 ] as const;
 
-type RoyalPalaceUpgradeDefinition = {
+export type RoyalPalaceUpgradeDefinition = {
   targetLevel: number;
   cost: Resources;
+  /** Fixed Gem price for completing an already-running upgrade immediately. */
   gemCost: number;
   requiredClanHallLevel: number;
   durationMs: number;
@@ -62,15 +76,11 @@ type RoyalPalaceUpgradeDefinition = {
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
 
 const RAW_ROYAL_PALACE_UPGRADES: readonly RoyalPalaceUpgradeDefinition[] = [
-  { targetLevel: 1, cost: { bananas: 500, wood: 300, stones: 250 }, gemCost: 0, requiredClanHallLevel: 3, durationMs: 10 * MINUTE },
-  { targetLevel: 2, cost: { bananas: 900, wood: 650, stones: 500 }, gemCost: 15, requiredClanHallLevel: 4, durationMs: 30 * MINUTE },
-  { targetLevel: 3, cost: { bananas: 1_500, wood: 1_100, stones: 900 }, gemCost: 30, requiredClanHallLevel: 5, durationMs: 2 * HOUR },
-  { targetLevel: 4, cost: { bananas: 2_400, wood: 1_800, stones: 1_500 }, gemCost: 60, requiredClanHallLevel: 6, durationMs: 8 * HOUR },
-  { targetLevel: 5, cost: { bananas: 3_200, wood: 2_700, stones: 2_300 }, gemCost: 100, requiredClanHallLevel: 8, durationMs: DAY },
-  { targetLevel: 6, cost: { bananas: 4_000, wood: 3_600, stones: 3_200 }, gemCost: 180, requiredClanHallLevel: 10, durationMs: 3 * DAY }
+  { targetLevel: 1, cost: { bananas: 250, wood: 250, stones: 250 }, gemCost: 5, requiredClanHallLevel: 2, durationMs: 30 * MINUTE },
+  { targetLevel: 2, cost: { bananas: 750, wood: 750, stones: 750 }, gemCost: 10, requiredClanHallLevel: 4, durationMs: HOUR },
+  { targetLevel: 3, cost: { bananas: 1_500, wood: 1_500, stones: 1_500 }, gemCost: 20, requiredClanHallLevel: 6, durationMs: 2 * HOUR }
 ];
 
 export const ROYAL_PALACE_UPGRADES: readonly RoyalPalaceUpgradeDefinition[] =
@@ -90,14 +100,195 @@ export function royalPalaceUpgrade(currentLevel: number) {
   return ROYAL_PALACE_UPGRADES.find((entry) => entry.targetLevel === currentLevel + 1) ?? null;
 }
 
+export function royalPalaceCharacter(characterId: ProfileMonkeyId) {
+  return ROYAL_PALACE_CHARACTERS.find((entry) => entry.characterId === characterId) ?? null;
+}
+
 export function royalPalaceClassForMonkey(monkeyId: ProfileMonkeyId) {
-  return ROYAL_PALACE_MONKEY_CLASSES[monkeyId] ?? null;
+  return royalPalaceCharacter(monkeyId)?.palaceClass ?? null;
 }
 
 export function royalPalaceSlot(slotId: RoyalPalaceSlotId) {
   return ROYAL_PALACE_SLOTS.find((slot) => slot.slotId === slotId) ?? null;
 }
 
+export function migrateRoyalPalaceLevel(value: unknown, saveVersion?: number) {
+  const level = typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : 0;
+  if (saveVersion === ROYAL_PALACE_SAVE_VERSION) return Math.min(ROYAL_PALACE_MAX_LEVEL, level);
+  if (level === 0) return 0;
+  if (level <= 2) return 1;
+  if (level <= 5) return 2;
+  return 3;
+}
+
+/** Keeps an in-flight legacy upgrade on the shared building timer. */
+export function migrateRoyalPalaceActiveUpgrade(
+  value: WorkerLodgeUpgrade | null | undefined,
+  saveVersion?: number
+): WorkerLodgeUpgrade | null | undefined {
+  if (!value || value.buildingType !== "royalPalace" || saveVersion === ROYAL_PALACE_SAVE_VERSION) return value;
+  const fromLevel = migrateRoyalPalaceLevel(value.fromLevel, saveVersion);
+  const mappedTarget = migrateRoyalPalaceLevel(value.targetLevel, saveVersion);
+  if (fromLevel >= ROYAL_PALACE_MAX_LEVEL) return null;
+  return {
+    ...value,
+    fromLevel,
+    targetLevel: Math.max(fromLevel + 1, mappedTarget)
+  };
+}
+
+function validSelectedSkin(
+  characterId: ProfileMonkeyId,
+  skinId: unknown,
+  ownedMonkeys: readonly ProfileMonkeyId[],
+  ownedSkins: readonly ProfileSkinId[]
+): ProfileSkinId | null {
+  if (typeof skinId !== "string") return null;
+  const skin = getProfileSkin(skinId);
+  return isActiveProfileSkin(skin) &&
+    skin.monkeyId === characterId &&
+    ownedMonkeys.includes(characterId) &&
+    ownedSkins.includes(skinId)
+    ? skinId
+    : null;
+}
+
+export function createRoyalCharacterDisplays(
+  palaceLevel: number,
+  ownedMonkeys: readonly ProfileMonkeyId[],
+  ownedSkins: readonly ProfileSkinId[]
+): RoyalCharacterDisplay[] {
+  return ROYAL_PALACE_CHARACTERS.map((definition) => ({
+    characterId: definition.characterId,
+    selectedSkinId: null,
+    isVisible: palaceLevel >= definition.palaceUnlockLevel && ownedMonkeys.includes(definition.characterId),
+    displayPosition: definition.displayPosition
+  }));
+}
+
+export function sanitizeRoyalCharacterDisplays(args: {
+  value: unknown;
+  legacySlots?: unknown;
+  palaceLevel: number;
+  ownedMonkeys: readonly ProfileMonkeyId[];
+  ownedSkins: readonly ProfileSkinId[];
+  legacyEquippedMonkey?: unknown;
+  legacyEquippedSkin?: unknown;
+}) {
+  const displays = createRoyalCharacterDisplays(args.palaceLevel, args.ownedMonkeys, args.ownedSkins);
+  const byCharacter = new Map(displays.map((entry) => [entry.characterId, entry]));
+  const explicitCharacters = new Set<ProfileMonkeyId>();
+
+  if (Array.isArray(args.value)) {
+    for (const raw of args.value) {
+      if (!raw || typeof raw !== "object") continue;
+      const candidate = raw as Partial<RoyalCharacterDisplay>;
+      if (typeof candidate.characterId !== "string") continue;
+      const definition = royalPalaceCharacter(candidate.characterId);
+      const current = byCharacter.get(candidate.characterId);
+      if (!definition || !current) continue;
+      explicitCharacters.add(candidate.characterId);
+      current.selectedSkinId = validSelectedSkin(candidate.characterId, candidate.selectedSkinId, args.ownedMonkeys, args.ownedSkins);
+      current.isVisible = candidate.isVisible === true &&
+        args.palaceLevel >= definition.palaceUnlockLevel &&
+        args.ownedMonkeys.includes(candidate.characterId);
+      current.displayPosition = definition.displayPosition;
+    }
+  }
+
+  if (Array.isArray(args.legacySlots)) {
+    const migratedLegacyCharacters = new Set<ProfileMonkeyId>();
+    for (const raw of args.legacySlots) {
+      if (!raw || typeof raw !== "object") continue;
+      const candidate = raw as Partial<RoyalPalaceSlotAssignment>;
+      if (
+        typeof candidate.equippedMonkeyId !== "string" ||
+        explicitCharacters.has(candidate.equippedMonkeyId) ||
+        migratedLegacyCharacters.has(candidate.equippedMonkeyId)
+      ) continue;
+      const definition = royalPalaceCharacter(candidate.equippedMonkeyId);
+      const current = byCharacter.get(candidate.equippedMonkeyId);
+      if (!definition || !current) continue;
+      current.selectedSkinId = validSelectedSkin(candidate.equippedMonkeyId, candidate.equippedSkinId, args.ownedMonkeys, args.ownedSkins);
+      current.isVisible = args.palaceLevel >= definition.palaceUnlockLevel && args.ownedMonkeys.includes(candidate.equippedMonkeyId);
+      migratedLegacyCharacters.add(candidate.equippedMonkeyId);
+    }
+  }
+
+  if (typeof args.legacyEquippedMonkey === "string" && !explicitCharacters.has(args.legacyEquippedMonkey)) {
+    const current = byCharacter.get(args.legacyEquippedMonkey);
+    if (current) {
+      current.selectedSkinId = validSelectedSkin(args.legacyEquippedMonkey, args.legacyEquippedSkin, args.ownedMonkeys, args.ownedSkins);
+    }
+  }
+  return displays;
+}
+
+export function selectRoyalCharacterSkin(
+  displays: readonly RoyalCharacterDisplay[],
+  characterId: ProfileMonkeyId,
+  skinId: ProfileSkinId | null,
+  palaceLevel: number,
+  ownedMonkeys: readonly ProfileMonkeyId[],
+  ownedSkins: readonly ProfileSkinId[]
+) {
+  const definition = royalPalaceCharacter(characterId);
+  if (!definition || !getProfileMonkey(characterId)) return { result: "invalid-slot" as const, displays: [...displays] };
+  if (palaceLevel < definition.palaceUnlockLevel) return { result: "slot-locked" as const, displays: [...displays] };
+  if (skinId == null && !ownedMonkeys.includes(characterId)) return { result: "monkey-not-owned" as const, displays: [...displays] };
+  if (skinId != null) {
+    const skin = getProfileSkin(skinId);
+    if (!isActiveProfileSkin(skin) || skin.monkeyId !== characterId) return { result: "invalid-skin" as const, displays: [...displays] };
+    if (!ownedMonkeys.includes(skin.monkeyId)) return { result: "parent-monkey-required" as const, displays: [...displays] };
+    if (!ownedSkins.includes(skinId)) return { result: "skin-not-owned" as const, displays: [...displays] };
+  }
+  return {
+    result: "placed" as const,
+    displays: displays.map((display) => display.characterId === characterId
+      ? { ...display, selectedSkinId: skinId, displayPosition: definition.displayPosition }
+      : display)
+  };
+}
+
+export function setRoyalCharacterVisibility(
+  displays: readonly RoyalCharacterDisplay[],
+  characterId: ProfileMonkeyId,
+  visible: boolean,
+  palaceLevel: number,
+  ownedMonkeys: readonly ProfileMonkeyId[]
+) {
+  const definition = royalPalaceCharacter(characterId);
+  if (!definition) return { result: "invalid-slot" as const, displays: [...displays] };
+  if (visible && palaceLevel < definition.palaceUnlockLevel) return { result: "slot-locked" as const, displays: [...displays] };
+  if (visible && !ownedMonkeys.includes(characterId)) return { result: "monkey-not-owned" as const, displays: [...displays] };
+  return {
+    result: "placed" as const,
+    displays: displays.map((display) => display.characterId === characterId
+      ? { ...display, isVisible: visible, displayPosition: definition.displayPosition }
+      : display)
+  };
+}
+
+export function revealNewRoyalCharacters(
+  displays: readonly RoyalCharacterDisplay[],
+  previousLevel: number,
+  nextLevel: number,
+  ownedMonkeys: readonly ProfileMonkeyId[]
+) {
+  return displays.map((display) => {
+    const definition = royalPalaceCharacter(display.characterId);
+    return definition &&
+      definition.palaceUnlockLevel > previousLevel &&
+      definition.palaceUnlockLevel <= nextLevel &&
+      ownedMonkeys.includes(display.characterId)
+      ? { ...display, isVisible: true, displayPosition: definition.displayPosition }
+      : display;
+  });
+}
+
+/** Legacy placement API retained for migration tests and old snapshots only. */
 export function validateRoyalPalacePlacement(
   assignments: readonly RoyalPalaceSlotAssignment[],
   slotId: RoyalPalaceSlotId,
@@ -112,10 +303,10 @@ export function validateRoyalPalacePlacement(
   if (palaceLevel < slot.requiredPalaceLevel) return "slot-locked";
   if (!getProfileMonkey(monkeyId) || royalPalaceClassForMonkey(monkeyId) !== slot.allowedClass) return "wrong-class";
   if (assignments.some((entry) => entry.slotId !== slotId && entry.equippedMonkeyId === monkeyId)) return "duplicate-monkey";
-  if (skinId == null) return ownedMonkeys.includes(monkeyId) ? "placed" : "monkey-not-owned";
+  if (!ownedMonkeys.includes(monkeyId)) return skinId == null ? "monkey-not-owned" : "parent-monkey-required";
+  if (skinId == null) return "placed";
   const skin = getProfileSkin(skinId);
   if (!isActiveProfileSkin(skin) || skin.monkeyId !== monkeyId) return "invalid-skin";
-  if (!ownedMonkeys.includes(skin.monkeyId)) return "parent-monkey-required";
   if (!ownedSkins.includes(skinId)) return "skin-not-owned";
   return "placed";
 }
@@ -127,23 +318,10 @@ export function placeRoyalPalaceResident(
   ownedMonkeys: readonly ProfileMonkeyId[],
   ownedSkins: readonly ProfileSkinId[]
 ) {
-  const result = validateRoyalPalacePlacement(
-    assignments,
-    assignment.slotId,
-    assignment.equippedMonkeyId,
-    assignment.equippedSkinId,
-    palaceLevel,
-    ownedMonkeys,
-    ownedSkins
-  );
-  if (result !== "placed") return { result, assignments: [...assignments] };
-  return {
-    result,
-    assignments: [
-      ...assignments.filter((entry) => entry.slotId !== assignment.slotId),
-      assignment
-    ]
-  };
+  const result = validateRoyalPalacePlacement(assignments, assignment.slotId, assignment.equippedMonkeyId, assignment.equippedSkinId, palaceLevel, ownedMonkeys, ownedSkins);
+  return result === "placed"
+    ? { result, assignments: [...assignments.filter((entry) => entry.slotId !== assignment.slotId), assignment] }
+    : { result, assignments: [...assignments] };
 }
 
 export function sanitizeRoyalPalaceSlots(
@@ -177,20 +355,15 @@ const FESTIVAL_PRESTIGE: Record<CosmeticRarity, number> = {
   mythic: 100
 };
 
-export function royalPrestige(level: number, assignments: readonly RoyalPalaceSlotAssignment[]) {
-  return Math.max(0, Math.min(6, Math.floor(level))) * 100 + assignments.reduce((total, assignment) => {
-    const skin = assignment.equippedSkinId ? getProfileSkin(assignment.equippedSkinId) : null;
+export function royalPrestige(level: number, displays: readonly RoyalCharacterDisplay[]) {
+  return Math.max(0, Math.min(ROYAL_PALACE_MAX_LEVEL, Math.floor(level))) * 200 + displays.reduce((total, display) => {
+    if (!display.isVisible) return total;
+    const skin = display.selectedSkinId ? getProfileSkin(display.selectedSkinId) : null;
     return total + 25 + (skin?.catalogStatus === "festival" ? FESTIVAL_PRESTIGE[skin.rarity] : 0);
   }, 0);
 }
 
-export type RoyalPalaceUpgradeBlock =
-  | "max-level"
-  | "upgrade-active"
-  | "clan-level"
-  | "resource"
-  | "gems"
-  | null;
+export type RoyalPalaceUpgradeBlock = "max-level" | "upgrade-active" | "clan-level" | "resource" | null;
 
 export function evaluateRoyalPalaceUpgrade(args: {
   palaceLevel: number;
@@ -205,7 +378,6 @@ export function evaluateRoyalPalaceUpgrade(args: {
   else if (args.activeUpgrade) block = "upgrade-active";
   else if (args.clanLevel < definition.requiredClanHallLevel) block = "clan-level";
   else if ((["bananas", "stones", "wood"] as const).some((resource) => args.resources[resource] < definition.cost[resource])) block = "resource";
-  else if (args.gems < definition.gemCost) block = "gems";
   return { definition, block, enabled: definition != null && block == null };
 }
 
@@ -236,7 +408,7 @@ export function startRoyalPalaceUpgrade(args: {
       stones: args.resources.stones - definition.cost.stones,
       wood: args.resources.wood - definition.cost.wood
     },
-    gems: args.gems - definition.gemCost,
+    gems: args.gems,
     activeUpgrade: {
       buildingType: "royalPalace" as const,
       fromLevel: args.palaceLevel,
@@ -246,6 +418,36 @@ export function startRoyalPalaceUpgrade(args: {
       cost: { ...definition.cost },
       requiredClanHallLevel: definition.requiredClanHallLevel
     }
+  };
+}
+
+export function evaluateRoyalPalaceRush(activeUpgrade: WorkerLodgeUpgrade | null, gems: number) {
+  if (!activeUpgrade || activeUpgrade.buildingType !== "royalPalace") return { enabled: false, cost: 0, block: "no-upgrade" as const };
+  const definition = ROYAL_PALACE_UPGRADES.find((entry) => entry.targetLevel === activeUpgrade.targetLevel);
+  if (!definition) return { enabled: false, cost: 0, block: "invalid-upgrade" as const };
+  if (gems < definition.gemCost) return { enabled: false, cost: definition.gemCost, block: "gems" as const };
+  return { enabled: true, cost: definition.gemCost, block: null };
+}
+
+export function resolveRoyalPalaceRush(
+  activeUpgrade: WorkerLodgeUpgrade | null,
+  gems: number,
+  now: number
+) {
+  const eligibility = evaluateRoyalPalaceRush(activeUpgrade, gems);
+  if (!eligibility.enabled || !activeUpgrade) {
+    return {
+      result: eligibility.block ?? "invalid-upgrade" as NonNullable<typeof eligibility.block>,
+      cost: eligibility.cost,
+      gems,
+      activeUpgrade
+    };
+  }
+  return {
+    result: "rushed" as const,
+    cost: eligibility.cost,
+    gems: gems - eligibility.cost,
+    activeUpgrade: { ...activeUpgrade, endsAt: now }
   };
 }
 

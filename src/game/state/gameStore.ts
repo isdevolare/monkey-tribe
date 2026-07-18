@@ -52,7 +52,6 @@ import {
   DEFAULT_PROFILE_MONKEY_ID,
   DEFAULT_PROFILE_SKIN_ID,
   FESTIVAL_PROFILE_SKINS,
-  canEquipProfileSkin,
   getDefaultSkinId,
   getProfileMonkey,
   getProfileSkin,
@@ -67,8 +66,15 @@ import {
 import { getResourceShopItem, resourceShopCapacityIssues } from "../config/shop";
 import { getGemPackByProductId } from "../config/gemPacks";
 import {
-  placeRoyalPalaceResident,
-  sanitizeRoyalPalaceSlots,
+  ROYAL_PALACE_SAVE_VERSION,
+  createRoyalCharacterDisplays,
+  migrateRoyalPalaceActiveUpgrade,
+  migrateRoyalPalaceLevel,
+  revealNewRoyalCharacters,
+  resolveRoyalPalaceRush,
+  sanitizeRoyalCharacterDisplays,
+  selectRoyalCharacterSkin,
+  setRoyalCharacterVisibility,
   startRoyalPalaceUpgrade
 } from "../config/royalPalace";
 import { t } from "../i18n";
@@ -135,7 +141,6 @@ import type {
   ProfileMonkeyId,
   ProfileMonkeyUnlockResult,
   ProfileSkinId,
-  RoyalPalaceSlotId,
   ProductionItem,
   QuestMetric,
   Resources,
@@ -299,9 +304,7 @@ function createFreshState(now: number) {
     processedIapTransactionIds: [] as string[],
     redeemedQaCodes: [] as string[],
     unlockedProfileMonkeys: [DEFAULT_PROFILE_MONKEY_ID] as ProfileMonkeyId[],
-    equippedProfileMonkey: DEFAULT_PROFILE_MONKEY_ID,
     ownedProfileSkins: [DEFAULT_PROFILE_SKIN_ID] as ProfileSkinId[],
-    equippedProfileSkin: DEFAULT_PROFILE_SKIN_ID,
     newProfileMonkeys: [] as ProfileMonkeyId[],
     newProfileSkins: [] as ProfileSkinId[],
     festivalFragments: {},
@@ -317,7 +320,7 @@ function createFreshState(now: number) {
     lumberCampStorage: 0,
     stoneQuarryStorage: 0,
     activeWorkerLodgeUpgrade: null,
-    royalPalaceSlots: [],
+    royalCharacterDisplays: createRoyalCharacterDisplays(0, [DEFAULT_PROFILE_MONKEY_ID], [DEFAULT_PROFILE_SKIN_ID]),
     playerCampHp: CAMP_MAX_HP,
     enemyCampHp: CAMP_MAX_HP,
     enemyCampMaxHp: CAMP_MAX_HP,
@@ -941,9 +944,7 @@ function upgradeVillageBuilding(state: GameState, type: VillageBuildingType): Ga
         ? t("royalPalace.otherUpgradeActive", state.language)
         : started.result === "clan-level"
           ? t("royalPalace.needClanHall", state.language, { level: definition.requiredClanHallLevel })
-          : started.result === "gems"
-            ? t("royalPalace.needGems", state.language, { amount: definition.gemCost })
-            : t("royalPalace.needResources", state.language, { cost: costText(definition.cost) });
+          : t("royalPalace.needResources", state.language, { cost: costText(definition.cost) });
       return { ...state, feedback: { id: now, text } };
     }
     return {
@@ -1098,10 +1099,12 @@ export const useGameStore = create<GameState>((set) => ({
       const levels = new Map(save.buildings.map((building) => [building.type, building.level]));
       let buildings = DEFAULT_BUILDINGS.map((building) => ({
         type: building.type,
-        level: levels.get(building.type) ?? building.level
+        level: building.type === "royalPalace"
+          ? migrateRoyalPalaceLevel(levels.get(building.type) ?? building.level, save.royalPalaceVersion)
+          : levels.get(building.type) ?? building.level
       }));
       const savedWorkerLodgeUpgrade = sanitizeWorkerLodgeUpgrade(
-        save.activeWorkerLodgeUpgrade,
+        migrateRoyalPalaceActiveUpgrade(save.activeWorkerLodgeUpgrade, save.royalPalaceVersion),
         buildings
       );
       const reconciledWorkerLodgeUpgrade = reconcileWorkerLodgeUpgrade(
@@ -1306,12 +1309,15 @@ export const useGameStore = create<GameState>((set) => ({
         save.newProfileSkins,
         ownedProfileSkins
       );
-      const royalPalaceSlots = sanitizeRoyalPalaceSlots(
-        save.royalPalaceSlots,
-        buildingLevel(buildings, "royalPalace"),
-        unlockedProfileMonkeys,
-        ownedProfileSkins
-      );
+      const royalCharacterDisplays = sanitizeRoyalCharacterDisplays({
+        value: save.royalCharacterDisplays,
+        legacySlots: save.royalPalaceSlots,
+        palaceLevel: buildingLevel(buildings, "royalPalace"),
+        ownedMonkeys: unlockedProfileMonkeys,
+        ownedSkins: ownedProfileSkins,
+        legacyEquippedMonkey: equippedProfileMonkey,
+        legacyEquippedSkin: equippedProfileSkin
+      });
       // Preserve legacy overflow instead of silently deleting paid or earned
       // stock. addResourcesCapped gives overflow zero headroom, so future
       // production/rewards cannot grow it until the player spends below cap.
@@ -1341,9 +1347,7 @@ export const useGameStore = create<GameState>((set) => ({
           ? save.redeemedQaCodes.filter((value): value is string => typeof value === "string")
           : [],
         unlockedProfileMonkeys,
-        equippedProfileMonkey,
         ownedProfileSkins,
-        equippedProfileSkin,
         newProfileMonkeys,
         newProfileSkins,
         festivalFragments,
@@ -1359,7 +1363,7 @@ export const useGameStore = create<GameState>((set) => ({
         lumberCampStorage: reconciledLumber.storage,
         stoneQuarryStorage: reconciledStone.storage,
         activeWorkerLodgeUpgrade: reconciledWorkerLodgeUpgrade.activeUpgrade,
-        royalPalaceSlots,
+        royalCharacterDisplays,
         language: save.language ?? state.language,
         // Migration: older saves tracked the stronghold from Sv4; the ladder
         // now has handcrafted camps through Sv7, so lift stale levels to the
@@ -1390,33 +1394,94 @@ export const useGameStore = create<GameState>((set) => ({
       persistVillage(next);
       return { language: lang };
     }),
-  upgradeBuilding: (type) => set((state) => upgradeVillageBuilding(state, type)),
-  placeRoyalPalaceResident: (slotId, monkeyId, skinId) => {
-    let result: ReturnType<typeof placeRoyalPalaceResident>["result"] = "invalid-slot";
+  upgradeBuilding: (type) => set((state) => {
+    const next = upgradeVillageBuilding(state, type);
+    if (type === "royalPalace" && next !== state && next.activeWorkerLodgeUpgrade !== state.activeWorkerLodgeUpgrade) {
+      void persistVillage(next);
+    }
+    return next;
+  }),
+  selectRoyalCharacterSkin: (characterId, skinId) => {
+    let result: ReturnType<typeof selectRoyalCharacterSkin>["result"] = "invalid-slot";
     set((state) => {
-      const placed = placeRoyalPalaceResident(
-        state.royalPalaceSlots,
-        { slotId, equippedMonkeyId: monkeyId, equippedSkinId: skinId },
+      const selected = selectRoyalCharacterSkin(
+        state.royalCharacterDisplays,
+        characterId,
+        skinId,
         buildingLevel(state.buildings, "royalPalace"),
         state.unlockedProfileMonkeys,
         state.ownedProfileSkins
       );
-      result = placed.result;
-      if (placed.result !== "placed") return state;
-      return {
+      result = selected.result;
+      if (selected.result !== "placed") return state;
+      const next: GameState = {
         ...state,
-        royalPalaceSlots: placed.assignments,
-        feedback: { id: Date.now(), text: t("royalPalace.residentPlaced", state.language) }
+        royalCharacterDisplays: selected.displays,
+        feedback: { id: Date.now(), text: t("royalPalace.skinSelected", state.language) }
       };
+      void persistVillage(next);
+      return next;
     });
     return result;
   },
-  removeRoyalPalaceResident: (slotId: RoyalPalaceSlotId) =>
-    set((state) => ({
-      ...state,
-      royalPalaceSlots: state.royalPalaceSlots.filter((entry) => entry.slotId !== slotId),
-      feedback: { id: Date.now(), text: t("royalPalace.residentRemoved", state.language) }
-    })),
+  setRoyalCharacterVisibility: (characterId, visible) => {
+    let result: ReturnType<typeof setRoyalCharacterVisibility>["result"] = "invalid-slot";
+    set((state) => {
+      const changed = setRoyalCharacterVisibility(
+        state.royalCharacterDisplays,
+        characterId,
+        visible,
+        buildingLevel(state.buildings, "royalPalace"),
+        state.unlockedProfileMonkeys
+      );
+      result = changed.result;
+      if (changed.result !== "placed") return state;
+      const next: GameState = {
+        ...state,
+        royalCharacterDisplays: changed.displays,
+        feedback: { id: Date.now(), text: t(visible ? "royalPalace.characterShown" : "royalPalace.characterHidden", state.language) }
+      };
+      void persistVillage(next);
+      return next;
+    });
+    return result;
+  },
+  rushRoyalPalaceUpgrade: () => {
+    let rushed = false;
+    set((state) => {
+      const rushedUpgrade = resolveRoyalPalaceRush(state.activeWorkerLodgeUpgrade, state.gems, Date.now());
+      if (rushedUpgrade.result !== "rushed") {
+        return rushedUpgrade.result === "gems"
+          ? { ...state, feedback: { id: Date.now(), text: t("fb.needGems", state.language) } }
+          : state;
+      }
+      const now = rushedUpgrade.activeUpgrade.endsAt;
+      const completed = reconcileWorkerLodgeUpgrade(
+        state.buildings,
+        rushedUpgrade.activeUpgrade,
+        now
+      );
+      if (!completed.completed) return state;
+      const royalCharacterDisplays = revealNewRoyalCharacters(
+        state.royalCharacterDisplays,
+        state.activeWorkerLodgeUpgrade?.fromLevel ?? 0,
+        state.activeWorkerLodgeUpgrade?.targetLevel ?? 0,
+        state.unlockedProfileMonkeys
+      );
+      rushed = true;
+      const next: GameState = {
+        ...state,
+        gems: rushedUpgrade.gems,
+        buildings: completed.buildings,
+        activeWorkerLodgeUpgrade: completed.activeUpgrade,
+        royalCharacterDisplays,
+        feedback: { id: now, text: t("royalPalace.rushComplete", state.language) }
+      };
+      void persistVillage(next);
+      return next;
+    });
+    return rushed;
+  },
   openRaidMap: () =>
     set((state) => ({
       ...state,
@@ -1996,17 +2061,29 @@ export const useGameStore = create<GameState>((set) => ({
         return state;
       }
 
+      const unlockedProfileMonkeys = [...state.unlockedProfileMonkeys, id];
+      const palaceVisibility = setRoyalCharacterVisibility(
+        state.royalCharacterDisplays,
+        id,
+        true,
+        buildingLevel(state.buildings, "royalPalace"),
+        unlockedProfileMonkeys
+      );
+
       const next: GameState = {
         ...state,
         gems: Math.max(0, state.gems - monkey.price),
-        unlockedProfileMonkeys: [...state.unlockedProfileMonkeys, id],
+        unlockedProfileMonkeys,
         ownedProfileSkins: Array.from(
           new Set([...state.ownedProfileSkins, getDefaultSkinId(id)])
         ),
         newProfileMonkeys: [...state.newProfileMonkeys, id],
         newProfileSkins: Array.from(
           new Set([...state.newProfileSkins, getDefaultSkinId(id)])
-        )
+        ),
+        royalCharacterDisplays: palaceVisibility.result === "placed"
+          ? palaceVisibility.displays
+          : state.royalCharacterDisplays
       };
       result = "unlocked";
       void persistVillage(next);
@@ -2014,42 +2091,6 @@ export const useGameStore = create<GameState>((set) => ({
     });
     return result;
   },
-  equipProfileMonkey: (id) =>
-    set((state) => {
-      const defaultSkinId = getDefaultSkinId(id);
-      if (
-        !state.unlockedProfileMonkeys.includes(id) ||
-        !getProfileMonkey(id) ||
-        (state.equippedProfileMonkey === id && state.equippedProfileSkin === defaultSkinId)
-      ) {
-        return state;
-      }
-      const next: GameState = {
-        ...state,
-        equippedProfileMonkey: id,
-        equippedProfileSkin: defaultSkinId
-      };
-      void persistVillage(next);
-      return next;
-    }),
-  equipProfileSkin: (id) =>
-    set((state) => {
-      const skin = getProfileSkin(id);
-      if (
-        !canEquipProfileSkin(id, state.ownedProfileSkins, state.unlockedProfileMonkeys) ||
-        !skin ||
-        (state.equippedProfileMonkey === skin.monkeyId && state.equippedProfileSkin === id)
-      ) {
-        return state;
-      }
-      const next: GameState = {
-        ...state,
-        equippedProfileMonkey: skin.monkeyId,
-        equippedProfileSkin: id
-      };
-      void persistVillage(next);
-      return next;
-    }),
   markProfileMonkeySeen: (id) =>
     set((state) => {
       if (!state.newProfileMonkeys.includes(id)) return state;
@@ -2133,6 +2174,15 @@ export const useGameStore = create<GameState>((set) => ({
       const unlockedDefaultSkin = grant.unlockMonkeyId
         ? getDefaultSkinId(grant.unlockMonkeyId)
         : null;
+      const palaceVisibility = grant.unlockMonkeyId
+        ? setRoyalCharacterVisibility(
+            state.royalCharacterDisplays,
+            grant.unlockMonkeyId,
+            true,
+            buildingLevel(state.buildings, "royalPalace"),
+            unlockedProfileMonkeys
+          )
+        : null;
       const next: GameState = {
         ...state,
         gems: state.gems + grant.gems,
@@ -2146,6 +2196,9 @@ export const useGameStore = create<GameState>((set) => ({
         newProfileSkins: unlockedDefaultSkin
           ? Array.from(new Set([...state.newProfileSkins, unlockedDefaultSkin]))
           : state.newProfileSkins,
+        royalCharacterDisplays: palaceVisibility?.result === "placed"
+          ? palaceVisibility.displays
+          : state.royalCharacterDisplays,
         dailyStreak: day,
         dailyLastClaim: today,
         feedback: {
@@ -2209,10 +2262,19 @@ export const useGameStore = create<GameState>((set) => ({
         state.activeWorkerLodgeUpgrade,
         now
       );
+      const royalCharacterDisplays = lodgeUpgrade.completed && lodgeUpgrade.completedBuildingType === "royalPalace"
+        ? revealNewRoyalCharacters(
+            state.royalCharacterDisplays,
+            state.activeWorkerLodgeUpgrade?.fromLevel ?? 0,
+            state.activeWorkerLodgeUpgrade?.targetLevel ?? 0,
+            state.unlockedProfileMonkeys
+          )
+        : state.royalCharacterDisplays;
       return {
         ...state,
         buildings: lodgeUpgrade.buildings,
         activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
+        royalCharacterDisplays,
         workerProductionQueue: reconciled.queue,
         idleWorkers: reconciled.idleWorkers,
         workerExpeditions: stone.expeditions,
@@ -2243,6 +2305,14 @@ export const useGameStore = create<GameState>((set) => ({
         state.activeWorkerLodgeUpgrade,
         now
       );
+      const royalCharacterDisplays = lodgeUpgrade.completed && lodgeUpgrade.completedBuildingType === "royalPalace"
+        ? revealNewRoyalCharacters(
+            state.royalCharacterDisplays,
+            state.activeWorkerLodgeUpgrade?.fromLevel ?? 0,
+            state.activeWorkerLodgeUpgrade?.targetLevel ?? 0,
+            state.unlockedProfileMonkeys
+          )
+        : state.royalCharacterDisplays;
       const units = state.units.map(cloneUnit);
       const game: MutableGame = {
         units,
@@ -2366,6 +2436,7 @@ export const useGameStore = create<GameState>((set) => ({
             stoneQuarryStorage,
             buildings: game.buildings,
             activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
+            royalCharacterDisplays,
             enemyCampHp: 0,
             raidStars: stars,
             raidVictoryCounts,
@@ -2413,6 +2484,7 @@ export const useGameStore = create<GameState>((set) => ({
             stoneQuarryStorage,
             buildings: game.buildings,
             activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
+            royalCharacterDisplays,
             enemyCampHp: game.enemyCampHp,
             feedback: { id: now, text: t("fb.raidFailed", state.language) },
             raidStatus: "defeat",
@@ -2436,6 +2508,7 @@ export const useGameStore = create<GameState>((set) => ({
           stoneQuarryStorage,
           buildings: game.buildings,
           activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
+          royalCharacterDisplays,
           enemyCampHp: game.enemyCampHp,
           feedback: game.feedbackText ? { id: now, text: game.feedbackText } : state.feedback
         };
@@ -2522,6 +2595,7 @@ export const useGameStore = create<GameState>((set) => ({
         lumberCampStorage,
         stoneQuarryStorage,
         activeWorkerLodgeUpgrade: lodgeUpgrade.activeUpgrade,
+        royalCharacterDisplays,
         lastProductionAt: now
       };
 
@@ -2598,9 +2672,7 @@ function villageSavePayload(state: GameState): VillageSave {
     processedIapTransactionIds: state.processedIapTransactionIds,
     redeemedQaCodes: state.redeemedQaCodes,
     unlockedProfileMonkeys: state.unlockedProfileMonkeys,
-    equippedProfileMonkey: state.equippedProfileMonkey,
     ownedProfileSkins: state.ownedProfileSkins,
-    equippedProfileSkin: state.equippedProfileSkin,
     newProfileMonkeys: state.newProfileMonkeys,
     newProfileSkins: state.newProfileSkins,
     festivalFragments: state.festivalFragments,
@@ -2616,7 +2688,8 @@ function villageSavePayload(state: GameState): VillageSave {
     lumberCampStorage: state.lumberCampStorage,
     stoneQuarryStorage: state.stoneQuarryStorage,
     activeWorkerLodgeUpgrade: state.activeWorkerLodgeUpgrade,
-    royalPalaceSlots: state.royalPalaceSlots,
+    royalPalaceVersion: ROYAL_PALACE_SAVE_VERSION,
+    royalCharacterDisplays: state.royalCharacterDisplays,
     language: state.language,
     raidLevel: state.raidLevel,
     raidVictoryCounts: state.raidVictoryCounts,

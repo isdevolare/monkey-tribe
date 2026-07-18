@@ -7,11 +7,13 @@ import {
 } from "./royalPalaceVisuals";
 
 describe("Royal Palace visuals", () => {
-  it("maps every palace level to its dedicated sequential asset", () => {
-    expect(ROYAL_PALACE_LEVEL_ASSETS).toHaveLength(7);
-    for (let level = 0; level <= 6; level += 1) {
-      expect(royalPalaceAsset(level)).toBe(`royalPalaceLevel${level}`);
-    }
+  it("maps the three-level palace to the selected progression assets", () => {
+    expect(ROYAL_PALACE_LEVEL_ASSETS).toEqual([
+      "royalPalaceLevel0",
+      "royalPalaceLevel2",
+      "royalPalaceLevel4",
+      "royalPalaceLevel6"
+    ]);
     expect(royalPalaceAsset(-3)).toBe("royalPalaceLevel0");
     expect(royalPalaceAsset(20)).toBe("royalPalaceLevel6");
   });

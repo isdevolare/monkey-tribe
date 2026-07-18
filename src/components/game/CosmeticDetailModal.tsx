@@ -46,9 +46,11 @@ type DetailProps = {
    * Shop instead. Defaults to true (Shop context).
    */
   purchaseEnabled?: boolean;
+  /** Character and skin management belongs exclusively to the Royal Palace. */
+  managementEnabled?: boolean;
   onClose: () => void;
   onUnlock: () => void;
-  onEquip: () => void;
+  onEquip?: () => void;
   onOpenSkin: (skin: ProfileSkin) => void;
 };
 
@@ -78,6 +80,7 @@ export const CosmeticDetailModal = memo(function CosmeticDetailModal({
   unlockedMonkeyIds,
   festivalFragments,
   purchaseEnabled = true,
+  managementEnabled = true,
   onClose,
   onUnlock,
   onEquip,
@@ -146,7 +149,7 @@ export const CosmeticDetailModal = memo(function CosmeticDetailModal({
                   ? t("collection.unavailable", lang)
                   : skin && !parentOwned
                     ? t("collection.requiresNamedMonkey", lang, { name: t(monkey.nameKey, lang) })
-                    : equipped
+                    : managementEnabled && equipped
                       ? t("collection.equipped", lang)
                       : owned
                         ? t("collection.owned", lang)
@@ -217,6 +220,8 @@ export const CosmeticDetailModal = memo(function CosmeticDetailModal({
               </SpringPressable>
             ) : !owned ? (
               <View style={[styles.actionButton, styles.unavailableButton]}><Text style={styles.actionText}>{skin?.catalogStatus === "festival" ? t("festival.progress", lang, { current: festivalCurrent, required: festivalRequired }) : t("collection.unavailable", lang)}</Text></View>
+            ) : !managementEnabled || !onEquip ? (
+              <View style={[styles.actionButton, styles.unavailableButton]}><Text style={styles.actionText}>{t("collection.detail.manageInPalace", lang)}</Text></View>
             ) : !equipped ? (
               <SpringPressable onPress={onEquip} style={[styles.actionButton, styles.equipButton]}><Text style={styles.actionText}>{t("collection.equip", lang)}</Text></SpringPressable>
             ) : (
@@ -281,7 +286,7 @@ type UnlockFeedbackProps = {
   selection: CosmeticDetailSelection | null;
   lang: Lang;
   onDismiss: () => void;
-  onEquipNow: () => void;
+  onEquipNow?: () => void;
 };
 
 const PARTICLES = [
@@ -315,7 +320,7 @@ export function CosmeticUnlockFeedback({ selection, lang, onDismiss, onEquipNow 
           <AssetImage assetKey={appearance.portraitAsset} style={styles.unlockArt} resizeMode="contain" fallback={<View />} hideFallbackOnLoad />
           <Text style={styles.unlockedText}>{t("collection.unlocked", lang)}</Text>
           <Text style={styles.unlockName}>{title}</Text>
-          <SpringPressable onPress={onEquipNow} style={styles.equipNowButton}><Text style={styles.actionText}>{t("collection.detail.equipNow", lang)}</Text></SpringPressable>
+          {onEquipNow ? <SpringPressable onPress={onEquipNow} style={styles.equipNowButton}><Text style={styles.actionText}>{t("collection.detail.equipNow", lang)}</Text></SpringPressable> : null}
           <Text style={styles.skipText}>{t("collection.detail.tapToSkip", lang)}</Text>
         </Animated.View>
       </Pressable>

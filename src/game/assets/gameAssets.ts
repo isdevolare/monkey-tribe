@@ -59,6 +59,9 @@ export type GameAssetKey =
   | "unitChief"
   | "unitEnemyFighter"
   | "buildingPlayerCamp"
+  | "clanHallStage1"
+  | "clanHallStage2"
+  | "clanHallStage3"
   | "buildingEnemyCamp"
   | "buildingHut"
   | "buildingTrainingNest"
@@ -90,11 +93,8 @@ export type GameAssetKey =
   | "buildingPlayerCampL2"
   | "buildingPlayerCampL3"
   | "royalPalaceLevel0"
-  | "royalPalaceLevel1"
   | "royalPalaceLevel2"
-  | "royalPalaceLevel3"
   | "royalPalaceLevel4"
-  | "royalPalaceLevel5"
   | "royalPalaceLevel6"
   | "buildingArcherTower"
   | "buildingWarriorBarracks"
@@ -268,6 +268,18 @@ export const gameAssets = {
     ...asset("buildingPlayerCamp", "buildings", "building_player_camp.png", "768x768 transparent building"),
     source: require("../../../assets/game/buildings/building_player_camp.png") as ImageSourcePropType
   },
+  clanHallStage1: {
+    ...asset("clanHallStage1", "buildings", "clan_hall/clan_hall_stage_1.png", "1024x1024 transparent Clan Hall Stage 1"),
+    source: require("../../../assets/game/buildings/clan_hall/clan_hall_stage_1.png") as ImageSourcePropType
+  },
+  clanHallStage2: {
+    ...asset("clanHallStage2", "buildings", "clan_hall/clan_hall_stage_2.png", "1024x1024 transparent Clan Hall Stage 2"),
+    source: require("../../../assets/game/buildings/clan_hall/clan_hall_stage_2.png") as ImageSourcePropType
+  },
+  clanHallStage3: {
+    ...asset("clanHallStage3", "buildings", "clan_hall/clan_hall_stage_3.png", "1024x1024 transparent Clan Hall Stage 3"),
+    source: require("../../../assets/game/buildings/clan_hall/clan_hall_stage_3.png") as ImageSourcePropType
+  },
   buildingEnemyCamp: {
     ...asset("buildingEnemyCamp", "buildings", "building_enemy_camp.png", "768x768 transparent building"),
     source: require("../../../assets/game/buildings/building_enemy_camp.png") as ImageSourcePropType
@@ -367,25 +379,13 @@ export const gameAssets = {
     ...asset("royalPalaceLevel0", "buildings", "royal_palace/royal_palace_level_0.png", "1024x1024 transparent Royal Palace construction site"),
     source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_0.png") as ImageSourcePropType
   },
-  royalPalaceLevel1: {
-    ...asset("royalPalaceLevel1", "buildings", "royal_palace/royal_palace_level_1.png", "1024x1024 transparent Palace Garden"),
-    source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_1.png") as ImageSourcePropType
-  },
   royalPalaceLevel2: {
     ...asset("royalPalaceLevel2", "buildings", "royal_palace/royal_palace_level_2.png", "1024x1024 transparent Scout Lodge"),
     source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_2.png") as ImageSourcePropType
   },
-  royalPalaceLevel3: {
-    ...asset("royalPalaceLevel3", "buildings", "royal_palace/royal_palace_level_3.png", "1024x1024 transparent Guard Courtyard"),
-    source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_3.png") as ImageSourcePropType
-  },
   royalPalaceLevel4: {
     ...asset("royalPalaceLevel4", "buildings", "royal_palace/royal_palace_level_4.png", "1024x1024 transparent Hunter Terrace"),
     source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_4.png") as ImageSourcePropType
-  },
-  royalPalaceLevel5: {
-    ...asset("royalPalaceLevel5", "buildings", "royal_palace/royal_palace_level_5.png", "1024x1024 transparent Chiefs' Court"),
-    source: require("../../../assets/game/buildings/royal_palace/royal_palace_level_5.png") as ImageSourcePropType
   },
   royalPalaceLevel6: {
     ...asset("royalPalaceLevel6", "buildings", "royal_palace/royal_palace_level_6.png", "1024x1024 transparent Golden Throne Palace"),

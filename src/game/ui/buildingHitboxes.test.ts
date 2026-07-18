@@ -7,7 +7,8 @@ const TYPES = Object.keys(BUILDING_GEOMETRY) as VillageBuildingType[];
 describe("Royal Palace hitbox", () => {
   it("keeps the palace at the top-center prestige point", () => {
     const palace = BUILDING_GEOMETRY.royalPalace;
-    expect(palace.point.x).toBe(50);
+    expect(palace.point).toEqual({ x: 50, y: 22 });
+    expect(palace.size).toBe(22);
     for (const type of TYPES.filter((entry) => entry !== "royalPalace")) {
       expect(palace.point.y, `palace should sit above ${type}`).toBeLessThan(BUILDING_GEOMETRY[type].point.y);
     }

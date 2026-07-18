@@ -39,6 +39,7 @@ import { LumberCampModal, StoneQuarryModal } from "../components/game/LumberCamp
 import { playSound } from "../game/audio/soundManager";
 import { markTutorialForReplay, TUTORIAL_SEEN_KEY } from "../game/settings/tutorial";
 import type { GameAssetKey } from "../game/assets/gameAssets";
+import { formatHudAmount, formatResourceHudValue } from "../game/ui/resourceHud";
 import { RUSH_GEM_COST } from "../game/config/constants";
 import {
   MAX_TROOP_UPGRADE_LEVEL,
@@ -62,7 +63,7 @@ import { RAID_CAMPS, getCamp } from "../game/config/camps";
 import { todayKey } from "../game/config/dailyRewards";
 import { claimableQuestCount } from "../game/config/quests";
 import {
-  getCosmeticAppearance
+  getPrimaryRoyalAppearance
 } from "../game/config/profileMonkeys";
 import { t } from "../game/i18n";
 import { useGameStore } from "../game/state/gameStore";
@@ -127,17 +128,6 @@ function useCountUp(value: number) {
   }, [value]);
 
   return display;
-}
-
-// Compact display so 4+ digit stockpiles fit the HUD pills on small screens.
-function formatAmount(value: number) {
-  if (value >= 10000) {
-    return `${Math.round(value / 1000)}K`;
-  }
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}K`;
-  }
-  return String(value);
 }
 
 type ShopScreen = "hub" | "gems" | "festival" | "monkeys" | "resources" | null;
@@ -336,10 +326,7 @@ export function GameScreen() {
   }
 
   const nestLevel = levelOf(state.buildings, "trainingNest");
-  const equippedAppearance = getCosmeticAppearance(
-    state.equippedProfileMonkey,
-    state.equippedProfileSkin
-  );
+  const equippedAppearance = getPrimaryRoyalAppearance(state.royalCharacterDisplays);
   const queuedTypes = new Set(state.productionQueue.map((item) => item.type));
   const compactHud = layoutWidth < 370;
   const currentDayKey = todayKey();
@@ -573,7 +560,7 @@ export function GameScreen() {
                   stoneWorkers={state.workerExpeditions.filter((entry) => entry.resource === "stones")}
                   stoneQuarryStorage={state.stoneQuarryStorage}
                   stoneQuarryCapacity={stoneQuarryCapacity(levelOf(state.buildings, "stoneQuarry"))}
-                  royalPalaceSlots={state.royalPalaceSlots}
+                  royalCharacterDisplays={state.royalCharacterDisplays}
                   onBuildingPress={selectBuilding}
                   onCollectBananas={collectBananaGroveReward}
                   onCollectWood={collectLumberCampReward}
@@ -714,7 +701,7 @@ export function GameScreen() {
         onOpenGemStore={() => setShopScreen("gems")}
       />
 
-      {/* Profile: identity & cosmetics only — no shop content. */}
+      {/* Profile: read-only ownership and collection progress. */}
       <MonkeyCollectionModal
         visible={showCollection}
         lang={lang}
@@ -1162,8 +1149,8 @@ function ResourceChip({
   const counted = useCountUp(numeric);
   const shown = typeof value === "number"
     ? capacity == null
-      ? formatAmount(counted)
-      : `${formatAmount(counted)}/${formatAmount(capacity)}`
+      ? formatHudAmount(counted)
+      : formatResourceHudValue(counted, capacity)
     : value;
   return (
     <View style={[styles.resourceChip, compact ? styles.resourceChipCompact : null]}>
@@ -1177,6 +1164,8 @@ function ResourceChip({
       <Text
         style={[styles.resourceValue, compact ? styles.resourceValueCompact : null]}
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.68}
         maxFontSizeMultiplier={theme.maxFontScale}
       >
         {shown}
@@ -1698,7 +1687,7 @@ const styles = StyleSheet.create({
   },
   resourceBar: {
     flexDirection: "row",
-    gap: 6,
+    gap: 3,
     marginTop: 2
   },
   resourceChip: {
@@ -1707,13 +1696,13 @@ const styles = StyleSheet.create({
     height: 38,
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 2,
     borderRadius: 999,
     borderWidth: 1.5,
     borderColor: "rgba(226, 177, 90, 0.42)",
     backgroundColor: "rgba(14, 12, 7, 0.85)",
-    paddingLeft: 3,
-    paddingRight: 9,
+    paddingLeft: 2,
+    paddingRight: 4,
     shadowColor: "#000",
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1721,9 +1710,9 @@ const styles = StyleSheet.create({
     elevation: 4
   },
   resourceIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: "rgba(226, 177, 90, 0.55)",
     overflow: "hidden",
@@ -1732,26 +1721,26 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   resourceIconArt: {
-    width: 24,
-    height: 24
+    width: 20,
+    height: 20
   },
   resourceChipCompact: {
     height: 32,
-    gap: 3,
-    paddingRight: 6,
+    gap: 2,
+    paddingRight: 3,
     paddingLeft: 2
   },
   resourceIconCompact: {
-    width: 25,
-    height: 25,
-    borderRadius: 13
+    width: 19,
+    height: 19,
+    borderRadius: 10
   },
   resourceIconArtCompact: {
-    width: 19,
-    height: 19
+    width: 16,
+    height: 16
   },
   resourceValueCompact: {
-    fontSize: 12.5
+    fontSize: 9.5
   },
   resourceFallback: {
     flex: 1,
@@ -1767,9 +1756,11 @@ const styles = StyleSheet.create({
   resourceValue: {
     flex: 1,
     color: "#ffe9ad",
-    fontSize: theme.type.title,
+    fontSize: 10.5,
+    lineHeight: 13,
     fontWeight: "900", fontFamily: theme.fonts.heavy,
-    textAlign: "right"
+    textAlign: "right",
+    fontVariant: ["tabular-nums"]
   },
   hiddenLabel: {
     position: "absolute",

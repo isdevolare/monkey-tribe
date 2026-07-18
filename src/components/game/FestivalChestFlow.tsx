@@ -14,12 +14,11 @@ import { RARITY_THEME } from "./MonkeyCollectionModal";
  * the reveal animation, chest sound and pending-transaction recovery work no
  * matter where the chest was purchased (Shop hub) or whether the Profile is
  * open. Presentation-only: state changes go through the existing store
- * actions (claimFestivalChest / equipProfileSkin).
+ * claim action. Skin selection is managed exclusively in the Royal Palace.
  */
 export function FestivalChestFlow({ lang }: { lang: Lang }) {
   const pendingFestivalChest = useGameStore((state) => state.pendingFestivalChest);
   const unlocked = useGameStore((state) => state.unlockedProfileMonkeys);
-  const equipSkin = useGameStore((state) => state.equipProfileSkin);
   const claimFestivalChest = useGameStore((state) => state.claimFestivalChest);
 
   const pendingFestivalSkin = pendingFestivalChest
@@ -53,11 +52,6 @@ export function FestivalChestFlow({ lang }: { lang: Lang }) {
     <CosmeticChestOpeningModal
       presentation={presentation}
       lang={lang}
-      onEquip={() => {
-        if (!pendingFestivalChest || !pendingFestivalSkin) return;
-        equipSkin(pendingFestivalSkin.id);
-        claimFestivalChest(pendingFestivalChest.id);
-      }}
       onClose={() => {
         if (pendingFestivalChest) claimFestivalChest(pendingFestivalChest.id);
       }}

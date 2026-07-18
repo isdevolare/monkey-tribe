@@ -59,9 +59,9 @@ export const BUILDING_GEOMETRY: Record<VillageBuildingType, BuildingGeometry> = 
     hitbox: { width: 20, height: 22, offsetY: -3.5 }
   },
   royalPalace: {
-    point: { x: 50, y: 20 },
-    size: 31,
-    hitbox: { width: 26, height: 15, offsetY: 0 }
+    point: { x: 50, y: 22 },
+    size: 22,
+    hitbox: { width: 20, height: 14, offsetY: 0 }
   }
 };
 

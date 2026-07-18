@@ -135,6 +135,15 @@ export type RoyalPalaceSlotAssignment = {
   /** Null means the character's default appearance. */
   equippedSkinId: ProfileSkinId | null;
 };
+export type RoyalCharacterDisplay = {
+  characterId: ProfileMonkeyId;
+  /** Null means the character's default appearance. */
+  selectedSkinId: ProfileSkinId | null;
+  isVisible: boolean;
+  displayPosition: RoyalPalaceSlotId;
+  /** Reserved for a future stat system; this release does not populate or consume it. */
+  futureStatModifiers?: Readonly<Record<string, number>>;
+};
 export type RoyalPalacePlacementResult =
   | "placed"
   | "invalid-slot"
@@ -386,6 +395,10 @@ export type VillageSave = {
   /** Quarry-local stone storage. Missing legacy values migrate to zero. */
   stoneQuarryStorage?: number;
   activeWorkerLodgeUpgrade?: WorkerLodgeUpgrade | null;
+  /** Current three-level Royal Palace save format. */
+  royalPalaceVersion?: number;
+  royalCharacterDisplays?: RoyalCharacterDisplay[];
+  /** Legacy six-level Palace placement format, migrated during hydration. */
   royalPalaceSlots?: RoyalPalaceSlotAssignment[];
   questProgress?: Partial<Record<QuestMetric, number>>;
   questsClaimed?: string[];
@@ -422,9 +435,7 @@ export type GameState = {
   processedIapTransactionIds: string[];
   redeemedQaCodes: string[];
   unlockedProfileMonkeys: ProfileMonkeyId[];
-  equippedProfileMonkey: ProfileMonkeyId;
   ownedProfileSkins: ProfileSkinId[];
-  equippedProfileSkin: ProfileSkinId;
   newProfileMonkeys: ProfileMonkeyId[];
   newProfileSkins: ProfileSkinId[];
   festivalFragments: FestivalFragmentProgress;
@@ -440,7 +451,7 @@ export type GameState = {
   lumberCampStorage: number;
   stoneQuarryStorage: number;
   activeWorkerLodgeUpgrade: WorkerLodgeUpgrade | null;
-  royalPalaceSlots: RoyalPalaceSlotAssignment[];
+  royalCharacterDisplays: RoyalCharacterDisplay[];
   playerCampHp: number;
   enemyCampHp: number;
   enemyCampMaxHp: number;
@@ -478,8 +489,6 @@ export type GameState = {
   claimDaily: () => void;
   buyShopItem: (id: string) => void;
   unlockProfileMonkey: (id: ProfileMonkeyId) => ProfileMonkeyUnlockResult;
-  equipProfileMonkey: (id: ProfileMonkeyId) => void;
-  equipProfileSkin: (id: ProfileSkinId) => void;
   markProfileMonkeySeen: (id: ProfileMonkeyId) => void;
   markProfileSkinSeen: (id: ProfileSkinId) => void;
   openFestivalChest: () => FestivalChestOpenResult;
@@ -493,12 +502,15 @@ export type GameState = {
   retreatFromRaid: () => void;
   returnToVillage: () => void;
   upgradeBuilding: (type: VillageBuildingType) => void;
-  placeRoyalPalaceResident: (
-    slotId: RoyalPalaceSlotId,
-    monkeyId: ProfileMonkeyId,
+  selectRoyalCharacterSkin: (
+    characterId: ProfileMonkeyId,
     skinId: ProfileSkinId | null
   ) => RoyalPalacePlacementResult;
-  removeRoyalPalaceResident: (slotId: RoyalPalaceSlotId) => void;
+  setRoyalCharacterVisibility: (
+    characterId: ProfileMonkeyId,
+    visible: boolean
+  ) => RoyalPalacePlacementResult;
+  rushRoyalPalaceUpgrade: () => boolean;
   reconcileWorkTask: (now?: number) => void;
   tickGame: (now?: number) => void;
   resetGame: () => void;

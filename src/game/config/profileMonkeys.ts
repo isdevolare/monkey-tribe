@@ -1,5 +1,5 @@
 import type { GameAssetKey } from "../assets/gameAssets";
-import type { ProfileMonkeyId, ProfileSkinId } from "../types/game";
+import type { ProfileMonkeyId, ProfileSkinId, RoyalCharacterDisplay } from "../types/game";
 
 export type CosmeticRarity = "common" | "rare" | "epic" | "legendary" | "mythic";
 export type CosmeticCatalogStatus = "default" | "festival" | "archived";
@@ -580,6 +580,15 @@ export function getCosmeticAppearance(
     raidAsset: skinEntry.raidAsset ?? monkey.raidAsset,
     victoryAsset: skinEntry.victoryAsset ?? monkey.victoryAsset
   };
+}
+
+/** Stable non-equip identity for legacy menu/raid surfaces. */
+export function getPrimaryRoyalAppearance(displays: readonly RoyalCharacterDisplay[]) {
+  const display = displays.find((entry) => entry.isVisible) ?? displays[0];
+  return getCosmeticAppearance(
+    display?.characterId ?? DEFAULT_PROFILE_MONKEY_ID,
+    display?.selectedSkinId ?? getDefaultSkinId(display?.characterId ?? DEFAULT_PROFILE_MONKEY_ID)
+  );
 }
 
 function festivalOptions(
