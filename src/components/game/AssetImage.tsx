@@ -27,6 +27,8 @@ type AssetImageProps = {
    * transparent regions the fallback would otherwise bleed through.
    */
   hideFallbackOnLoad?: boolean;
+  onLoad?: () => void;
+  onError?: () => void;
 };
 
 export function AssetImage({
@@ -35,7 +37,9 @@ export function AssetImage({
   imageStyle,
   resizeMode = "contain",
   fallback,
-  hideFallbackOnLoad = false
+  hideFallbackOnLoad = false,
+  onLoad,
+  onError
 }: AssetImageProps) {
   const asset = getGameAsset(assetKey);
   const [failed, setFailed] = useState(false);
@@ -50,8 +54,14 @@ export function AssetImage({
         <Image
           source={asset.source ?? { uri: asset.uri }}
           resizeMode={resizeMode}
-          onError={() => setFailed(true)}
-          onLoad={() => setLoaded(true)}
+          onError={() => {
+            setFailed(true);
+            onError?.();
+          }}
+          onLoad={() => {
+            setLoaded(true);
+            onLoad?.();
+          }}
           style={[styles.image, imageStyle]}
         />
       ) : null}

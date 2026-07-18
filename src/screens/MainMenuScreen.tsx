@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AssetImage } from "../components/game/AssetImage";
@@ -19,16 +19,45 @@ export function MainMenuScreen() {
   const displays = useGameStore((state) => state.royalCharacterDisplays);
   const appearance = getPrimaryRoyalAppearance(displays);
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const compact = height < 700;
   const [showSettings, setShowSettings] = useState(false);
+  const ambience = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(Animated.sequence([
+      Animated.timing(ambience, { toValue: 1, duration: 9000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(ambience, { toValue: 0, duration: 11000, easing: Easing.inOut(Easing.sin), useNativeDriver: true })
+    ]));
+    animation.start();
+    return () => animation.stop();
+  }, [ambience]);
 
   return (
     <View style={styles.screen}>
-      <AssetImage assetKey="bgMainMenu" resizeMode="cover" style={styles.backdrop} fallback={<MenuBackdrop />} />
+      <Animated.View
+        style={[
+          styles.backdropMotion,
+          { transform: [
+            { scale: ambience.interpolate({ inputRange: [0, 1], outputRange: [1.035, 1.055] }) },
+            { translateY: ambience.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) }
+          ] }
+        ]}
+      >
+        <AssetImage assetKey="bgMainMenuPremium" resizeMode="cover" style={styles.backdrop} fallback={<MenuBackdrop />} />
+      </Animated.View>
       <View style={styles.overlay} />
+      <Animated.View style={[styles.sunVeil, { opacity: ambience.interpolate({ inputRange: [0, 1], outputRange: [0.08, 0.18] }) }]} pointerEvents="none" />
 
       <View style={styles.decorLayer} pointerEvents="none">
-        <AssetImage assetKey="menuTorch" resizeMode="contain" style={styles.torchLeft} fallback={<View />} />
-        <AssetImage assetKey="menuTorch" resizeMode="contain" style={styles.torchRight} fallback={<View />} />
+        <Animated.View style={[styles.torchLeft, { opacity: ambience.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.86, 1, 0.9] }), transform: [{ scale: ambience.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1.02] }) }] }]}>
+          <AssetImage assetKey="menuTorch" resizeMode="contain" style={styles.fill} fallback={<View />} />
+        </Animated.View>
+        <Animated.View style={[styles.torchRight, { opacity: ambience.interpolate({ inputRange: [0, 0.45, 1], outputRange: [1, 0.88, 0.98] }), transform: [{ scale: ambience.interpolate({ inputRange: [0, 1], outputRange: [1.02, 0.98] }) }] }]}>
+          <AssetImage assetKey="menuTorch" resizeMode="contain" style={styles.fill} fallback={<View />} />
+        </Animated.View>
+        <Animated.View style={[styles.leafA, { transform: [{ translateY: ambience.interpolate({ inputRange: [0, 1], outputRange: [-4, 12] }) }, { translateX: ambience.interpolate({ inputRange: [0, 1], outputRange: [0, 8] }) }, { rotate: ambience.interpolate({ inputRange: [0, 1], outputRange: ["-18deg", "8deg"] }) }] }]} />
+        <Animated.View style={[styles.leafB, { transform: [{ translateY: ambience.interpolate({ inputRange: [0, 1], outputRange: [8, -6] }) }, { translateX: ambience.interpolate({ inputRange: [0, 1], outputRange: [0, -7] }) }, { rotate: ambience.interpolate({ inputRange: [0, 1], outputRange: ["22deg", "-5deg"] }) }] }]} />
         <View style={styles.bottomScrimA} />
         <View style={styles.bottomScrimB} />
         <View style={styles.bottomScrimC} />
@@ -41,8 +70,9 @@ export function MainMenuScreen() {
         </View>
       </View>
 
-      <View style={[styles.content, { paddingTop: 40 + insets.top }]}>
+      <View style={[styles.content, compact ? styles.contentCompact : null, { paddingTop: insets.top + (compact ? 12 : 26) }]}>
         <View style={styles.logoShadow}>
+          <View style={styles.logoHalo} />
           <AssetImage
             assetKey="uiLogo"
             style={styles.logo}
@@ -54,22 +84,26 @@ export function MainMenuScreen() {
         <Text style={styles.kicker}>{t("menu.tagline", lang)}</Text>
         <Text style={styles.subtitle}>{t("menu.subtitle", lang)}</Text>
 
-        <View style={styles.buttonStack}>
-          <WoodButton
-            label={t("menu.start", lang)}
-            onPress={() => {
-              playSound("confirm");
-              startGame();
-            }}
-            primary
-          />
-          <WoodButton
-            label={t("menu.settings", lang)}
-            onPress={() => {
-              playSound("open");
-              setShowSettings(true);
-            }}
-          />
+        <View style={[styles.buttonStack, compact ? styles.buttonStackCompact : null]}>
+          <View style={styles.primaryButtonGlow}>
+            <WoodButton
+              label={t("menu.start", lang)}
+              onPress={() => {
+                playSound("confirm");
+                startGame();
+              }}
+              primary
+            />
+          </View>
+          <View style={styles.settingsButtonWrap}>
+            <WoodButton
+              label={t("menu.settings", lang)}
+              onPress={() => {
+                playSound("open");
+                setShowSettings(true);
+              }}
+            />
+          </View>
         </View>
       </View>
 
@@ -133,11 +167,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.jungle
   },
   backdrop: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0
+    ...StyleSheet.absoluteFillObject
+  },
+  backdropMotion: {
+    ...StyleSheet.absoluteFillObject
   },
   overlay: {
     position: "absolute",
@@ -145,7 +178,17 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: "rgba(6, 18, 11, 0.42)"
+    backgroundColor: "rgba(4, 14, 8, 0.28)"
+  },
+  sunVeil: {
+    position: "absolute",
+    top: -90,
+    left: "14%",
+    width: 90,
+    height: "62%",
+    borderRadius: 999,
+    backgroundColor: "#ffe8a3",
+    transform: [{ rotate: "14deg" }]
   },
   decorLayer: {
     position: "absolute",
@@ -156,17 +199,17 @@ const styles = StyleSheet.create({
   },
   mascot: {
     position: "absolute",
-    left: -10,
-    bottom: 2,
-    width: 132,
-    height: 176
+    left: -6,
+    bottom: 4,
+    width: 99,
+    height: 132
   },
   totem: {
     position: "absolute",
-    right: 4,
-    bottom: 8,
-    width: 80,
-    height: 140
+    right: 7,
+    bottom: 10,
+    width: 60,
+    height: 105
   },
   bottomScrimA: {
     position: "absolute",
@@ -198,10 +241,15 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: "rgba(226, 177, 90, 0.45)",
-    backgroundColor: "rgba(14, 12, 7, 0.78)",
-    paddingHorizontal: 14,
-    paddingVertical: 5
+    borderColor: "rgba(242, 196, 101, 0.64)",
+    backgroundColor: "rgba(12, 14, 8, 0.88)",
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    shadowColor: "#efb93f",
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 7
   },
   bottomTagText: {
     color: "#ffe9ad",
@@ -225,22 +273,30 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 40,
+    justifyContent: "flex-start",
     paddingRight: theme.spacing.xl,
-    // Keeps the buttons clear of the mascot strip at the bottom.
-    paddingBottom: 176,
+    paddingBottom: 130,
     paddingLeft: theme.spacing.xl
   },
+  contentCompact: { paddingBottom: 104 },
   logoShadow: {
     width: 282,
     height: 282,
-    marginBottom: theme.spacing.md,
+    marginBottom: 2,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  logoHalo: {
+    position: "absolute",
+    width: 242,
+    height: 242,
+    borderRadius: 121,
+    backgroundColor: "rgba(3, 10, 6, 0.18)",
     shadowColor: "#000",
-    shadowOpacity: 0.48,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 14
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10
   },
   logo: {
     width: 282,
@@ -248,20 +304,21 @@ const styles = StyleSheet.create({
   },
   kicker: {
     color: theme.colors.banana,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: "900", fontFamily: theme.fonts.heavy,
-    letterSpacing: 0,
+    letterSpacing: 0.25,
     textAlign: "center",
     textShadowColor: "rgba(0, 0, 0, 0.7)",
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
-    textTransform: "uppercase"
+    textTransform: "none"
   },
   subtitle: {
     maxWidth: 320,
-    marginTop: theme.spacing.sm,
+    marginTop: 5,
     color: "#f3f0d7",
-    fontSize: 16,
+    fontSize: 15,
+    lineHeight: 19,
     fontWeight: "800", fontFamily: theme.fonts.bold,
     textAlign: "center",
     textShadowColor: "rgba(0, 0, 0, 0.75)",
@@ -271,7 +328,36 @@ const styles = StyleSheet.create({
   buttonStack: {
     width: "100%",
     maxWidth: 310,
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.xl
+    gap: 7,
+    marginTop: 18
+  },
+  buttonStackCompact: { marginTop: 10, gap: 5 },
+  primaryButtonGlow: {
+    borderRadius: 14,
+    shadowColor: "#ffd66e",
+    shadowOpacity: 0.38,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 10
+  },
+  settingsButtonWrap: { width: "86%", alignSelf: "center", opacity: 0.94 },
+  fill: { width: "100%", height: "100%" },
+  leafA: {
+    position: "absolute",
+    top: "18%",
+    left: "9%",
+    width: 12,
+    height: 30,
+    borderRadius: 999,
+    backgroundColor: "rgba(112, 171, 58, 0.48)"
+  },
+  leafB: {
+    position: "absolute",
+    top: "37%",
+    right: "11%",
+    width: 10,
+    height: 25,
+    borderRadius: 999,
+    backgroundColor: "rgba(76, 137, 47, 0.42)"
   }
 });

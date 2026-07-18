@@ -16,6 +16,7 @@ import {
   useGameStore
 } from "./src/game/state/gameStore";
 import { MainMenuScreen } from "./src/screens/MainMenuScreen";
+import { LoadingScreen } from "./src/screens/LoadingScreen";
 import { GameScreen } from "./src/screens/GameScreen";
 import { ResultScreen } from "./src/screens/ResultScreen";
 import type { VillageSave } from "./src/game/types/game";
@@ -27,12 +28,15 @@ SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export default function App() {
   const screen = useGameStore((state) => state.currentScreen);
+  const lang = useGameStore((state) => state.language);
   const [fontsLoaded] = useFonts({
     Baloo2_500Medium,
     Baloo2_700Bold,
     Baloo2_800ExtraBold
   });
   const [hydrated, setHydrated] = useState(false);
+  const [loadingArtworkReady, setLoadingArtworkReady] = useState(false);
+  const [rootLaidOut, setRootLaidOut] = useState(false);
   const bootStarted = useRef(false);
 
   // One-time boot. Order matters: restore the save FIRST, then start the
@@ -107,36 +111,37 @@ export default function App() {
     }
   }, [appReady]);
 
-  // Hide the native splash only once real content is about to paint.
   const onLayoutRootView = useCallback(() => {
-    if (appReady) {
+    setRootLaidOut(true);
+  }, []);
+
+  useEffect(() => {
+    if (rootLaidOut && loadingArtworkReady) {
       SplashScreen.hideAsync().catch(() => undefined);
     }
-  }, [appReady]);
+  }, [loadingArtworkReady, rootLaidOut]);
 
-  // Render nothing (native splash stays visible) until fully ready — never
-  // the default state.
-  if (!appReady) {
-    return null;
-  }
+  const contentReady = appReady && loadingArtworkReady;
 
   return (
     <SafeAreaProvider>
-      <StoreKitProvider>
-        <View style={styles.appShell} onLayout={onLayoutRootView}>
+      <View style={styles.appShell} onLayout={onLayoutRootView}>
           {/* Full-bleed frame: the background fills edge to edge (including behind
               the status bar); each screen insets its own content via safe-area
               padding. No solid strip at the top. */}
           <View style={styles.phoneFrame}>
             <StatusBar barStyle="light-content" />
-            <FadeIn key={screen} rise={0} style={styles.screenFill}>
-              {screen === "menu" ? <MainMenuScreen /> : null}
-              {screen === "game" ? <GameScreen /> : null}
-              {screen === "result" ? <ResultScreen /> : null}
-            </FadeIn>
+            {contentReady ? (
+              <StoreKitProvider>
+                <FadeIn key={screen} rise={0} style={styles.screenFill}>
+                  {screen === "menu" ? <MainMenuScreen /> : null}
+                  {screen === "game" ? <GameScreen /> : null}
+                  {screen === "result" ? <ResultScreen /> : null}
+                </FadeIn>
+              </StoreKitProvider>
+            ) : <LoadingScreen lang={lang} onArtworkReady={() => setLoadingArtworkReady(true)} />}
           </View>
-        </View>
-      </StoreKitProvider>
+      </View>
     </SafeAreaProvider>
   );
 }

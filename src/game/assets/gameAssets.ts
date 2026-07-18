@@ -85,6 +85,7 @@ export type GameAssetKey =
   | "uiPanelDark"
   | "uiPanelLight"
   | "bgMainMenu"
+  | "bgMainMenuPremium"
   | "bgJungleGame"
   | "bgJungleWorldDense"
   | "bgJungleWorldCompact"
@@ -352,6 +353,10 @@ export const gameAssets = {
   bgMainMenu: {
     ...asset("bgMainMenu", "backgrounds", "bg_main_menu.png", "1440x2560 portrait"),
     source: require("../../../assets/game/backgrounds/bg_main_menu.png") as ImageSourcePropType
+  },
+  bgMainMenuPremium: {
+    ...asset("bgMainMenuPremium", "backgrounds", "bg_main_menu_premium.png", "941x1672 premium portrait jungle"),
+    source: require("../../../assets/game/backgrounds/bg_main_menu_premium.png") as ImageSourcePropType
   },
   bgJungleGame: {
     ...asset("bgJungleGame", "backgrounds", "bg_jungle_game.png", "1440x2560 portrait"),

@@ -4,15 +4,22 @@ type Entry = { tr: string; en: string };
 
 const dict: Record<string, Entry> = {
   // Main menu
-  "menu.tagline": { tr: "Hayatta Kalma RTS Prototipi", en: "Survival RTS Prototype" },
+  "menu.tagline": { tr: "Kendi Maymun Krallığını Kur", en: "Build Your Monkey Kingdom" },
   "menu.subtitle": {
-    tr: "Ormanı topla, binalar kur, savaşçı yetiştir ve rakip kampı yık.",
-    en: "Gather the jungle, raise buildings, train fighters, and break the rival camp."
+    tr: "Köyünü geliştir, ordunu kur ve ormana hükmet.",
+    en: "Grow your village, raise your army, and rule the jungle."
   },
   "menu.start": { tr: "Oyna", en: "Start Game" },
   "menu.settings": { tr: "Ayarlar", en: "Settings" },
   "menu.credits": { tr: "Künye", en: "Credits" },
   "menu.bottomTag": { tr: "Kabile seni bekliyor, şef!", en: "The tribe awaits you, chief!" },
+  "loading.gatheringBananas": { tr: "Muzlar toplanıyor...", en: "Gathering bananas..." },
+  "loading.preparingTribe": { tr: "Kabile hazırlanıyor...", en: "Preparing the tribe..." },
+  "loading.buildingVillage": { tr: "Köy kuruluyor...", en: "Building the village..." },
+  "loading.trainingWarriors": { tr: "Savaşçılar eğitiliyor...", en: "Training warriors..." },
+  "loading.exploringJungle": { tr: "Orman keşfediliyor...", en: "Exploring the jungle..." },
+  "loading.sharpeningSpears": { tr: "Mızraklar bileniyor...", en: "Sharpening spears..." },
+  "loading.openingPalace": { tr: "Kraliyet Sarayı açılıyor...", en: "Opening the Royal Palace..." },
 
   // Clan / HUD
   "clan.subtitle": { tr: "Genç Klan", en: "Young Clan" },
