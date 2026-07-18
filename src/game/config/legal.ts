@@ -1,4 +1,4 @@
-export const LEGAL_SITE_ORIGIN = "https://monkeytribe.vercel.app";
+export const LEGAL_SITE_ORIGIN = "https://monkey-tribe.vercel.app";
 
 export const PRIVACY_URL = `${LEGAL_SITE_ORIGIN}/privacy`;
 export const SUPPORT_URL = `${LEGAL_SITE_ORIGIN}/support`;

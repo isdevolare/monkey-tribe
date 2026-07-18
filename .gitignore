@@ -20,3 +20,5 @@ yarn-error.log*
 
 # Local scratch/asset-generation artifacts
 tmp/
+.vercel
+.env*

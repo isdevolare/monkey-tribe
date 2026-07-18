@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { PRIVACY_URL } from "./config/legal";
 import { tryOpenExternalUrl, type ExternalLinkingApi } from "./externalLinks";
 
 function linkingApi(canOpen = true): ExternalLinkingApi {
@@ -11,7 +12,7 @@ function linkingApi(canOpen = true): ExternalLinkingApi {
 describe("safe external links", () => {
   it("opens a supported URL", async () => {
     const linking = linkingApi();
-    await expect(tryOpenExternalUrl(linking, "https://monkeytribe.vercel.app/privacy")).resolves.toBe(true);
+    await expect(tryOpenExternalUrl(linking, PRIVACY_URL)).resolves.toBe(true);
     expect(linking.openURL).toHaveBeenCalledOnce();
   });
 
