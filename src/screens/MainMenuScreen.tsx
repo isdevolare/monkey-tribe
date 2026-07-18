@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Circle, Ellipse, Line, Path, Polygon, Rect, Svg } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AssetImage } from "../components/game/AssetImage";
+import { CriticalAssetPreloader } from "../components/game/CriticalAssetPreloader";
 import { SettingsModal } from "../components/game/SettingsModal";
 import { WoodButton } from "../components/game/WoodButton";
 import { playSound } from "../game/audio/soundManager";
+import { areGameAssetsSettled } from "../game/assets/assetCache";
+import { criticalVillageAssetKeys } from "../game/assets/villageCriticalAssets";
 import { t } from "../game/i18n";
 import { markTutorialForReplay } from "../game/settings/tutorial";
 import { getPrimaryRoyalAppearance } from "../game/config/profileMonkeys";
@@ -17,12 +20,31 @@ export function MainMenuScreen() {
   const setLanguage = useGameStore((state) => state.setLanguage);
   const lang = useGameStore((state) => state.language);
   const displays = useGameStore((state) => state.royalCharacterDisplays);
+  const buildings = useGameStore((state) => state.buildings);
+  const workerExpeditions = useGameStore((state) => state.workerExpeditions);
   const appearance = getPrimaryRoyalAppearance(displays);
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const compact = height < 700;
   const [showSettings, setShowSettings] = useState(false);
+  const criticalAssets = useMemo(
+    () => criticalVillageAssetKeys({ buildings, workerExpeditions, royalCharacterDisplays: displays }),
+    [buildings, displays, workerExpeditions]
+  );
+  const criticalAssetSignature = criticalAssets.join("|");
+  const [villageAssetsReady, setVillageAssetsReady] = useState(() => areGameAssetsSettled(criticalAssets));
+  const [enteringVillage, setEnteringVillage] = useState(false);
   const ambience = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    setVillageAssetsReady(areGameAssetsSettled(criticalAssets));
+  }, [criticalAssetSignature]);
+
+  useEffect(() => {
+    if (!enteringVillage || !villageAssetsReady) return;
+    const frame = requestAnimationFrame(startGame);
+    return () => cancelAnimationFrame(frame);
+  }, [enteringVillage, startGame, villageAssetsReady]);
 
   useEffect(() => {
     const animation = Animated.loop(Animated.sequence([
@@ -35,6 +57,7 @@ export function MainMenuScreen() {
 
   return (
     <View style={styles.screen}>
+      <CriticalAssetPreloader assetKeys={criticalAssets} onReady={() => setVillageAssetsReady(true)} />
       <Animated.View
         style={[
           styles.backdropMotion,
@@ -90,7 +113,8 @@ export function MainMenuScreen() {
               label={t("menu.start", lang)}
               onPress={() => {
                 playSound("confirm");
-                startGame();
+                if (villageAssetsReady) startGame();
+                else setEnteringVillage(true);
               }}
               primary
             />
@@ -117,6 +141,22 @@ export function MainMenuScreen() {
         }}
         onClose={() => setShowSettings(false)}
       />
+      {enteringVillage && !villageAssetsReady ? (
+        <View style={styles.villageEntryOverlay}>
+          <View style={styles.villageEntryShade} />
+          <Text style={styles.villageEntryText} maxFontSizeMultiplier={theme.maxFontScale}>
+            {t("loading.buildingVillage", lang)}
+          </Text>
+          <View style={styles.villageEntryTrack}>
+            <Animated.View
+              style={[
+                styles.villageEntryProgress,
+                { opacity: ambience.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }
+              ]}
+            />
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -359,5 +399,41 @@ const styles = StyleSheet.create({
     height: 25,
     borderRadius: 999,
     backgroundColor: "rgba(76, 137, 47, 0.42)"
+  },
+  villageEntryOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  villageEntryShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(3, 11, 6, 0.62)"
+  },
+  villageEntryText: {
+    color: "#fff0bd",
+    fontSize: 17,
+    lineHeight: 22,
+    fontFamily: theme.fonts.bold,
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4
+  },
+  villageEntryTrack: {
+    width: 156,
+    height: 5,
+    marginTop: 12,
+    borderRadius: 999,
+    overflow: "hidden",
+    backgroundColor: "rgba(7, 18, 10, 0.82)",
+    borderWidth: 1,
+    borderColor: "rgba(235, 190, 91, 0.52)"
+  },
+  villageEntryProgress: {
+    width: "100%",
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: "#e9b544"
   }
 });

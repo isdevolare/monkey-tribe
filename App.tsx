@@ -133,7 +133,7 @@ export default function App() {
             <StatusBar barStyle="light-content" />
             {contentReady ? (
               <StoreKitProvider>
-                <FadeIn key={screen} rise={0} style={styles.screenFill}>
+                <FadeIn key={screen} duration={screen === "game" ? 200 : 260} rise={0} style={styles.screenFill}>
                   {screen === "menu" ? <MainMenuScreen /> : null}
                   {screen === "game" ? <GameScreen /> : null}
                   {screen === "result" ? <ResultScreen /> : null}

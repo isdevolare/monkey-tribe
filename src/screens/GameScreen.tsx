@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Easing,
@@ -14,6 +14,7 @@ import {
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AssetImage } from "../components/game/AssetImage";
+import { CriticalAssetPreloader } from "../components/game/CriticalAssetPreloader";
 import { FadeIn } from "../components/game/FadeIn";
 import { RaidBoard } from "../components/game/RaidBoard";
 import { RaidMapScreen } from "../components/game/RaidMapScreen";
@@ -39,6 +40,8 @@ import { LumberCampModal, StoneQuarryModal } from "../components/game/LumberCamp
 import { playSound } from "../game/audio/soundManager";
 import { markTutorialForReplay, TUTORIAL_SEEN_KEY } from "../game/settings/tutorial";
 import type { GameAssetKey } from "../game/assets/gameAssets";
+import { areGameAssetsSettled } from "../game/assets/assetCache";
+import { criticalVillageAssetKeys } from "../game/assets/villageCriticalAssets";
 import { formatHudAmount, formatResourceHudValue } from "../game/ui/resourceHud";
 import { RUSH_GEM_COST } from "../game/config/constants";
 import {
@@ -133,6 +136,52 @@ function useCountUp(value: number) {
 type ShopScreen = "hub" | "gems" | "festival" | "monkeys" | "resources" | null;
 
 export function GameScreen() {
+  const buildings = useGameStore((state) => state.buildings);
+  const workerExpeditions = useGameStore((state) => state.workerExpeditions);
+  const royalCharacterDisplays = useGameStore((state) => state.royalCharacterDisplays);
+  const lang = useGameStore((state) => state.language);
+  const criticalAssets = useMemo(
+    () => criticalVillageAssetKeys({ buildings, workerExpeditions, royalCharacterDisplays }),
+    [buildings, royalCharacterDisplays, workerExpeditions]
+  );
+  const criticalAssetSignature = criticalAssets.join("|");
+  const [ready, setReady] = useState(() => areGameAssetsSettled(criticalAssets));
+
+  useEffect(() => {
+    setReady(areGameAssetsSettled(criticalAssets));
+  }, [criticalAssetSignature]);
+
+  return (
+    <View style={styles.readyGate}>
+      <CriticalAssetPreloader assetKeys={criticalAssets} onReady={() => setReady(true)} />
+      {ready ? (
+        <FadeIn duration={200} rise={0} style={styles.readyGate}>
+          <GameScreenContent />
+        </FadeIn>
+      ) : <VillageLoadingGate lang={lang} />}
+    </View>
+  );
+}
+
+function VillageLoadingGate({ lang }: { lang: Lang }) {
+  return (
+    <View style={styles.villageLoadingGate} pointerEvents="none">
+      <AssetImage
+        assetKey="bgMainMenuPremium"
+        resizeMode="cover"
+        style={StyleSheet.absoluteFill}
+        fallback={<View style={styles.villageLoadingFallback} />}
+        hideFallbackOnLoad
+      />
+      <View style={styles.villageLoadingShade} />
+      <Text style={styles.villageLoadingText} maxFontSizeMultiplier={theme.maxFontScale}>
+        {t("loading.buildingVillage", lang)}
+      </Text>
+    </View>
+  );
+}
+
+function GameScreenContent() {
   const state = useGameStore();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -371,6 +420,7 @@ export function GameScreen() {
         resizeMode="cover"
         style={styles.backgroundArt}
         fallback={<View style={styles.backgroundFallback} />}
+        hideFallbackOnLoad
       />
       <View style={styles.backgroundShade} />
 
@@ -1157,8 +1207,10 @@ function ResourceChip({
       <View style={[styles.resourceIcon, compact ? styles.resourceIconCompact : null]}>
         <AssetImage
           assetKey={assetKey}
+          fallbackAssetKey="propCrate"
           style={compact ? styles.resourceIconArtCompact : styles.resourceIconArt}
           fallback={<ResourceFallback assetKey={assetKey} />}
+          hideFallbackOnLoad
         />
       </View>
       <Text
@@ -1449,6 +1501,28 @@ function TutorialOverlay({
 const glass = "rgba(17, 20, 14, 0.78)";
 
 const styles = StyleSheet.create({
+  readyGate: { flex: 1 },
+  villageLoadingGate: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#07140d"
+  },
+  villageLoadingFallback: { flex: 1, backgroundColor: "#102b1a" },
+  villageLoadingShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(3, 11, 6, 0.48)"
+  },
+  villageLoadingText: {
+    color: "#fff0bd",
+    fontSize: 17,
+    lineHeight: 22,
+    fontFamily: theme.fonts.bold,
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.82)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4
+  },
   safeScreen: {
     flex: 1,
     backgroundColor: "#0f1710"

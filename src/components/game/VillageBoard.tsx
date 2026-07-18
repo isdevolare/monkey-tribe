@@ -685,7 +685,13 @@ function BuildingSprite({
         <View style={styles.prestigeGlow} pointerEvents="none" />
       ) : null}
       {selected ? <View style={styles.buildingSelected} pointerEvents="none" /> : null}
-      <AssetImage assetKey={art} style={styles.full} fallback={<View style={styles.assetMissing} />} />
+      <AssetImage
+        assetKey={art}
+        fallbackAssetKey={fallbackAssetForBuilding(building.type)}
+        style={styles.full}
+        fallback={<View />}
+        hideFallbackOnLoad
+      />
       {building.type !== "royalPalace" && building.type !== "clanHall" ? <BuildingIdleDetails type={building.type} /> : null}
       {building.type === "bananaGrove" ? (
         <BananaGroveActivity workers={bananaWorkers} />
@@ -931,7 +937,8 @@ function SceneBackground() {
         assetKey="bgVillageReferenceLayout"
         resizeMode="cover"
         style={styles.background}
-        fallback={<View style={styles.backgroundFallback} />}
+        fallback={<View />}
+        hideFallbackOnLoad
       />
       <View style={styles.depthShade} />
     </>
@@ -997,6 +1004,13 @@ function assetForBuilding(building: VillageBuilding, fallback: GameAssetKey): Ga
     return royalPalaceAsset(building.level);
   }
   return fallback;
+}
+
+function fallbackAssetForBuilding(type: VillageBuildingType): GameAssetKey {
+  if (type === "bananaGrove") return "resourceBananaPile";
+  if (type === "stoneQuarry") return "resourceStonePile";
+  if (type === "lumberCamp" || type === "watchTower") return "buildingHut";
+  return "buildingPlayerCamp";
 }
 
 const styles = StyleSheet.create({

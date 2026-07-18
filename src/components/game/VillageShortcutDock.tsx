@@ -61,6 +61,7 @@ export function VillageShortcutDock({
         <View pointerEvents="none" style={styles.helperPortrait}>
           <AssetImage
             assetKey={helperAsset}
+            fallbackAssetKey="unitWorker"
             style={styles.helperPortraitArt}
             resizeMode="contain"
             fallback={<View />}
@@ -119,6 +120,7 @@ const ShortcutButton = memo(function ShortcutButton({
       <View pointerEvents="none" style={[styles.iconWrap, selected ? styles.iconWrapSelected : null]}>
         <AssetImage
           assetKey={shortcut.asset}
+          fallbackAssetKey="propCrate"
           style={styles.shortcutIcon}
           resizeMode="contain"
           fallback={<View style={styles.iconFallback} />}
